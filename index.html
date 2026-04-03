@@ -930,34 +930,219 @@ async function renderFFinance(){
   }
 }
 
-function renderStripeData(data){
-  const charges=(data.data||[]);
+// Similitude entre deux chaînes (0-1)
+function strSim(a,b){
+  if(!a||!b)return 0;
+  a=a.toLowerCase().trim();b=b.toLowerCase().trim();
+  if(a===b)return 1;
+  if(a.includes(b)||b.includes(a))return 0.85;
+  // Tokenize et comparer mots
+  const wa=new Set(a.split(/\s+/));const wb=new Set(b.split(/\s+/));
+  const inter=[...wa].filter(w=>wb.has(w)).length;
+  const union=new Set([...wa,...wb]).size;
+  return union>0?inter/union:0;
+}
+
+// Rapprochement automatique Stripe ↔ Bookings
+function reconcileStripe(charges,bookings){
+  const results=[];
+  charges.forEach(c=>{
+    const stripeName=(c.billing_details?.name||c.description||c.metadata?.client||'').toLowerCase();
+    const stripeAmount=(c.amount_captured||c.amount||0)/100;
+    const stripeDate=new Date(c.created*1000);
+    
+    let bestMatch=null;let bestScore=0;
+    bookings.forEach(b=>{
+      if(b.stripe_payment_id===c.id)return; // déjà lié
+      const bookingName=(b.client||'').toLowerCase();
+      const bookingAmount=b.prix||0;
+      const bookingDate=b.debut?new Date(b.debut):null;
+      
+      let score=0;
+      const nameSim=strSim(stripeName,bookingName);
+      if(nameSim>0.7)score+=2;
+      else if(nameSim>0.4)score+=1;
+      
+      const amountDiff=bookingAmount>0?Math.abs(stripeAmount-bookingAmount)/bookingAmount:1;
+      if(amountDiff<0.1)score+=2;
+      else if(amountDiff<0.3)score+=1;
+      
+      if(bookingDate){
+        const dayDiff=Math.abs(stripeDate-bookingDate)/(1000*60*60*24);
+        if(dayDiff<7)score+=2;
+        else if(dayDiff<30)score+=1;
+      }
+      
+      if(score>bestScore){bestScore=score;bestMatch={...b,_score:score,_nameSim:nameSim};}
+    });
+    
+    results.push({charge:c,match:bestMatch,score:bestScore,
+      auto:bestScore>=4,suggest:bestScore>=2&&bestScore<4});
+  });
+  return results;
+}
+
+let stripeCharges=[];let stripeBookings=[];
+
+async function renderFFinance(){
+  set('page-content',`<div class="page-header">
+    <div><div class="page-title">Ferdinand — Finance & Paiements</div>
+    <div class="page-sub">Rapprochement Stripe ↔ Locations</div></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-sm" onclick="renderFFinance()">↺ Actualiser</button>
+    </div>
+  </div>
+  <div id="stripe-stats"><div class="loading"><div class="spinner"></div>Chargement Stripe...</div></div>
+  <div id="stripe-content"></div>`);
+  try{
+    const [stripeRes,bkRes]=await Promise.all([
+      fetch('/api/stripe?limit=100'),
+      db.from('ferdinand_bookings').select('*').order('debut',{ascending:false})
+    ]);
+    if(!stripeRes.ok){const e=await stripeRes.json();throw new Error(e.error||'Erreur '+stripeRes.status);}
+    const stripeData=await stripeRes.json();
+    stripeCharges=stripeData.data||[];
+    stripeBookings=bkRes.data||[];
+    renderStripeData(stripeCharges,stripeBookings);
+  }catch(e){
+    set('stripe-stats',`<div class="alert alert-red">Erreur : ${e.message}. Vérifiez que STRIPE_RESTRICTED_KEY est configurée dans Vercel et que api/stripe.js est déployé.</div>`);
+    set('stripe-content','');
+  }
+}
+
+function renderStripeData(charges,bookings){
   const total=charges.reduce((s,c)=>s+(c.amount_captured||c.amount||0),0);
-  const reussis=charges.filter(c=>c.status==='succeeded');
-  const rembourses=charges.filter(c=>c.refunded);
+  const reussis=charges.filter(c=>c.status==='succeeded').length;
+  const deja=bookings.filter(b=>b.stripe_payment_id).length;
+  
   set('stripe-stats',statsRow([
-    {l:'Transactions',v:charges.length},
+    {l:'Transactions Stripe',v:charges.length},
     {l:'Total encaissé',v:fmt(total/100)+'€',c:'var(--green)'},
-    {l:'Réussis',v:reussis.length,c:'var(--green)'},
-    {l:'Remboursés',v:rembourses.length,c:'var(--amber)'},
-    {l:'Période',v:'100 dernières'},
+    {l:'Réussis',v:reussis,c:'var(--green)'},
+    {l:'Locations liées',v:deja,c:'var(--blue)'},
+    {l:'Non pointées',v:charges.length-deja},
   ]));
 
-  const rows=charges.map(c=>{
-    const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
-    const montant=((c.amount_captured||c.amount||0)/100).toFixed(2);
-    const desc=(c.description||c.metadata?.client||c.billing_details?.name||'—').substring(0,40);
-    const statut=c.refunded?'Remboursé':c.status==='succeeded'?'Réussi':c.status;
-    const badgeCls=c.refunded?'b-amber':c.status==='succeeded'?'b-green':'b-red';
-    return`<tr>
-      <td style="white-space:nowrap">${d}</td>
-      <td style="font-weight:600;color:var(--green)">${montant}€</td>
-      <td><span class="badge ${badgeCls}">${statut}</span></td>
-      <td>${desc}</td>
-      <td style="font-size:11px;color:var(--text3);font-family:monospace">${c.id.substring(0,16)}...</td>
-    </tr>`;
-  });
-  set('stripe-content',`<div class="card"><div class="card-title">Transactions Stripe — 100 dernières</div>${makeTable(['Date','Montant','Statut','Description','ID'],rows,'Aucune transaction')}</div>`);
+  // Rapprochement
+  const reconciled=reconcileStripe(charges,bookings);
+  const autoMatched=reconciled.filter(r=>r.auto);
+  const suggested=reconciled.filter(r=>r.suggest&&!r.auto);
+  const unmatched=reconciled.filter(r=>!r.auto&&!r.suggest);
+
+  let html='';
+
+  // Auto-matchés
+  if(autoMatched.length){
+    html+=`<div class="card">
+      <div class="card-title" style="color:var(--green)">✓ Rapprochements automatiques (${autoMatched.length}) 
+        <button class="btn btn-sm btn-primary" onclick="confirmAllAuto()">Confirmer tous</button>
+      </div>
+      ${makeTable(['Client Stripe','Montant','Date','↔ Booking','Voiture','Confiance','Action'],
+        autoMatched.map(r=>{
+          const c=r.charge;const b=r.match;
+          const name=c.billing_details?.name||c.description||'—';
+          const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+          const montant=fmt((c.amount_captured||c.amount||0)/100)+'€';
+          const conf=r.score>=5?'Élevée':r.score>=3?'Moyenne':'Faible';
+          const confCls=r.score>=5?'b-green':r.score>=3?'b-amber':'b-gray';
+          return`<tr>
+            <td><strong>${name}</strong></td>
+            <td style="color:var(--green);font-weight:600">${montant}</td>
+            <td style="white-space:nowrap">${d}</td>
+            <td>${b.client}</td>
+            <td style="font-size:12px;color:var(--text2)">${b.voiture||'—'}</td>
+            <td><span class="badge ${confCls}">${conf}</span></td>
+            <td><button class="btn btn-sm" style="background:var(--green);color:#fff;border-color:var(--green)" onclick="confirmLink('${c.id}','${b.id}',${(c.amount_captured||c.amount||0)/100})">✓ Lier</button>
+            <button class="btn btn-sm" onclick="openManualLink('${c.id}')">Choisir</button></td>
+          </tr>`;
+        })
+      )}
+    </div>`;
+  }
+
+  // Suggestions
+  if(suggested.length){
+    html+=`<div class="card">
+      <div class="card-title" style="color:var(--amber)">? Suggestions à vérifier (${suggested.length})</div>
+      ${makeTable(['Client Stripe','Montant','Date','↔ Booking suggéré','Voiture','Action'],
+        suggested.map(r=>{
+          const c=r.charge;const b=r.match;
+          const name=c.billing_details?.name||c.description||'—';
+          const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+          const montant=fmt((c.amount_captured||c.amount||0)/100)+'€';
+          return`<tr>
+            <td><strong>${name}</strong></td>
+            <td style="color:var(--green);font-weight:600">${montant}</td>
+            <td style="white-space:nowrap">${d}</td>
+            <td style="color:var(--text2)">${b?b.client:'Aucun'}</td>
+            <td style="font-size:12px;color:var(--text2)">${b?b.voiture||'—':'—'}</td>
+            <td>${b?`<button class="btn btn-sm" style="background:var(--green);color:#fff;border-color:var(--green)" onclick="confirmLink('${c.id}','${b.id}',${(c.amount_captured||c.amount||0)/100})">✓ Lier</button>`:''}
+            <button class="btn btn-sm" onclick="openManualLink('${c.id}')">Choisir</button></td>
+          </tr>`;
+        })
+      )}
+    </div>`;
+  }
+
+  // Non matchées
+  html+=`<div class="card">
+    <div class="card-title">Transactions non pointées (${unmatched.length})</div>
+    ${makeTable(['Client Stripe','Montant','Date','Statut','Action'],
+      unmatched.map(r=>{
+        const c=r.charge;
+        const name=c.billing_details?.name||c.description||'—';
+        const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+        const montant=fmt((c.amount_captured||c.amount||0)/100)+'€';
+        const statut=c.refunded?'Remboursé':c.status==='succeeded'?'Réussi':c.status;
+        const badgeCls=c.refunded?'b-amber':c.status==='succeeded'?'b-green':'b-red';
+        return`<tr>
+          <td>${name}</td>
+          <td style="font-weight:600;color:var(--green)">${montant}</td>
+          <td style="white-space:nowrap">${d}</td>
+          <td><span class="badge ${badgeCls}">${statut}</span></td>
+          <td><button class="btn btn-sm" onclick="openManualLink('${c.id}')">Lier manuellement</button></td>
+        </tr>`;
+      }),'Toutes les transactions sont pointées ✓')}
+  </div>`;
+
+  set('stripe-content',html);
+}
+
+async function confirmLink(stripeId,bookingId,amount){
+  await db.from('ferdinand_bookings').update({
+    stripe_payment_id:stripeId,
+    statut_paiement:'Payé intégral',
+    montant_recu:amount
+  }).eq('id',bookingId);
+  // Refresh
+  stripeBookings=stripeBookings.map(b=>b.id===bookingId?{...b,stripe_payment_id:stripeId,statut_paiement:'Payé intégral',montant_recu:amount}:b);
+  renderStripeData(stripeCharges,stripeBookings);
+}
+
+async function confirmAllAuto(){
+  const reconciled=reconcileStripe(stripeCharges,stripeBookings);
+  const autoMatched=reconciled.filter(r=>r.auto);
+  for(const r of autoMatched){
+    await confirmLink(r.charge.id,r.match.id,(r.charge.amount_captured||r.charge.amount||0)/100);
+  }
+}
+
+function openManualLink(stripeId){
+  const c=stripeCharges.find(x=>x.id===stripeId);
+  const name=c?.billing_details?.name||c?.description||'';
+  const montant=fmt((c?.amount_captured||c?.amount||0)/100)+'€';
+  const opts=stripeBookings.filter(b=>!b.stripe_payment_id).slice(0,50)
+    .map(b=>`<option value="${b.id}">${b.client} — ${b.voiture||'?'} — ${fmtShort(b.debut)} — ${b.prix?fmt(b.prix)+'€':''}</option>`).join('');
+  openModal(`Lier manuellement — ${name} (${montant})`,
+    `<div class="form-group"><label class="form-label">Sélectionner le booking correspondant</label>
+    <select class="form-input" id="manual-bk" size="8" style="height:200px">${opts}</select></div>`,
+    async()=>{
+      const bkId=document.getElementById('manual-bk').value;
+      if(!bkId)return;
+      await confirmLink(stripeId,bkId,(c.amount_captured||c.amount||0)/100);
+      closeModal();
+    }
+  );
 }
 
 // ══════════════════════════════════════════════════════════
