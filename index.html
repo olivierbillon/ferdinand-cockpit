@@ -618,10 +618,43 @@ let planYear=new Date().getFullYear();let planMonth=new Date().getMonth();let pl
 const VEHICLE_MAP={'911 Carrera S':'Porsche Carrera S','911 Targa 4 GTS':'Porsche Targa 4 GTS','Boxster':'Porsche Boxster','Boxster S':'Porsche Boxster','Cayman GTS':'Porsche Cayman GTS','Cayman E':'Porsche Cayman GTS','Cayenne Hybrid':'Cayenne Hybrid','Cayenne Turbo':'Cayenne Hybrid','Ferrari Portofino':'Ferrari Portofino M','FERRARI':'Ferrari Portofino M','Macan GTS':'Porsche Macan GTS','Macan S':'Porsche Macan GTS','Mercedes':'Mercedes GLC Hybrid','Range Rover':'Range Rover Evoque'};
 
 // F — INVENTAIRE
+let fleetCA={};  // CA par voiture : {nom_voiture: {total, count, dernier}}
+
 async function renderFInventaire(){
   set('page-content','<div class="loading"><div class="spinner"></div>Chargement...</div>');
-  const{data}=await db.from('vehicles').select('*').order('nom');
-  fleetData=data||[];renderFInventaireHTML();
+  const[vRes,bkRes]=await Promise.all([
+    db.from('vehicles').select('*').order('nom'),
+    db.from('ferdinand_bookings').select('voiture,prix,debut,statut').not('prix','is',null)
+  ]);
+  fleetData=vRes.data||[];
+  // Calculer CA par voiture
+  fleetCA={};
+  (bkRes.data||[]).forEach(b=>{
+    if(!b.voiture||!b.prix)return;
+    // Normaliser le nom pour matching
+    const nom=b.voiture.trim();
+    if(!fleetCA[nom])fleetCA[nom]={total:0,count:0,dernier:null,paye:0};
+    fleetCA[nom].total+=(b.prix||0);
+    fleetCA[nom].count++;
+    if(!fleetCA[nom].dernier||b.debut>fleetCA[nom].dernier)fleetCA[nom].dernier=b.debut;
+    if(b.statut==='Fermé')fleetCA[nom].paye+=(b.prix||0);
+  });
+  renderFInventaireHTML();
+}
+
+// Cherche le CA pour une voiture en essayant plusieurs variantes du nom
+function getVehicleCA(nomVehicule){
+  if(!nomVehicule)return null;
+  // Essai direct
+  if(fleetCA[nomVehicule])return fleetCA[nomVehicule];
+  // Essai par correspondance partielle
+  const keys=Object.keys(fleetCA);
+  const nom=nomVehicule.toLowerCase().replace('porsche ','').replace('ferrari ','').replace('lamborghini ','');
+  for(const k of keys){
+    const kn=k.toLowerCase().replace('porsche ','').replace('ferrari ','').replace('lamborghini ','');
+    if(kn.includes(nom)||nom.includes(kn))return fleetCA[k];
+  }
+  return null;
 }
 function renderFInventaireHTML(){
   const cnt={standby:0,court:0,long:0,repare:0,leasing:0};
@@ -647,19 +680,28 @@ function vehicleCard(v){
   if(isOpen){
     const tabs=`<div class="inv-tabs">${['infos','entretien','docs','taches'].map(t=>`<button class="itab${tab===t?' active':''}" onclick="setVTab('${v.id}','${t}')">${{infos:'Infos',entretien:'Entretien',docs:'Documents',taches:'Tâches'}[t]}</button>`).join('')}</div>`;
     let panel='';
-    if(tab==='infos')panel=`<div class="info-grid">
-      <div><div class="info-lbl">Immatriculation</div><div class="info-val">${v.immat||'—'}</div></div>
-      <div><div class="info-lbl">Année</div><div class="info-val">${v.annee||'—'}</div></div>
-      <div><div class="info-lbl">Localisation</div><div class="info-val">${v.loc||'—'}</div></div>
-      <div><div class="info-lbl">Détention</div><div class="info-val">${v.detention||'—'}</div></div>
-      ${v.garage?`<div><div class="info-lbl">Garage</div><div class="info-val">${v.garage}</div></div>`:''}
-      ${v.client?`<div><div class="info-lbl">Client</div><div class="info-val">${v.client}${v.loyer?` · ${fmt(v.loyer)}€/mois`:''}</div></div>`:''}
-    </div>${v.notes?`<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">${v.notes}</div>`:''}
-    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier ↗</button>
-      <button class="btn btn-sm" onclick="bkVehicleFilter='${v.nom}';showPage('f-locations')">Locations ↗</button>
-      <button class="btn btn-sm" onclick="planVehicleFilter='${v.nom}';showPage('f-planning')">Planning ↗</button>
-    </div>`;
+    if(tab==='infos'){
+      const ca=getVehicleCA(v.nom);
+      panel=`<div class="info-grid">
+        <div><div class="info-lbl">Immatriculation</div><div class="info-val">${v.immat||'—'}</div></div>
+        <div><div class="info-lbl">Année</div><div class="info-val">${v.annee||'—'}</div></div>
+        <div><div class="info-lbl">Localisation</div><div class="info-val">${v.loc||'—'}</div></div>
+        <div><div class="info-lbl">Détention</div><div class="info-val">${v.detention||'—'}</div></div>
+        ${v.garage?`<div><div class="info-lbl">Garage</div><div class="info-val">${v.garage}</div></div>`:''}
+        ${v.client?`<div><div class="info-lbl">Client / Locataire</div><div class="info-val">${v.client}${v.loyer?` · ${fmt(v.loyer)}€/mois`:''}</div></div>`:''}
+      </div>
+      ${ca?`<div style="margin-top:12px;background:var(--bg3);border-radius:6px;padding:10px 14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px;font-weight:500">CA TOTAL</div><div style="font-size:17px;font-weight:700;color:var(--green)">${fmt(ca.total)}€</div></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px;font-weight:500">LOCATIONS</div><div style="font-size:17px;font-weight:700">${ca.count}</div></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px;font-weight:500">CA FERMÉ</div><div style="font-size:17px;font-weight:700;color:var(--blue)">${fmt(ca.paye)}€</div></div>
+      </div>`:'<div style="margin-top:10px;font-size:12px;color:var(--text3)">Aucun booking trouvé pour ce véhicule</div>'}
+      ${v.notes?`<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">${v.notes}</div>`:''}
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier ↗</button>
+        <button class="btn btn-sm" onclick="bkVehicleFilter='${v.nom}';showPage('f-locations')">Locations ↗</button>
+        <button class="btn btn-sm" onclick="planVehicleFilter='${v.nom}';showPage('f-planning')">Planning ↗</button>
+      </div>`;
+    }
     else if(tab==='entretien'){
       const warn=v.prochain&&new Date(v.prochain)<=new Date(Date.now()+30*864e5);
       panel=`<div class="info-grid">
@@ -687,6 +729,7 @@ function vehicleCard(v){
         </div>
         <div style="font-weight:600;font-size:14px">${v.nom}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:1px">${v.loc||'—'}${v.client?` · ${v.client}`:''}${v.loyer?` · ${fmt(v.loyer)}€/mois`:''}</div>
+        ${(()=>{const ca=getVehicleCA(v.nom);return ca?`<div style="font-size:11px;margin-top:3px"><span style="color:var(--green);font-weight:600">${fmt(ca.total)}€ CA</span><span style="color:var(--text3)"> · ${ca.count} locations</span></div>`:''})()}
       </div>
       <span style="color:var(--text3);font-size:13px">${isOpen?'▲':'▼'}</span>
     </div>${body}
@@ -1042,14 +1085,14 @@ function renderStripeData(allCharges,bookings){
 
   // Section cautions
   if(cautions.length){
-    const cautionRows=cautions.map(c=>{
-      const name=c.billing_details?.name||c.description||'—';
+    const cautionRows=cautions.map(function(c){
+      const name=c.billing_details&&c.billing_details.name?c.billing_details.name:c.description||'—';
       const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
       const montant=fmt((c.amount||0)/100)+'€';
-      return '<tr><td>'+name+'</td><td style="color:var(--amber);font-weight:600">'+montant+'</td><td style="white-space:nowrap">'+d+'</td><td><span class="badge b-amber">Autorisation</span></td></tr>';
+      return '<tr><td>'+name+'</td><td style="color:var(--amber);font-weight:600">'+montant+'</td><td>'+d+'</td><td><span class="badge b-amber">Autorisation</span></td></tr>';
     });
     html+='<div class="card"><div class="card-title" style="color:var(--amber)">Cautions / Autorisations ('+cautions.length+') — non encaissées</div>'
-      +'<div class="alert alert-warn" style="margin-bottom:10px">Ces transactions sont des autorisations sur carte. L\'argent n\'a pas été prélevé. Ne pas pointer contre une location.</div>'
+      +'<div class="alert alert-warn" style="margin-bottom:10px">Ces transactions sont des autorisations sur carte (caution). L’argent n’a pas été prélevé. Ne pas pointer contre une location.</div>'
       +makeTable(['Client','Montant autorisé','Date','Statut'],cautionRows,'Aucune caution')
       +'</div>';
   }
