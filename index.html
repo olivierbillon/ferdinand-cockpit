@@ -715,10 +715,11 @@ function vehicleCard(v){
         ${v.garage?`<div><div class="info-lbl">Garage</div><div class="info-val">${v.garage}</div></div>`:''}
         ${v.client?`<div><div class="info-lbl">Client / Locataire</div><div class="info-val">${v.client}${v.loyer?` · ${fmt(v.loyer)}€/mois`:''}</div></div>`:''}
       </div>
-      ${ca?`<div style="margin-top:12px;background:var(--bg3);border-radius:6px;padding:10px 14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px;font-weight:500">CA TOTAL</div><div style="font-size:17px;font-weight:700;color:var(--green)">${fmt(ca.total)}€</div></div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px;font-weight:500">LOCATIONS</div><div style="font-size:17px;font-weight:700">${ca.count}</div></div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px;font-weight:500">CA FERMÉ</div><div style="font-size:17px;font-weight:700;color:var(--blue)">${fmt(ca.paye)}€</div></div>
+      ${ca?`<div style="margin-top:12px;background:var(--bg3);border-radius:6px;padding:10px 14px;display:grid;grid-template-columns:repeat(${ca.mrr>0?4:3},1fr);gap:8px;text-align:center">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-weight:600;text-transform:uppercase">CA Total</div><div style="font-size:17px;font-weight:700;color:var(--green)">${fmt(ca.total)}€</div></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-weight:600;text-transform:uppercase">Locations</div><div style="font-size:17px;font-weight:700">${ca.count}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-weight:600;text-transform:uppercase">CA Fermé</div><div style="font-size:17px;font-weight:700;color:var(--blue)">${fmt(ca.paye)}€</div></div>
+        ${ca.mrr>0?`<div style="background:#f5f3ff;border-radius:5px;padding:4px"><div style="font-size:10px;color:var(--purple);margin-bottom:3px;font-weight:600;text-transform:uppercase">MRR</div><div style="font-size:17px;font-weight:700;color:var(--purple)">${fmt(ca.mrr)}€/m</div></div>`:''}
       </div>`:'<div style="margin-top:10px;font-size:12px;color:var(--text3)">Aucun booking trouvé pour ce véhicule</div>'}
       ${(()=>{const ds=fleetDynamicStatus[v.nom];if(!ds)return'';
         if(ds.status==='apreparer')return`<div class="alert alert-warn" style="margin-top:10px">⚡ Départ demain — ${ds.booking.client||'Client'} · ${fmtShort(ds.booking.debut)}→${fmtShort(ds.booking.fin)}</div>`;
@@ -758,7 +759,7 @@ function vehicleCard(v){
         </div>
         <div style="font-weight:600;font-size:14px">${v.nom}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:1px">${v.loc||'—'}${v.client?` · ${v.client}`:''}${v.loyer?` · ${fmt(v.loyer)}€/mois`:''}</div>
-        ${(()=>{const ca=getVehicleCA(v.nom);return ca?`<div style="font-size:11px;margin-top:3px"><span style="color:var(--green);font-weight:600">${fmt(ca.total)}€ CA</span><span style="color:var(--text3)"> · ${ca.count} locations</span></div>`:''})()}
+        ${(()=>{const ca=getVehicleCA(v.nom);if(!ca)return'';let line=`<span style="color:var(--green);font-weight:600">${fmt(ca.total)}€ CA</span><span style="color:var(--text3)"> · ${ca.count} locations</span>`;if(ca.mrr>0)line+=` <span style="color:var(--purple);font-weight:600;margin-left:6px">${fmt(ca.mrr)}€/mois</span>`;return`<div style="font-size:11px;margin-top:3px">${line}</div>`})()}
       </div>
       <span style="color:var(--text3);font-size:13px">${isOpen?'▲':'▼'}</span>
     </div>${body}
@@ -874,7 +875,12 @@ function refreshBkList(){
       <td>${b.client||'—'}${b.email?`<br><span style="font-size:11px;color:var(--text3)">${b.email}</span>`:''}</td>
       <td style="white-space:nowrap">${fmtShort(b.debut)}</td>
       <td style="white-space:nowrap">${fmtShort(b.fin)||'—'}</td>
-      <td style="white-space:nowrap">${b.prix?`<span style="font-weight:700;color:var(--green)">${fmt(b.prix)}€</span>`:''} ${b.stripe_payment_id?`<span title="Payé via Stripe" style="display:inline-flex;align-items:center;gap:2px;background:#635BFF;color:#fff;font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;vertical-align:middle">S✓</span>`:b.prix?'':'-'}</td>
+      <td style="white-space:nowrap">
+        ${b.type_booking==='abonnement'
+          ?`<span style="font-weight:700;color:var(--purple)">${fmt(b.prix_mensuel||b.prix)}€<span style="font-size:10px;font-weight:500;opacity:.7">/mois</span></span><br><span style="font-size:10px;color:var(--text3)">${fmt(b.prix)}€ total</span>`
+          :`<span style="font-weight:700;color:var(--green)">${b.prix?fmt(b.prix)+'€':'-'}</span>`}
+        ${b.stripe_payment_id?`<span title="Payé via Stripe" style="display:inline-flex;align-items:center;gap:2px;background:#635BFF;color:#fff;font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;vertical-align:middle;margin-left:3px">S✓</span>`:''}
+      </td>
       <td><span class="badge ${srcBadge(b.source)}">${b.source||'—'}</span></td>
       <td>${(()=>{const s=computeStatut(b);return`<span class="badge ${s.cls}">${s.label}</span>`;})()}</td>
       <td>${b.lien_contrat?`<a href="${b.lien_contrat}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);font-size:12px">📄 Contrat</a>`:'—'}</td>
@@ -887,7 +893,8 @@ function refreshBkList(){
 function setBkPage(p){bkPage=p;refreshBkList();}
 
 function bookingFormHTML(b){b=b||{};
-  const voiList=['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayman GTS','Cayenne Hybrid','Cayenne Turbo','Ferrari Portofino','Lamborghini Urus','Lamborghini Huracán','Macan GTS','Macan S','Mercedes GLC','Range Rover Evoque','Taycan'];
+  const voiList=['Porsche Carrera S','Porsche Targa 4 GTS','Porsche Boxster','Porsche Cayman GTS','Cayenne Hybrid','Ferrari Portofino M','Lamborghini Urus','Lamborghini Huracán Tecnica','Porsche Macan GTS','Mercedes GLC Hybrid','Range Rover Evoque','Taycan'];
+  const isAbo=(b.type_booking||'ponctuel')==='abonnement';
   return`<div class="form-row">
     <div class="form-group"><label class="form-label">Voiture</label>
       <select class="form-input" id="bkf-v">${voiList.map(v=>`<option ${(b.voiture||'')==v?'selected':''}>${v}</option>`).join('')}</select>
@@ -900,13 +907,26 @@ function bookingFormHTML(b){b=b||{};
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Début</label><input class="form-input" type="date" id="bkf-d" value="${b.debut||''}"></div>
-    <div class="form-group"><label class="form-label">Fin</label><input class="form-input" type="date" id="bkf-f" value="${b.fin||''}"></div>
+    <div class="form-group"><label class="form-label">Fin (laisser vide si en cours)</label><input class="form-input" type="date" id="bkf-f" value="${b.fin||''}"></div>
   </div>
   <div class="form-row">
-    <div class="form-group"><label class="form-label">Prix (€)</label><input class="form-input" type="number" id="bkf-p" value="${b.prix||''}"></div>
+    <div class="form-group"><label class="form-label">Type de location</label>
+      <select class="form-input" id="bkf-type" onchange="toggleAboFields(this.value)">
+        <option value="ponctuel" ${!isAbo?'selected':''}>Ponctuelle</option>
+        <option value="abonnement" ${isAbo?'selected':''}>Abonnement mensuel</option>
+      </select>
+    </div>
     <div class="form-group"><label class="form-label">Source</label>
       <select class="form-input" id="bkf-s">${['Direct','Roadstr','MRM'].map(s=>`<option ${(b.source||'')==s?'selected':''}>${s}</option>`).join('')}</select>
     </div>
+  </div>
+  <div id="bkf-ponctuel-row" style="display:${isAbo?'none':'grid'};grid-template-columns:1fr 1fr;gap:10px" class="form-row">
+    <div class="form-group"><label class="form-label">Prix total (€)</label><input class="form-input" type="number" id="bkf-p" value="${b.prix||''}"></div>
+    <div class="form-group"><label class="form-label">KM inclus</label><input class="form-input" type="number" id="bkf-km" value="${b.km||''}"></div>
+  </div>
+  <div id="bkf-abo-row" style="display:${isAbo?'grid':'none'};grid-template-columns:1fr 1fr;gap:10px" class="form-row">
+    <div class="form-group"><label class="form-label">Prix mensuel (€/mois)</label><input class="form-input" type="number" id="bkf-mensuel" value="${b.prix_mensuel||b.prix||''}"></div>
+    <div class="form-group"><label class="form-label">Nb mois (calculé auto si dates)</label><input class="form-input" type="number" id="bkf-nbmois" placeholder="ex: 6" value="${b.debut&&b.fin?Math.max(1,Math.round((new Date(b.fin)-new Date(b.debut))/(1000*60*60*24*30))):''}"></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label class="form-label">Statut (optionnel)</label>
@@ -916,6 +936,10 @@ function bookingFormHTML(b){b=b||{};
   </div>
   <div class="form-group"><label class="form-label">Lien contrat Google Doc</label><input class="form-input" id="bkf-ctr" placeholder="https://docs.google.com/..." value="${esc(b.lien_contrat||'')}"></div>
   <div class="form-group"><label class="form-label">Commentaire</label><textarea class="form-input" id="bkf-cm" rows="2">${esc(b.commentaire||'')}</textarea></div>`;
+}
+function toggleAboFields(type){
+  document.getElementById('bkf-ponctuel-row').style.display=type==='abonnement'?'none':'grid';
+  document.getElementById('bkf-abo-row').style.display=type==='abonnement'?'grid':'none';
 }
 function getBkFormData(){return{voiture:document.getElementById('bkf-v').value,client:document.getElementById('bkf-c').value,email:document.getElementById('bkf-e').value,tel:document.getElementById('bkf-t').value,debut:document.getElementById('bkf-d').value||null,fin:document.getElementById('bkf-f').value||null,prix:parseFloat(document.getElementById('bkf-p').value)||0,source:document.getElementById('bkf-s').value,statut:document.getElementById('bkf-st').value||null,pick_up:document.getElementById('bkf-pk').value,lien_contrat:document.getElementById('bkf-ctr').value||null,commentaire:document.getElementById('bkf-cm').value};}
 function openAddBooking(){
