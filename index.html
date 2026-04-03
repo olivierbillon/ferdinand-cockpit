@@ -436,12 +436,14 @@ function makeCalendar(year,month,bookings,colorFn,onClickFn){
     const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dt=new Date(year,month,d);
     const isToday=ds===todayStr;const isWE=dt.getDay()===0||dt.getDay()===6;
-    const dayBk=bookings.filter(b=>{
-      if(!b.debut)return false;
-      const s=new Date(b.debut);
-      const e=b.fin?new Date(b.fin):new Date(s.getTime()+864e5);
-      return s<=dt&&e>dt||s.toDateString()===dt.toDateString();
-    });
+    // Comparer les dates en string pour éviter les problèmes de timezone
+      const dtStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dayBk=bookings.filter(b=>{
+        if(!b.debut)return false;
+        const deb=b.debut.substring(0,10);
+        const fin=(b.fin||b.debut).substring(0,10);
+        return deb<=dtStr&&fin>=dtStr;
+      });
     html+=`<div class="cal-cell${isToday?' today':isWE?' we':''}">
       <div class="cal-num" style="color:${isToday?'var(--blue)':isWE?'var(--text2)':'var(--text)'}">${d}</div>
       ${dayBk.map(b=>{
@@ -830,58 +832,65 @@ async function renderFLocations(){
   const{data}=await db.from('ferdinand_bookings').select('*').order('debut',{ascending:false});
   bkData=data||[];renderFLocationsHTML();
 }
+// Détermine si un booking est un abonnement
+function isAbonnement(b){
+  return b.type_booking==='abonnement'||(b.prix_mensuel&&b.prix_mensuel>0);
+}
+
 // Éclate un abonnement en mensualités virtuelles
 function expandAbonnement(b){
-  // Conditions minimales : type abonnement + date de début
-  if(b.type_booking!=='abonnement'||!b.debut)return[b];
-  // Prix mensuel : priorité prix_mensuel, sinon prix, sinon 0
+  if(!isAbonnement(b)||!b.debut)return[b];
   const prixM=parseFloat(b.prix_mensuel)||parseFloat(b.prix)||0;
-  const start=new Date(b.debut);
-  // Fin : si vide, on va 24 mois dans le futur par défaut
-  let end;
+  // Dates de début et fin
+  const startParts=b.debut.split('-');
+  const startY=parseInt(startParts[0]),startM=parseInt(startParts[1])-1;
+  let endY,endM;
   if(b.fin){
-    end=new Date(b.fin);
+    const endParts=b.fin.split('-');
+    endY=parseInt(endParts[0]);endM=parseInt(endParts[1])-1;
   } else {
-    end=new Date();
-    end.setMonth(end.getMonth()+24);
+    // Pas de fin : 24 mois dans le futur
+    const futureDate=new Date();
+    futureDate.setMonth(futureDate.getMonth()+24);
+    endY=futureDate.getFullYear();endM=futureDate.getMonth();
   }
-  // Sécurité : max 60 mensualités
-  const rows=[];
-  let cur=new Date(start.getFullYear(),start.getMonth(),1);
-  let count=0;
-  while(cur<=end&&count<60){
+  const rows=[];let count=0;
+  for(let y=startY,m=startM;(y<endY||(y===endY&&m<=endM))&&count<60;){
     count++;
-    const isFirst=cur.getFullYear()===start.getFullYear()&&cur.getMonth()===start.getMonth();
-    const debutMois=isFirst?b.debut:`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-01`;
-    const lastDay=new Date(cur.getFullYear(),cur.getMonth()+1,0).getDate();
-    const finMois=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-    const label=cur.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-    rows.push({
-      ...b,
-      id:`${b.id}_${cur.getFullYear()}_${String(cur.getMonth()+1).padStart(2,'0')}`,
+    // Début de ce mois
+    const dayStart=(y===startY&&m===startM)?parseInt(startParts[2]):1;
+    const debutStr=`${y}-${String(m+1).padStart(2,'0')}-${String(dayStart).padStart(2,'0')}`;
+    // Fin de ce mois
+    const lastDay=new Date(y,m+1,0).getDate();
+    const finStr=`${y}-${String(m+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+    const label=new Date(y,m,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    rows.push({...b,
+      id:`${b.id}__${y}_${m+1}`,
       _originalId:b.id,
-      debut:debutMois,
-      fin:finMois,
-      prix:prixM,
-      prix_mensuel:prixM,
-      _isMensualite:true,
-      _label:label,
+      debut:debutStr,fin:finStr,
+      prix:prixM,prix_mensuel:prixM,
+      _isMensualite:true,_label:label,
     });
-    cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+    m++;if(m>11){m=0;y++;}
   }
-  return rows.length>0?rows:[b];
+  return rows.length?rows:[b];
 }
 
 function getBkFiltered(){
-  // Éclater les abonnements en mensualités
+  // Éclater abonnements en mensualités
   let list=[];
   bkData.forEach(b=>{
-    const expanded=expandAbonnement(b);
-    list.push(...expanded);
+    list.push(...expandAbonnement(b));
   });
+  // Appliquer filtres
   if(bkFilter==='upcoming'){
-    const t=today();
-    list=list.filter(b=>b.debut&&new Date(b.debut+'T00:00:00')>=t);
+    const todayMs=today().getTime();
+    list=list.filter(b=>{
+      if(!b.debut)return false;
+      const parts=b.debut.split('-');
+      const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+      return d.getTime()>=todayMs;
+    });
   } else if(bkFilter!=='tous'){
     list=list.filter(b=>b.debut&&b.debut.startsWith(bkFilter));
   }
@@ -1066,11 +1075,9 @@ async function renderFPlanning(){
   const{data}=await db.from('ferdinand_bookings').select('*').order('debut');
   // Garder tous les bookings avec debut; si fin null, estimer fin = debut + duree ou +1j
   // Éclater les abonnements pour le planning
-  const rawBookings=(data||[]).filter(b=>b.debut);
   const bookings=[];
-  rawBookings.forEach(b=>{
-    if(b.type_booking==='abonnement')bookings.push(...expandAbonnement(b));
-    else bookings.push({...b,fin:b.fin||b.debut});
+  (data||[]).filter(b=>b.debut).forEach(b=>{
+    bookings.push(...expandAbonnement(b).map(r=>({...r,fin:r.fin||r.debut})));
   });
   renderFPlanningHTML(bookings);
 }
