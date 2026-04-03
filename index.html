@@ -830,13 +830,45 @@ async function renderFLocations(){
   const{data}=await db.from('ferdinand_bookings').select('*').order('debut',{ascending:false});
   bkData=data||[];renderFLocationsHTML();
 }
+// Éclate un abonnement en mensualités virtuelles
+function expandAbonnement(b){
+  if(b.type_booking!=='abonnement'||!b.debut||!b.prix_mensuel)return[b];
+  const start=new Date(b.debut);
+  const end=b.fin?new Date(b.fin):new Date(); // si pas de fin, jusqu'à aujourd'hui
+  const rows=[];
+  let cur=new Date(start.getFullYear(),start.getMonth(),1);
+  while(cur<=end){
+    const debutMois=new Date(cur.getFullYear(),cur.getMonth(),cur.getMonth()===start.getMonth()?start.getDate():1);
+    const finMois=new Date(cur.getFullYear(),cur.getMonth()+1,0);
+    const label=cur.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    rows.push({
+      ...b,
+      id:b.id+'_'+cur.getFullYear()+'_'+String(cur.getMonth()+1).padStart(2,'0'),
+      _originalId:b.id,
+      debut:debutMois.toISOString().split('T')[0],
+      fin:finMois.toISOString().split('T')[0],
+      prix:b.prix_mensuel,
+      commentaire:(b.commentaire?b.commentaire+' — ':'')+label,
+      _isMensualite:true,
+      _label:label,
+    });
+    cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+  }
+  return rows;
+}
+
 function getBkFiltered(){
-  let list=[...bkData];
+  // Éclater les abonnements en mensualités
+  let list=[];
+  bkData.forEach(b=>{
+    if(b.type_booking==='abonnement')list.push(...expandAbonnement(b));
+    else list.push(b);
+  });
   if(bkFilter==='upcoming')list=list.filter(b=>b.debut&&new Date(b.debut)>=today());
   else if(bkFilter!=='tous')list=list.filter(b=>b.debut&&b.debut.startsWith(bkFilter));
   if(bkSearch)list=list.filter(b=>(b.client||'').toLowerCase().includes(bkSearch.toLowerCase())||(b.voiture||'').toLowerCase().includes(bkSearch.toLowerCase()));
   if(bkVehicleFilter)list=list.filter(b=>(b.voiture||'').toLowerCase().includes(bkVehicleFilter.toLowerCase()));
-  return list.sort((a,b)=>new Date(b.debut)-new Date(a.debut));
+  return list.sort((a,b_)=>new Date(b_.debut)-new Date(a.debut));
 }
 function renderFLocationsHTML(){
   const filterOpts=[{v:'upcoming',l:'À venir'},{v:'tous',l:'Tous'},{v:'2026',l:'2026'},{v:'2025',l:'2025'},{v:'2024',l:'2024'},{v:'2023',l:'2023'},{v:'2022',l:'2022'},{v:'2021',l:'2021'}];
@@ -872,7 +904,7 @@ function refreshBkList(){
     const fleet=VEHICLE_MAP[b.voiture];
     return`<tr onclick="openEditBooking('${b.id}')">
       <td><strong>${b.voiture||'—'}</strong>${fleet&&fleet!==b.voiture?`<br><span style="font-size:10px;color:var(--blue)">${fleet}</span>`:''}</td>
-      <td>${b.client||'—'}${b.email?`<br><span style="font-size:11px;color:var(--text3)">${b.email}</span>`:''}</td>
+      <td>${b.client||'—'}${b._isMensualite?`<br><span style="font-size:10px;background:var(--purple-bg,#f5f3ff);color:var(--purple,#7c3aed);padding:1px 5px;border-radius:3px;font-weight:600">${b._label}</span>`:''}${!b._isMensualite&&b.email?`<br><span style="font-size:11px;color:var(--text3)">${b.email}</span>`:''}</td>
       <td style="white-space:nowrap">${fmtShort(b.debut)}</td>
       <td style="white-space:nowrap">${fmtShort(b.fin)||'—'}</td>
       <td style="white-space:nowrap">
@@ -957,7 +989,9 @@ function openAddBooking(){
   });
 }
 function openEditBooking(id){
-  const b=bkData.find(x=>x.id===id);if(!b)return;
+  // Pour les mensualités virtuelles, retrouver l'abonnement original
+  const realId=id.includes('_')?id.split('_')[0]:id;
+  const b=bkData.find(x=>x.id===realId||x.id===id);if(!b)return;
   openModal(`Modifier — ${b.client}`,bookingFormHTML(b),async()=>{
     const u=getBkFormData();
     let{error}=await db.from('ferdinand_bookings').update(u).eq('id',id);
@@ -977,7 +1011,13 @@ async function renderFPlanning(){
   set('page-content','<div class="loading"><div class="spinner"></div>Chargement...</div>');
   const{data}=await db.from('ferdinand_bookings').select('*').order('debut');
   // Garder tous les bookings avec debut; si fin null, estimer fin = debut + duree ou +1j
-  const bookings=(data||[]).filter(b=>b.debut).map(b=>({...b,fin:b.fin||b.debut}));
+  // Éclater les abonnements pour le planning
+  const rawBookings=(data||[]).filter(b=>b.debut);
+  const bookings=[];
+  rawBookings.forEach(b=>{
+    if(b.type_booking==='abonnement')bookings.push(...expandAbonnement(b));
+    else bookings.push({...b,fin:b.fin||b.debut});
+  });
   renderFPlanningHTML(bookings);
 }
 function renderFPlanningHTML(bookings){
