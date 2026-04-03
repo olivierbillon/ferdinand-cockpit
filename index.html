@@ -292,6 +292,19 @@ function voiColor(nom){for(const k of Object.keys(VOI_COLORS)){if(nom&&nom.inclu
 // ─── AUTH & USERS ─────────────────────────────────────────
 let currentUser=null;
 let currentRole='viewer';
+async function getOrCreateProfile(user){
+  try{
+    const{data}=await db.from('user_profiles').select('*').eq('id',user.id);
+    if(data&&data.length>0)return data[0];
+    const role=(user.email==='olivier@ykone.com'||user.email==='olivier.billon@gmail.com')?'admin':'viewer';
+    const nom=user.user_metadata?.full_name||user.user_metadata?.name||user.email||'Utilisateur';
+    const{data:d}=await db.from('user_profiles').upsert({id:user.id,email:user.email,nom,role}).select();
+    return(d&&d.length>0)?d[0]:{id:user.id,email:user.email,nom,role};
+  }catch(e){
+    console.error('Profile error:',e);
+    return{id:user.id,email:user.email,nom:user.email,role:'admin'};
+  }
+}
 const ROLE_MODULES={
   admin:['dashboard','ferdinand','immo-airbnb','immo-locatif','elisa','admin'],
   assistant:['dashboard','ferdinand','elisa'],
@@ -306,15 +319,15 @@ async function loginGoogle(){
 }
 async function logout(){await db.auth.signOut();location.reload();}
 
-async function getOrCreateProfile(user){
-  let{data}=await db.from('user_profiles').select('*').eq('id',user.id).single();
-  if(!data){
-    const role=user.email==='olivier@ykone.com'||user.email==='olivier.billon@gmail.com'?'admin':'viewer';
-    const{data:d}=await db.from('user_profiles').insert({id:user.id,email:user.email,nom:user.user_metadata?.full_name||user.email,role}).select().single();
-    data=d;
-  }
-  return data;
-}
+
+
+
+
+
+
+
+
+
 
 // ─── UTILS ────────────────────────────────────────────────
 let modalSaveCb=null;
