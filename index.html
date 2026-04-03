@@ -884,12 +884,12 @@ function getBkFiltered(){
   });
   // Appliquer filtres
   if(bkFilter==='upcoming'){
-    const todayMs=today().getTime();
+    // Montrer les bookings actifs aujourd'hui OU à venir (fin >= aujourd'hui)
+    const todayStr=today().toISOString().split('T')[0];
     list=list.filter(b=>{
       if(!b.debut)return false;
-      const parts=b.debut.split('-');
-      const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
-      return d.getTime()>=todayMs;
+      const fin=(b.fin||b.debut).substring(0,10);
+      return fin>=todayStr;
     });
   } else if(bkFilter!=='tous'){
     list=list.filter(b=>b.debut&&b.debut.startsWith(bkFilter));
@@ -1085,7 +1085,14 @@ function renderFPlanningHTML(bookings){
   const ml=new Date(planYear,planMonth,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
   const lastDay=new Date(planYear,planMonth+1,0);
   const mois=`${planYear}-${String(planMonth+1).padStart(2,'0')}`;
-  const bkMois=bookings.filter(b=>{const s=new Date(b.debut),e=new Date(b.fin);return s<=lastDay&&e>=new Date(planYear,planMonth,1);});
+  const bkMois=bookings.filter(b=>{
+    if(!b.debut)return false;
+    const firstStr=`${planYear}-${String(planMonth+1).padStart(2,'0')}-01`;
+    const lastStr=`${planYear}-${String(planMonth+1).padStart(2,'0')}-${String(new Date(planYear,planMonth+1,0).getDate()).padStart(2,'0')}`;
+    const deb=b.debut.substring(0,10);
+    const fin=(b.fin||b.debut).substring(0,10);
+    return deb<=lastStr&&fin>=firstStr;
+  });
   const bkCeMois=bookings.filter(b=>b.debut&&b.debut.startsWith(mois));
   const html=`<div class="page-header">
     <div><div class="page-title">Ferdinand — Planning</div><div class="page-sub">Calendrier des locations · ${bkMois.length} bookings ce mois</div></div>
