@@ -832,41 +832,63 @@ async function renderFLocations(){
 }
 // Éclate un abonnement en mensualités virtuelles
 function expandAbonnement(b){
-  if(b.type_booking!=='abonnement'||!b.debut||!b.prix_mensuel)return[b];
+  // Conditions minimales : type abonnement + date de début
+  if(b.type_booking!=='abonnement'||!b.debut)return[b];
+  // Prix mensuel : priorité prix_mensuel, sinon prix, sinon 0
+  const prixM=parseFloat(b.prix_mensuel)||parseFloat(b.prix)||0;
   const start=new Date(b.debut);
-  const end=b.fin?new Date(b.fin):new Date(); // si pas de fin, jusqu'à aujourd'hui
+  // Fin : si vide, on va 24 mois dans le futur par défaut
+  let end;
+  if(b.fin){
+    end=new Date(b.fin);
+  } else {
+    end=new Date();
+    end.setMonth(end.getMonth()+24);
+  }
+  // Sécurité : max 60 mensualités
   const rows=[];
   let cur=new Date(start.getFullYear(),start.getMonth(),1);
-  while(cur<=end){
-    const debutMois=new Date(cur.getFullYear(),cur.getMonth(),cur.getMonth()===start.getMonth()?start.getDate():1);
-    const finMois=new Date(cur.getFullYear(),cur.getMonth()+1,0);
+  let count=0;
+  while(cur<=end&&count<60){
+    count++;
+    const isFirst=cur.getFullYear()===start.getFullYear()&&cur.getMonth()===start.getMonth();
+    const debutMois=isFirst?b.debut:`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-01`;
+    const lastDay=new Date(cur.getFullYear(),cur.getMonth()+1,0).getDate();
+    const finMois=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
     const label=cur.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
     rows.push({
       ...b,
-      id:b.id+'_'+cur.getFullYear()+'_'+String(cur.getMonth()+1).padStart(2,'0'),
+      id:`${b.id}_${cur.getFullYear()}_${String(cur.getMonth()+1).padStart(2,'0')}`,
       _originalId:b.id,
-      debut:debutMois.toISOString().split('T')[0],
-      fin:finMois.toISOString().split('T')[0],
-      prix:b.prix_mensuel,
-      commentaire:(b.commentaire?b.commentaire+' — ':'')+label,
+      debut:debutMois,
+      fin:finMois,
+      prix:prixM,
+      prix_mensuel:prixM,
       _isMensualite:true,
       _label:label,
     });
     cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
   }
-  return rows;
+  return rows.length>0?rows:[b];
 }
 
 function getBkFiltered(){
   // Éclater les abonnements en mensualités
   let list=[];
   bkData.forEach(b=>{
-    if(b.type_booking==='abonnement')list.push(...expandAbonnement(b));
-    else list.push(b);
+    const expanded=expandAbonnement(b);
+    list.push(...expanded);
   });
-  if(bkFilter==='upcoming')list=list.filter(b=>b.debut&&new Date(b.debut)>=today());
-  else if(bkFilter!=='tous')list=list.filter(b=>b.debut&&b.debut.startsWith(bkFilter));
-  if(bkSearch)list=list.filter(b=>(b.client||'').toLowerCase().includes(bkSearch.toLowerCase())||(b.voiture||'').toLowerCase().includes(bkSearch.toLowerCase()));
+  if(bkFilter==='upcoming'){
+    const t=today();
+    list=list.filter(b=>b.debut&&new Date(b.debut+'T00:00:00')>=t);
+  } else if(bkFilter!=='tous'){
+    list=list.filter(b=>b.debut&&b.debut.startsWith(bkFilter));
+  }
+  if(bkSearch){
+    const q=bkSearch.toLowerCase();
+    list=list.filter(b=>(b.client||'').toLowerCase().includes(q)||(b.voiture||'').toLowerCase().includes(q));
+  }
   if(bkVehicleFilter)list=list.filter(b=>(b.voiture||'').toLowerCase().includes(bkVehicleFilter.toLowerCase()));
   return list.sort((a,b_)=>new Date(b_.debut)-new Date(a.debut));
 }
