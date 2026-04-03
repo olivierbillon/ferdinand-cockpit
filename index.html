@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ferdinand Cockpit</title>
+<title>Pénélope</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -19,39 +19,26 @@
   --pink:#993556;--pink-bg:#FBEAF0;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;}
-
-/* Layout */
 .app{display:flex;height:100vh;overflow:hidden;}
-.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:left .3s;}
 .main{flex:1;overflow-y:auto;padding:24px;}
-
-/* Sidebar */
 .sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid var(--border);}
-.sidebar-logo h1{font-size:15px;font-weight:600;color:var(--text);}
+.sidebar-logo h1{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px;}
 .sidebar-logo p{font-size:11px;color:var(--text3);margin-top:2px;}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text2);border-left:2px solid transparent;transition:all .15s;}
 .nav-item:hover{background:var(--bg3);color:var(--text);}
 .nav-item.active{background:var(--blue-bg);color:var(--blue);border-left-color:var(--blue);font-weight:500;}
-.nav-icon{width:16px;height:16px;flex-shrink:0;}
-.nav-section{padding:12px 16px 4px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;}
+.nav-sub{padding-left:30px;font-size:12px;}
+.nav-section{padding:12px 16px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;}
 .sidebar-footer{margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text3);}
-
-/* Page header */
-.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
-.page-title{font-size:20px;font-weight:600;}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.page-title{font-size:20px;font-weight:700;}
 .page-sub{font-size:13px;color:var(--text2);margin-top:2px;}
-
-/* Cards */
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;}
-.card-title{font-size:13px;font-weight:500;margin-bottom:12px;}
-
-/* Stats row */
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;}
 .stat{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;}
 .stat-label{font-size:11px;color:var(--text2);margin-bottom:4px;}
-.stat-val{font-size:20px;font-weight:600;}
-
-/* Badges */
+.stat-val{font-size:20px;font-weight:700;}
 .badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;white-space:nowrap;}
 .badge-green{background:var(--green-bg);color:var(--green);}
 .badge-amber{background:var(--amber-bg);color:var(--amber);}
@@ -60,82 +47,50 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge-purple{background:var(--purple-bg);color:var(--purple);}
 .badge-gray{background:var(--bg3);color:var(--text2);}
 .badge-pink{background:var(--pink-bg);color:var(--pink);}
-
-/* Buttons */
 .btn{padding:7px 14px;border-radius:7px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;}
 .btn:hover{background:var(--bg3);}
 .btn-primary{background:var(--blue);color:#fff;border-color:var(--blue);}
 .btn-primary:hover{background:#0f4d87;}
 .btn-sm{padding:4px 10px;font-size:12px;}
 .btn-danger{border-color:var(--red);color:var(--red);}
-.btn-danger:hover{background:var(--red-bg);}
-
-/* Table */
-.table{width:100%;border-collapse:collapse;}
-.table th{text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--border);}
-.table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+.table-wrap{overflow-x:auto;}
+.table{width:100%;border-collapse:collapse;min-width:600px;}
+.table th{text-align:left;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
 .table tr:last-child td{border-bottom:none;}
 .table tr:hover td{background:var(--bg3);}
-
-/* Forms */
 .form-group{margin-bottom:12px;}
 .form-label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:500;}
 .form-input{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;background:var(--bg2);color:var(--text);}
 .form-input:focus{outline:none;border-color:var(--blue);}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-
-/* Modal */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000;display:none;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;}
 .modal-overlay.open{display:flex;}
-.modal{background:var(--bg2);border-radius:12px;padding:24px;width:90%;max-width:460px;max-height:90vh;overflow-y:auto;border:1px solid var(--border);}
-.modal-title{font-size:16px;font-weight:600;margin-bottom:16px;}
+.modal{background:var(--bg2);border-radius:12px;padding:24px;width:90%;max-width:500px;max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
-
-/* Tabs */
-.tabs{display:flex;gap:4px;background:var(--bg3);border-radius:8px;padding:3px;margin-bottom:16px;width:fit-content;}
+.tabs{display:flex;gap:4px;background:var(--bg3);border-radius:8px;padding:3px;margin-bottom:16px;width:fit-content;flex-wrap:wrap;}
 .tab{padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--text2);border:none;background:transparent;}
-.tab.active{background:var(--bg2);color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.1);}
-
-/* Filter pills */
-.filters{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.tab.active{background:var(--bg2);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.filters{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
 .filter-pill{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:12px;color:var(--text2);cursor:pointer;}
 .filter-pill.active{background:var(--blue-bg);color:var(--blue);border-color:var(--blue);}
-
-/* Calendar */
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-.cal-head{text-align:center;font-size:11px;color:var(--text2);padding:4px 0;font-weight:500;}
-.cal-day{border-radius:5px;padding:4px;min-height:52px;border:1px solid transparent;}
-.cal-day-papa{background:#E1F5EE;border-color:#9FE1CB;}
-.cal-day-maman{background:#FBEAF0;border-color:#F4C0D1;}
-.cal-day-vac-papa{background:#C0DD97;border-color:#97C459;}
-.cal-day-vac-maman{background:#F0997B;border-color:#F5C4B3;}
-.cal-day-empty{background:transparent;}
-.cal-day-num{font-size:11px;font-weight:600;margin-bottom:2px;}
-.cal-pill{display:block;font-size:9px;border-radius:3px;padding:1px 3px;margin-bottom:1px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-
-/* Task item */
-.task-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
-.task-item:last-child{border-bottom:none;}
-.task-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
-
-/* Search */
-.search-box{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border2);border-radius:7px;font-size:13px;background:var(--bg2);color:var(--text);}
-.search-wrap{position:relative;margin-bottom:16px;}
-.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);}
-
-/* Alert */
+.search-wrap{position:relative;flex:1;min-width:200px;}
+.search-box{width:100%;padding:7px 10px 7px 32px;border:1px solid var(--border2);border-radius:7px;font-size:13px;background:var(--bg2);color:var(--text);}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;}
 .alert{padding:10px 14px;border-radius:7px;font-size:13px;margin-bottom:10px;}
-.alert-warn{background:var(--amber-bg);color:var(--amber);border:1px solid #FAC775;}
-.alert-red{background:var(--red-bg);color:var(--red);border:1px solid #F09595;}
-.alert-green{background:var(--green-bg);color:var(--green);border:1px solid #9FE1CB;}
-
-/* Bar chart */
-.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px;}
-.bar-label{width:120px;color:var(--text2);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.bar-bg{flex:1;background:var(--bg3);border-radius:3px;height:6px;}
-.bar-fill{height:6px;border-radius:3px;}
-
-/* Vehicle card */
+.alert-warn{background:var(--amber-bg);color:var(--amber);}
+.alert-red{background:var(--red-bg);color:var(--red);}
+.alert-green{background:var(--green-bg);color:var(--green);}
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--text2);font-size:13px;}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;}
+.bar-label{width:80px;color:var(--text2);flex-shrink:0;}
+.bar-bg{flex:1;background:var(--bg3);border-radius:3px;height:8px;}
+.bar-fill{height:8px;border-radius:3px;}
+.pay-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
+.pay-row:last-child{border-bottom:none;}
 .vehicle-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;}
 .vehicle-head{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;cursor:pointer;}
 .vehicle-head:hover{background:var(--bg3);}
@@ -144,523 +99,656 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .vtab{flex:1;padding:7px 4px;text-align:center;font-size:12px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;}
 .vtab.active{color:var(--blue);border-bottom-color:var(--blue);}
 .vehicle-panel{padding:14px;}
-
-/* Booking card */
-.booking-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
-.booking-card.upcoming{border-color:#B5D4F4;}
-
-/* Info grid */
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.info-item .info-label{font-size:11px;color:var(--text2);margin-bottom:2px;}
-.info-item .info-val{font-size:13px;font-weight:500;}
-
-/* Loading */
-.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text2);font-size:13px;}
-.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;}
-@keyframes spin{to{transform:rotate(360deg);}}
-
-/* Responsive */
+.info-label{font-size:11px;color:var(--text2);margin-bottom:2px;}
+.info-val{font-size:13px;font-weight:500;}
+.doc-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;margin:3px;}
+.booking-row{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;gap:10px;align-items:flex-start;}
+.booking-row.upcoming{border-color:#B5D4F4;background:#fafcff;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-head{text-align:center;font-size:11px;color:var(--text2);padding:4px 0;font-weight:600;}
+.cal-day{border-radius:5px;padding:4px;min-height:52px;border:1px solid transparent;}
+.cal-day-papa{background:#E1F5EE;border-color:#9FE1CB;}
+.cal-day-maman{background:#FBEAF0;border-color:#F4C0D1;}
+.cal-day-vac-papa{background:#C0DD97;border-color:#97C459;}
+.cal-day-vac-maman{background:#F0997B;border-color:#F5C4B3;}
+.cal-day-empty{background:transparent;}
+.cal-day-num{font-size:11px;font-weight:700;margin-bottom:2px;}
+.cal-pill{display:block;font-size:9px;border-radius:3px;padding:1px 3px;margin-bottom:1px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
+.task-item:last-child{border-bottom:none;}
+.task-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.pagination{display:flex;gap:6px;align-items:center;margin-top:16px;flex-wrap:wrap;}
+.page-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:12px;color:var(--text2);}
+.page-btn.active{background:var(--blue-bg);color:var(--blue);border-color:var(--blue);}
+.page-btn:hover{background:var(--bg3);}
 @media(max-width:768px){
-  .sidebar{position:fixed;left:-220px;top:0;bottom:0;z-index:100;transition:left .3s;}
+  .sidebar{position:fixed;left:-220px;top:0;bottom:0;z-index:100;}
   .sidebar.open{left:0;}
   .main{padding:16px;}
   .form-row{grid-template-columns:1fr;}
   .stats-row{grid-template-columns:1fr 1fr;}
 }
-.mobile-header{display:none;align-items:center;gap:12px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border);}
+.mobile-header{display:none;align-items:center;gap:12px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
 @media(max-width:768px){.mobile-header{display:flex;}}
-.hamburger{background:none;border:none;cursor:pointer;padding:4px;color:var(--text);}
-
-/* Doc pill */
-.doc-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;margin:3px;}
-
-/* Payment row */
-.pay-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
-.pay-row:last-child{border-bottom:none;}
-
-/* Month bar */
-.month-bar{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
-.month-bar:last-child{border-bottom:none;}
 </style>
 </head>
 <body>
-
 <div class="mobile-header">
-  <button class="hamburger" onclick="toggleSidebar()">☰</button>
-  <span style="font-size:15px;font-weight:600;">Ferdinand Cockpit</span>
+  <button onclick="document.getElementById('sidebar').classList.toggle('open')" style="background:none;border:none;cursor:pointer;font-size:20px;">☰</button>
+  <span style="font-size:15px;font-weight:700;">Pénélope</span>
 </div>
-
 <div class="app">
-  <!-- SIDEBAR -->
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <h1>Ferdinand Cockpit</h1>
-      <p>Olivier Billon</p>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h1>Pénélope</h1>
+    <p>Olivier Billon</p>
+  </div>
+  <div style="padding:8px 0;overflow-y:auto;flex:1;">
+    <div class="nav-section">Vue d'ensemble</div>
+    <div class="nav-item active" onclick="showPage('dashboard',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
     </div>
-    <div style="padding:8px 0;overflow-y:auto;flex:1;">
-      <div class="nav-section">Vue d'ensemble</div>
-      <div class="nav-item active" onclick="showPage('dashboard',this)">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        Dashboard
-      </div>
-      <div class="nav-section">Modules</div>
-      <div class="nav-item" onclick="showPage('flotte',this)">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v5"/><circle cx="16" cy="20" r="2"/><circle cx="7" cy="20" r="2"/></svg>
-        Flotte
-      </div>
-      <div class="nav-item" onclick="showPage('elisa',this)">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Elisa
-      </div>
-      <div class="nav-item" onclick="showPage('airbnb',this)">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        AirBnB
-      </div>
-      <div class="nav-item" onclick="showPage('immo',this)">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-        Immobilier
-      </div>
+    <div class="nav-section">Ferdinand</div>
+    <div class="nav-item nav-sub" onclick="showPage('flotte',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v5"/><circle cx="16" cy="20" r="2"/><circle cx="7" cy="20" r="2"/></svg>
+      Flotte
     </div>
-    <div class="sidebar-footer">
-      <div style="font-size:11px;">Connecté en tant qu'admin</div>
-      <div style="margin-top:2px;color:var(--blue);">olivier@ferdinandparis.com</div>
+    <div class="nav-item nav-sub" onclick="showPage('bookings',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Bookings
+    </div>
+    <div class="nav-item nav-sub" onclick="showPage('stripe',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      Stripe
+    </div>
+    <div class="nav-section">Vie personnelle</div>
+    <div class="nav-item" onclick="showPage('elisa',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Elisa
+    </div>
+    <div class="nav-section">Immobilier</div>
+    <div class="nav-item" onclick="showPage('airbnb',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      AirBnB
+    </div>
+    <div class="nav-item" onclick="showPage('immo',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+      Locatif
     </div>
   </div>
-
-  <!-- MAIN -->
-  <div class="main" id="main-content">
-    <div class="loading" id="loading-screen">
-      <div class="spinner"></div> Connexion à Supabase...
-    </div>
-    <div id="page-content" style="display:none;"></div>
+  <div class="sidebar-footer">
+    <div style="font-weight:600;">Olivier Billon</div>
+    <div style="color:var(--blue);margin-top:2px;">Admin</div>
   </div>
 </div>
+<div class="main" id="main-content">
+  <div class="loading" id="loading-screen"><div class="spinner"></div> Connexion à Supabase...</div>
+  <div id="page-content" style="display:none;"></div>
+</div>
+</div>
 
-<!-- MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
-    <div class="modal-title" id="modal-title">Titre</div>
+    <div class="modal-title" id="modal-title"></div>
     <div id="modal-body"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Annuler</button>
-      <button class="btn btn-primary" id="modal-save" onclick="modalSave()">Sauvegarder</button>
+      <button class="btn btn-primary" onclick="modalSave()">Sauvegarder</button>
     </div>
   </div>
 </div>
 
 <script>
-const SUPABASE_URL = 'https://ucoxqqrzdbutvtskpevh.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjb3hxcXJ6ZGJ1dHZ0c2twZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjE3NjYsImV4cCI6MjA5MDc5Nzc2Nn0.GYFRNB1nXxUucUEp-1_xanfZOBWho6JjBkbtmFMFhJY';
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+const SB_URL='https://ucoxqqrzdbutvtskpevh.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjb3hxcXJ6ZGJ1dHZ0c2twZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjE3NjYsImV4cCI6MjA5MDc5Nzc2Nn0.GYFRNB1nXxUucUEp-1_xanfZOBWho6JjBkbtmFMFhJY';
+const {createClient}=supabase;
+const db=createClient(SB_URL,SB_KEY);
 
-let currentPage = 'dashboard';
-let modalSaveCallback = null;
+let modalSaveCb=null;
+const STATUS_LABELS={standby:'Stand by',court:'Location courte',long:'Location longue',repare:'En réparation',perso:'Usage perso',leasing:'Leasing'};
+const STATUS_BADGE={standby:'badge-green',court:'badge-amber',long:'badge-amber',repare:'badge-red',perso:'badge-blue',leasing:'badge-gray'};
 
-// ─── INIT ───────────────────────────────────────────────────
-async function init() {
-  document.getElementById('loading-screen').style.display = 'flex';
+// ─── UTILS ────────────────────────────────────────────────
+const fmt=n=>(n||0).toLocaleString('fr-FR',{maximumFractionDigits:0});
+const fmtDate=s=>{if(!s)return'—';return new Date(s).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});};
+const fmtShort=s=>{if(!s)return'—';return new Date(s).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});};
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
+const set=(el,html)=>{const e=document.getElementById(el);if(e)e.innerHTML=html;};
+const esc=s=>(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+
+function openModal(title,body,cb){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=body;
+  modalSaveCb=cb;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');modalSaveCb=null;}
+function modalSave(){if(modalSaveCb)modalSaveCb();}
+
+// ─── INIT ─────────────────────────────────────────────────
+async function init(){
   await seedFleetIfEmpty();
   await seedTouquetIfEmpty();
-  document.getElementById('loading-screen').style.display = 'none';
-  document.getElementById('page-content').style.display = 'block';
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('page-content').style.display='block';
   showPage('dashboard');
 }
 
-// ─── NAVIGATION ─────────────────────────────────────────────
-function showPage(page, navEl) {
-  currentPage = page;
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  if(navEl) navEl.classList.add('active');
-  else { const el = document.querySelector(`.nav-item[onclick*="${page}"]`); if(el) el.classList.add('active'); }
-  const pages = { dashboard: renderDashboard, flotte: renderFlotte, elisa: renderElisa, airbnb: renderAirbnb, immo: renderImmo };
-  if(pages[page]) pages[page]();
-  if(window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+function showPage(page,navEl){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(navEl)navEl.classList.add('active');
+  else{const el=document.querySelector(`.nav-item[onclick*="'${page}'"]`);if(el)el.classList.add('active');}
+  const pages={dashboard:renderDashboard,flotte:renderFlotte,bookings:renderBookings,stripe:renderStripe,elisa:renderElisa,airbnb:renderAirbnb,immo:renderImmo};
+  if(pages[page])pages[page]();
+  if(window.innerWidth<=768)document.getElementById('sidebar').classList.remove('open');
 }
 
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-
-// ─── MODAL ──────────────────────────────────────────────────
-function openModal(title, bodyHtml, saveCallback) {
-  document.getElementById('modal-title').textContent = title;
-  document.getElementById('modal-body').innerHTML = bodyHtml;
-  modalSaveCallback = saveCallback;
-  document.getElementById('modal').classList.add('open');
-}
-function closeModal() { document.getElementById('modal').classList.remove('open'); modalSaveCallback = null; }
-function modalSave() { if(modalSaveCallback) modalSaveCallback(); }
-
-// ─── UTILS ──────────────────────────────────────────────────
-function fmt(n) { return (n||0).toLocaleString('fr-FR',{maximumFractionDigits:0}); }
-function fmtDate(s) { if(!s) return '—'; return new Date(s).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}); }
-function fmtShort(s) { if(!s) return '—'; return new Date(s).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}); }
-function today() { const d=new Date(); d.setHours(0,0,0,0); return d; }
-function set(el, html) { document.getElementById(el).innerHTML = html; }
-
-const STATUS_LABELS = {standby:'Stand by',court:'Location courte',long:'Location longue',repare:'En réparation',perso:'Usage perso',leasing:'Leasing / société'};
-const STATUS_BADGE = {standby:'badge-green',court:'badge-amber',long:'badge-amber',repare:'badge-red',perso:'badge-blue',leasing:'badge-gray'};
-
-// ─── SEED DATA ───────────────────────────────────────────────
-async function seedFleetIfEmpty() {
-  const { data } = await db.from('vehicles').select('id').limit(1);
-  if(data && data.length > 0) return;
-  const fleet = [
-    {id:'c1',nom:'Fiat 500',immat:'—',annee:'—',couleur:'—',trans:'Manuelle',statut:'standby',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
-    {id:'c2',nom:'Porsche Carrera S',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'court',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
-    {id:'c3',nom:'Porsche Targa 4 GTS',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'court',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
-    {id:'c4',nom:'Porsche Macan GTS',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'long',loc:'Paris',detention:'Ferdinand & Friends',client:'YKONE',loyer:4680,jpay:4,garage:'',entretien:'',prochain:'',notes:'Facture TTC Ferdinand & Friends',tasks:[],docs:['Carte grise','Assurance','Contrat YKONE']},
-    {id:'c5',nom:'Cayenne Hybrid',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'court',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
-    {id:'c6',nom:'Porsche Boxster',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'repare',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'En réparation',tasks:['Suivre avancement réparation','Récupérer le véhicule'],docs:['Carte grise','Assurance']},
-    {id:'c7',nom:'Porsche Cayman GTS',immat:'EE-756-HK',annee:'—',couleur:'—',trans:'Automatique',statut:'repare',loc:'Paris',detention:'Titre perso',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'En réparation — titre perso',tasks:['Suivre avancement réparation'],docs:['Carte grise','Assurance']},
-    {id:'c8',nom:'Lamborghini Huracán Tecnica',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'long',loc:'Abu Dhabi',detention:'Titre perso',client:'YKONE',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'Abu Dhabi — titre perso',tasks:[],docs:['Carte grise','Assurance','Contrat YKONE']},
-    {id:'c9',nom:'Lamborghini Urus',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'long',loc:'Paris',detention:'Titre perso',client:'Henri',loyer:6400,jpay:4,garage:'',entretien:'',prochain:'',notes:'6 400€/mois le 4',tasks:[],docs:['Carte grise','Assurance','Contrat Henri']},
-    {id:'c10',nom:'Ferrari Portofino M',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'standby',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
-    {id:'c11',nom:'Mercedes GLC Hybrid',immat:'HB-655-BR',annee:'2024',couleur:'—',trans:'Automatique',statut:'leasing',loc:'Paris',detention:'Autre société',client:'Olivier',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'Voiture société dédiée Olivier — Leasing YKONE',tasks:[],docs:['Carte grise','Assurance','Contrat leasing YKONE']},
-    {id:'c12',nom:'Range Rover Evoque',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'long',loc:'—',detention:'Titre perso',client:'Henri',loyer:1854,jpay:31,garage:'',entretien:'',prochain:'',notes:'1 854€/mois le 31',tasks:[],docs:['Carte grise','Assurance','Contrat Henri']}
+// ─── SEED ─────────────────────────────────────────────────
+async function seedFleetIfEmpty(){
+  const{data}=await db.from('vehicles').select('id').limit(1);
+  if(data&&data.length>0)return;
+  const fleet=[
+    {id:'c1',nom:'Fiat 500',immat:'GJ-872-NQ',annee:'2022',couleur:'—',trans:'Manuelle',statut:'standby',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
+    {id:'c2',nom:'Porsche Carrera S',immat:'GC-322-XB',annee:'2020',couleur:'—',trans:'Automatique',statut:'court',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
+    {id:'c3',nom:'Porsche Targa 4 GTS',immat:'GR-073-XC',annee:'2023',couleur:'—',trans:'Automatique',statut:'court',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
+    {id:'c4',nom:'Porsche Macan GTS',immat:'GP-149-JT',annee:'2023',couleur:'—',trans:'Automatique',statut:'long',loc:'Paris',detention:'Ferdinand & Friends',client:'YKONE',loyer:4680,jpay:4,garage:'',entretien:'',prochain:'',notes:'Facture TTC Ferdinand & Friends',tasks:[],docs:['Carte grise','Assurance','Contrat YKONE']},
+    {id:'c5',nom:'Cayenne Hybrid',immat:'FM-901-TQ',annee:'2019',couleur:'—',trans:'Automatique',statut:'court',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
+    {id:'c6',nom:'Porsche Boxster',immat:'EK-421-CM',annee:'2017',couleur:'—',trans:'Automatique',statut:'repare',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'En réparation',tasks:['Suivre avancement réparation'],docs:['Carte grise','Assurance']},
+    {id:'c7',nom:'Porsche Cayman GTS',immat:'EE-756-HK',annee:'2016',couleur:'—',trans:'Automatique',statut:'repare',loc:'Paris',detention:'Titre perso',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'En réparation',tasks:[],docs:['Carte grise','Assurance']},
+    {id:'c8',nom:'Lamborghini Huracán Tecnica',immat:'—',annee:'—',couleur:'—',trans:'Automatique',statut:'long',loc:'Abu Dhabi',detention:'Titre perso',client:'YKONE',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'Abu Dhabi',tasks:[],docs:['Carte grise','Assurance']},
+    {id:'c9',nom:'Lamborghini Urus',immat:'HG-418-WQ',annee:'2019',couleur:'—',trans:'Automatique',statut:'long',loc:'Paris',detention:'Titre perso',client:'Henri',loyer:6400,jpay:4,garage:'',entretien:'',prochain:'',notes:'6 400€/mois le 4',tasks:[],docs:['Carte grise','Assurance']},
+    {id:'c10',nom:'Ferrari Portofino M',immat:'GD-441-TK',annee:'2021',couleur:'—',trans:'Automatique',statut:'standby',loc:'Paris',detention:'Ferdinand & Friends',client:'',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'',tasks:[],docs:['Carte grise','Assurance']},
+    {id:'c11',nom:'Mercedes GLC Hybrid',immat:'HB-655-BR',annee:'2024',couleur:'—',trans:'Automatique',statut:'leasing',loc:'Paris',detention:'Autre société',client:'Olivier',loyer:0,jpay:0,garage:'',entretien:'',prochain:'',notes:'Leasing YKONE — Olivier',tasks:[],docs:['Carte grise','Assurance']},
+    {id:'c12',nom:'Range Rover Evoque',immat:'HA-782-VA',annee:'2024',couleur:'—',trans:'Automatique',statut:'long',loc:'—',detention:'Titre perso',client:'Henri',loyer:1854,jpay:31,garage:'',entretien:'',prochain:'',notes:'1 854€/mois le 31',tasks:[],docs:['Carte grise','Assurance']}
   ];
-  for(const v of fleet) { await db.from('vehicles').upsert(v); }
+  for(const v of fleet)await db.from('vehicles').upsert(v);
 }
 
-async function seedTouquetIfEmpty() {
-  const { data } = await db.from('bookings_touquet').select('id').limit(1);
-  if(data && data.length > 0) return;
-  const bookings = [
-    {id:'b43',client:'Sophie Machu',source:'Direct',arrive:'2025-03-28',depart:'2025-03-31',pax:null,airbnb:0,direct:3150,notes:'Acompte 2000€'},
+async function seedTouquetIfEmpty(){
+  const{data}=await db.from('bookings_touquet').select('id').limit(1);
+  if(data&&data.length>0)return;
+  const bk=[
     {id:'b44',client:'Simon Briquet-Loggia',source:'AirBNB',arrive:'2025-04-09',depart:'2025-04-11',pax:10,airbnb:2183,direct:0,notes:'Supplément 200€'},
     {id:'b45',client:'Alice Johnson',source:'AirBNB',arrive:'2025-04-18',depart:'2025-04-22',pax:6,airbnb:4140,direct:0,notes:''},
-    {id:'b46',client:'James Allen',source:'AirBNB',arrive:'2025-05-05',depart:'2025-05-08',pax:2,airbnb:1778,direct:0,notes:'2 voyageurs + 1 animal'},
+    {id:'b46',client:'James Allen',source:'AirBNB',arrive:'2025-05-05',depart:'2025-05-08',pax:2,airbnb:1778,direct:0,notes:'1 animal'},
     {id:'b47',client:'Lisa Silver',source:'AirBNB',arrive:'2025-05-11',depart:'2025-05-17',pax:8,airbnb:5428,direct:0,notes:''},
-    {id:'b48',client:'Ryan Ketteringham',source:'AirBNB',arrive:'2025-05-18',depart:'2025-05-20',pax:6,airbnb:2164,direct:0,notes:''},
-    {id:'b49',client:'Thibault Gosselin',source:'AirBNB',arrive:'2025-05-20',depart:'2025-05-22',pax:null,airbnb:1730,direct:0,notes:''},
     {id:'b50',client:'Celine Nuyttens',source:'Direct',arrive:'2025-05-28',depart:'2025-06-01',pax:null,airbnb:0,direct:3800,notes:'Acompte 1900€'},
-    {id:'b51',client:'Michael Robuchon',source:'AirBNB',arrive:'2025-06-04',depart:'2025-06-06',pax:6,airbnb:1682,direct:0,notes:''},
-    {id:'b53',client:'Angie & Mark Jeffries',source:'AirBNB',arrive:'2025-06-14',depart:'2025-06-20',pax:8,airbnb:6723,direct:0,notes:'8 personnes + 1 chien'},
+    {id:'b53',client:'Angie & Mark Jeffries',source:'AirBNB',arrive:'2025-06-14',depart:'2025-06-20',pax:8,airbnb:6723,direct:0,notes:'8 pers + 1 chien'},
     {id:'b55',client:'Pierre Viandier',source:'Direct',arrive:'2025-06-29',depart:'2025-07-13',pax:null,airbnb:0,direct:12600,notes:'Acompte 3150€'},
     {id:'b56',client:'Benoit Sackebadt',source:'AirBNB',arrive:'2025-08-10',depart:'2025-08-16',pax:null,airbnb:5827,direct:0,notes:''},
-    {id:'b57',client:'Girogio Olivotto',source:'AirBNB',arrive:'2025-09-05',depart:'2025-09-07',pax:11,airbnb:3079,direct:0,notes:''},
-    {id:'b58',client:'Valerie Barbier',source:'AirBNB',arrive:'2025-09-12',depart:'2025-09-14',pax:null,airbnb:1687,direct:0,notes:''},
-    {id:'b59',client:'Severine Denys',source:'Direct',arrive:'2025-09-26',depart:'2025-09-29',pax:null,airbnb:0,direct:2400,notes:''},
-    {id:'b60',client:'Jutta Falk',source:'AirBNB',arrive:'2025-10-22',depart:'2025-10-25',pax:null,airbnb:1514,direct:0,notes:''},
-    {id:'b61',client:'Leanne Coates',source:'AirBNB',arrive:'2025-10-24',depart:'2025-10-31',pax:11,airbnb:3856,direct:0,notes:''},
-    {id:'b62',client:'Lucie Duez',source:'AirBNB',arrive:'2025-10-30',depart:'2025-11-02',pax:null,airbnb:3576,direct:0,notes:''},
-    {id:'b63',client:'François Xavier Coudoin',source:'AirBNB',arrive:'2025-12-23',depart:'2025-12-27',pax:null,airbnb:2482,direct:0,notes:''},
-    {id:'b64',client:'Adelaide Roche',source:'AirBNB',arrive:'2025-12-27',depart:'2026-01-01',pax:null,airbnb:3412,direct:0,notes:''},
     {id:'b69',client:'Jean-François Guery',source:'AirBNB',arrive:'2026-04-10',depart:'2026-04-12',pax:8,airbnb:1923,direct:0,notes:''},
     {id:'b70',client:'Damien Trotel',source:'AirBNB',arrive:'2026-04-12',depart:'2026-04-17',pax:5,airbnb:2740,direct:0,notes:''},
-    {id:'b71',client:'David Lallement',source:'AirBNB',arrive:'2026-04-24',depart:'2026-04-26',pax:11,airbnb:2752,direct:0,notes:'11 voyageurs + 1 animal'},
-    {id:'b72',client:'Sandrine Collin',source:'AirBNB',arrive:'2026-05-01',depart:'2026-05-04',pax:11,airbnb:3518,direct:0,notes:''},
   ];
-  for(const b of bookings) { await db.from('bookings_touquet').upsert(b); }
+  for(const b of bk)await db.from('bookings_touquet').upsert(b);
 }
 
-// ─── DASHBOARD ───────────────────────────────────────────────
-async function renderDashboard() {
-  set('page-content', '<div class="loading"><div class="spinner"></div> Chargement...</div>');
-  const [vehicles, touquet, paris, elisaTasks] = await Promise.all([
+// ─── DASHBOARD ────────────────────────────────────────────
+async function renderDashboard(){
+  set('page-content','<div class="loading"><div class="spinner"></div> Chargement...</div>');
+  const[v,bk,tq,et]=await Promise.all([
     db.from('vehicles').select('*'),
-    db.from('bookings_touquet').select('*'),
-    db.from('bookings_paris').select('*'),
-    db.from('elisa_tasks').select('*'),
+    db.from('ferdinand_bookings').select('*').gte('debut',new Date().toISOString().split('T')[0]).order('debut').limit(5),
+    db.from('bookings_touquet').select('*').gte('arrive',new Date().toISOString().split('T')[0]).order('arrive').limit(4),
+    db.from('elisa_tasks').select('*').eq('done',false).limit(5),
   ]);
-  const fleet = vehicles.data || [];
-  const tq = touquet.data || [];
-  const pa = paris.data || [];
-  const tasks = elisaTasks.data || [];
+  const fleet=v.data||[];
+  const fbk=bk.data||[];
+  const tqbk=tq.data||[];
+  const tasks=et.data||[];
+  const inRepair=fleet.filter(x=>x.statut==='repare').length;
+  const revMensuel=fleet.filter(x=>x.loyer>0).reduce((s,x)=>s+x.loyer,0);
+  const REF=new Date(2025,3,2);const now=today();
+  const diff=Math.floor((now-REF)/(1000*60*60*24));
+  const cycle=((diff%14)+14)%14;
+  const isPapa=cycle<=5;
 
-  const inRepair = fleet.filter(v=>v.statut==='repare').length;
-  const inRent = fleet.filter(v=>v.loyer>0).reduce((s,v)=>s+v.loyer,0);
-  const upcomingTQ = tq.filter(b=>b.arrive&&new Date(b.arrive)>=today()&&!b.annule).length;
-  const upcomingPA = pa.filter(b=>b.arrive&&new Date(b.arrive)>=today()&&!b.annule).length;
-  const openTasks = tasks.filter(t=>!t.done).length;
-
-  // Elisa semaine
-  const REF = new Date(2025,3,2);
-  const now = today();
-  const diff = Math.floor((now-REF)/(1000*60*60*24));
-  const cycle = ((diff%14)+14)%14;
-  const isPapa = cycle<=5;
-
-  let html = `
-  <div class="page-header">
-    <div><div class="page-title">Bonjour Olivier</div><div class="page-sub">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
+  let html=`<div class="page-header">
+    <div><div class="page-title">Bonjour Olivier</div>
+    <div class="page-sub">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
   </div>
-
   <div class="stats-row">
-    <div class="stat"><div class="stat-label">Véhicules flotte</div><div class="stat-val">${fleet.length}</div></div>
-    <div class="stat"><div class="stat-label">En réparation</div><div class="stat-val" style="color:var(--red);">${inRepair}</div></div>
-    <div class="stat"><div class="stat-label">Revenus location</div><div class="stat-val" style="color:var(--green);">${fmt(inRent)}€</div></div>
-    <div class="stat"><div class="stat-label">Résa AirBnB</div><div class="stat-val" style="color:var(--blue);">${upcomingTQ+upcomingPA}</div></div>
-    <div class="stat"><div class="stat-label">Semaine Elisa</div><div class="stat-val" style="font-size:14px;color:${isPapa?'var(--green)':'var(--pink)'};">${isPapa?'Papa':'Maman'}</div></div>
-    <div class="stat"><div class="stat-label">Tâches Elisa</div><div class="stat-val">${openTasks}</div></div>
-  </div>`;
-
-  // Alertes
-  const alerts = [];
-  fleet.filter(v=>v.statut==='repare').forEach(v=>alerts.push({type:'red',msg:`${v.nom} est en réparation`}));
-  fleet.filter(v=>v.loyer>0&&Math.abs(v.jpay-new Date().getDate())<=2).forEach(v=>alerts.push({type:'warn',msg:`Paiement attendu : ${v.client} (${v.nom}) le ${v.jpay}`}));
-  const nextTQ = tq.filter(b=>b.arrive&&new Date(b.arrive)>=today()&&!b.annule).sort((a,b)=>new Date(a.arrive)-new Date(b.arrive))[0];
-  if(nextTQ) {
-    const daysUntil = Math.ceil((new Date(nextTQ.arrive)-today())/(1000*60*60*24));
-    if(daysUntil<=7) alerts.push({type:'warn',msg:`Arrivée Touquet dans ${daysUntil}j : ${nextTQ.client}`});
-  }
-  if(alerts.length) html+=alerts.map(a=>`<div class="alert alert-${a.type}">${a.msg}</div>`).join('');
-
-  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;">
+    <div class="stat"><div class="stat-label">Véhicules</div><div class="stat-val">${fleet.length}</div></div>
+    <div class="stat"><div class="stat-label">En réparation</div><div class="stat-val" style="color:var(--red)">${inRepair}</div></div>
+    <div class="stat"><div class="stat-label">Revenus location</div><div class="stat-val" style="color:var(--green)">${fmt(revMensuel)}€</div></div>
+    <div class="stat"><div class="stat-label">Bookings à venir</div><div class="stat-val" style="color:var(--blue)">${fbk.length}</div></div>
+    <div class="stat"><div class="stat-label">Semaine Elisa</div><div class="stat-val" style="font-size:14px;color:${isPapa?'var(--green)':'var(--pink)'}">${isPapa?'Papa ♥':'Maman'}</div></div>
+    <div class="stat"><div class="stat-label">Tâches Elisa</div><div class="stat-val">${tasks.length}</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
     <div class="card">
-      <div class="card-title">Prochaines réservations Le Touquet</div>
-      ${tq.filter(b=>b.arrive&&new Date(b.arrive)>=today()&&!b.annule).sort((a,b)=>new Date(a.arrive)-new Date(b.arrive)).slice(0,4).map(b=>`
-        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">
-          <div><strong>${b.client}</strong><br><span style="color:var(--text2);font-size:12px;">${fmtShort(b.arrive)} → ${fmtShort(b.depart)}</span></div>
-          <div style="text-align:right;"><span class="badge ${b.source==='AirBNB'?'badge-red':'badge-green'}">${b.source}</span><br><span style="font-size:12px;color:var(--green);">${fmt((b.airbnb||0)+(b.direct||0))}€</span></div>
-        </div>`).join('')||'<div style="color:var(--text2);font-size:13px;padding:8px 0;">Aucune réservation</div>'}
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Prochains bookings Ferdinand</div>
+      ${fbk.length?fbk.map(b=>`<div class="pay-row">
+        <div><div style="font-weight:500;">${b.client}</div>
+        <div style="font-size:12px;color:var(--text2);">${b.voiture} · ${fmtShort(b.debut)}${b.fin?' → '+fmtShort(b.fin):''}</div></div>
+        <div style="text-align:right;"><span class="badge ${b.source==='Roadstr'?'badge-purple':'badge-green'}">${b.source}</span>
+        ${b.prix?`<div style="font-size:13px;font-weight:600;color:var(--green);margin-top:2px;">${fmt(b.prix)}€</div>`:''}</div>
+      </div>`).join(''):'<div style="color:var(--text2);font-size:13px;">Aucun booking à venir</div>'}
+      <button class="btn btn-sm" style="margin-top:10px;" onclick="showPage('bookings')">Voir tous ↗</button>
     </div>
     <div class="card">
-      <div class="card-title">Flotte — Revenus mensuels</div>
-      ${fleet.filter(v=>v.loyer>0).map(v=>`
-        <div class="pay-row">
-          <div><div style="font-size:13px;font-weight:500;">${v.nom}</div><div style="font-size:12px;color:var(--text2);">${v.client} · le ${v.jpay}</div></div>
-          <div style="font-size:14px;font-weight:600;color:var(--green);">${fmt(v.loyer)}€</div>
-        </div>`).join('')||'<div style="color:var(--text2);font-size:13px;">Aucun loyer configuré</div>'}
-      ${fleet.filter(v=>v.loyer>0).length?`<div style="padding-top:8px;display:flex;justify-content:space-between;font-weight:600;font-size:13px;border-top:1px solid var(--border);margin-top:4px;"><span>Total mensuel</span><span style="color:var(--green);">${fmt(inRent)}€</span></div>`:''}
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Prochaines résa Le Touquet</div>
+      ${tqbk.length?tqbk.map(b=>`<div class="pay-row">
+        <div><div style="font-weight:500;">${b.client}</div>
+        <div style="font-size:12px;color:var(--text2);">${fmtShort(b.arrive)} → ${fmtShort(b.depart)}</div></div>
+        <div style="font-size:13px;font-weight:600;color:var(--green);">${fmt((b.airbnb||0)+(b.direct||0))}€</div>
+      </div>`).join(''):'<div style="color:var(--text2);font-size:13px;">Aucune réservation</div>'}
+      <button class="btn btn-sm" style="margin-top:10px;" onclick="showPage('airbnb')">Voir toutes ↗</button>
     </div>
   </div>`;
-
-  set('page-content', html);
+  set('page-content',html);
 }
 
-// ─── FLOTTE ──────────────────────────────────────────────────
-let fleetData = [];
-let openVehicles = {};
-let openVehicleTabs = {};
-let fleetFilter = 'tous';
+// ─── FLOTTE ───────────────────────────────────────────────
+let fleetData=[];let openV={};let openVT={};let fleetFilter='tous';
 
-async function renderFlotte() {
-  set('page-content','<div class="loading"><div class="spinner"></div> Chargement de la flotte...</div>');
-  const {data} = await db.from('vehicles').select('*').order('nom');
-  fleetData = data || [];
-  renderFletteHTML();
+async function renderFlotte(){
+  set('page-content','<div class="loading"><div class="spinner"></div> Chargement...</div>');
+  const{data}=await db.from('vehicles').select('*').order('nom');
+  fleetData=data||[];renderFlotteHTML();
 }
 
-function renderFletteHTML() {
-  const counts = {standby:0,court:0,long:0,repare:0,leasing:0};
-  fleetData.forEach(v=>{if(counts[v.statut]!==undefined)counts[v.statut]++;});
-  const revenu = fleetData.filter(v=>v.loyer>0).reduce((s,v)=>s+v.loyer,0);
-
-  let html = `<div class="page-header">
-    <div><div class="page-title">Flotte Ferdinand</div><div class="page-sub">${fleetData.length} véhicules · ${fmt(revenu)}€/mois revenus location</div></div>
+function renderFlotteHTML(){
+  const cnt={standby:0,court:0,long:0,repare:0,leasing:0};
+  fleetData.forEach(v=>{if(cnt[v.statut]!==undefined)cnt[v.statut]++;});
+  const rev=fleetData.filter(v=>v.loyer>0).reduce((s,v)=>s+v.loyer,0);
+  let html=`<div class="page-header">
+    <div><div class="page-title">Flotte Ferdinand</div><div class="page-sub">${fleetData.length} véhicules · ${fmt(rev)}€/mois</div></div>
     <button class="btn btn-primary" onclick="openAddVehicle()">+ Véhicule</button>
   </div>
   <div class="stats-row">
-    <div class="stat"><div class="stat-label">Stand by</div><div class="stat-val" style="color:var(--green);">${counts.standby}</div></div>
-    <div class="stat"><div class="stat-label">En location</div><div class="stat-val" style="color:var(--amber);">${counts.court+counts.long}</div></div>
-    <div class="stat"><div class="stat-label">Réparation</div><div class="stat-val" style="color:var(--red);">${counts.repare}</div></div>
-    <div class="stat"><div class="stat-label">Leasing</div><div class="stat-val">${counts.leasing}</div></div>
-    <div class="stat"><div class="stat-label">Revenus/mois</div><div class="stat-val" style="color:var(--green);">${fmt(revenu)}€</div></div>
+    <div class="stat"><div class="stat-label">Stand by</div><div class="stat-val" style="color:var(--green)">${cnt.standby}</div></div>
+    <div class="stat"><div class="stat-label">En location</div><div class="stat-val" style="color:var(--amber)">${cnt.court+cnt.long}</div></div>
+    <div class="stat"><div class="stat-label">Réparation</div><div class="stat-val" style="color:var(--red)">${cnt.repare}</div></div>
+    <div class="stat"><div class="stat-label">Leasing</div><div class="stat-val">${cnt.leasing}</div></div>
+    <div class="stat"><div class="stat-label">Revenus/mois</div><div class="stat-val" style="color:var(--green)">${fmt(rev)}€</div></div>
   </div>
   <div class="filters">
     ${['tous','standby','court','long','repare','leasing'].map(f=>`<button class="filter-pill${f===fleetFilter?' active':''}" onclick="setFleetFilter('${f}')">${f==='tous'?'Tous':STATUS_LABELS[f]}</button>`).join('')}
+    <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-box" id="fleet-search" placeholder="Rechercher..." oninput="renderFleetList()"></div>
   </div>
-  <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-box" id="fleet-search" placeholder="Rechercher..." oninput="renderFleetList()"></div>
   <div id="fleet-list"></div>`;
-
-  set('page-content', html);
-  renderFleetList();
+  set('page-content',html);renderFleetList();
 }
 
-function setFleetFilter(f) { fleetFilter=f; renderFletteHTML(); }
+function setFleetFilter(f){fleetFilter=f;renderFlotteHTML();}
 
-function renderFleetList() {
-  const q = (document.getElementById('fleet-search')||{}).value||'';
-  let list = fleetFilter==='tous' ? [...fleetData] : fleetData.filter(v=>v.statut===fleetFilter);
-  if(q) list = list.filter(v=>(v.nom+v.immat+(v.client||'')).toLowerCase().includes(q.toLowerCase()));
+function renderFleetList(){
+  const q=(document.getElementById('fleet-search')||{}).value||'';
+  let list=fleetFilter==='tous'?[...fleetData]:fleetData.filter(v=>v.statut===fleetFilter);
+  if(q)list=list.filter(v=>(v.nom+v.immat+(v.client||'')).toLowerCase().includes(q.toLowerCase()));
+  set('fleet-list',list.map(v=>vehicleCard(v)).join('')||'<div style="color:var(--text2);padding:20px;text-align:center;">Aucun véhicule trouvé.</div>');
+}
 
-  const html = list.map(v => {
-    const isOpen = openVehicles[v.id];
-    const tab = openVehicleTabs[v.id]||'infos';
-    const loyerLine = v.loyer?`<div style="font-size:12px;color:var(--text2);margin-top:3px;">${v.client} · <strong>${fmt(v.loyer)}€/mois</strong> · le ${v.jpay}</div>`:v.client?`<div style="font-size:12px;color:var(--text2);margin-top:3px;">${v.client}</div>`:'';
-
-    let body = '';
-    if(isOpen) {
-      const tabs = `<div class="vehicle-tabs">
-        ${['infos','entretien','docs','taches'].map(t=>`<button class="vtab${tab===t?' active':''}" onclick="setVTab('${v.id}','${t}')">${{infos:'Infos',entretien:'Entretien',docs:'Documents',taches:'Tâches'}[t]}</button>`).join('')}
-      </div>`;
-
-      let panel='';
-      if(tab==='infos') panel=`<div class="info-grid">
-        <div class="info-item"><div class="info-label">Immatriculation</div><div class="info-val">${v.immat||'—'}</div></div>
-        <div class="info-item"><div class="info-label">Année</div><div class="info-val">${v.annee||'—'}</div></div>
-        <div class="info-item"><div class="info-label">Couleur</div><div class="info-val">${v.couleur||'—'}</div></div>
-        <div class="info-item"><div class="info-label">Transmission</div><div class="info-val">${v.trans||'—'}</div></div>
-        <div class="info-item"><div class="info-label">Localisation</div><div class="info-val">${v.loc||'—'}</div></div>
-        <div class="info-item"><div class="info-label">Détention</div><div class="info-val">${v.detention||'—'}</div></div>
-        ${v.garage?`<div class="info-item"><div class="info-label">Garage</div><div class="info-val">${v.garage}</div></div>`:''}
-      </div>
-      ${v.notes?`<div style="margin-top:10px;font-size:12px;color:var(--text2);font-style:italic;">${v.notes}</div>`:''}
-      <div style="margin-top:12px;display:flex;gap:8px;"><button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier ↗</button></div>`;
-
-      else if(tab==='entretien') {
-        const warn = v.prochain&&new Date(v.prochain)<=new Date(Date.now()+30*24*60*60*1000);
-        panel=`<div class="info-grid">
-          <div class="info-item"><div class="info-label">Dernier entretien</div><div class="info-val">${v.entretien?fmtDate(v.entretien):'Non renseigné'}</div></div>
-          <div class="info-item"><div class="info-label">Prochain entretien</div><div class="info-val" style="color:${warn?'var(--red)':'inherit'}">${v.prochain?fmtDate(v.prochain):'Non renseigné'}</div></div>
-          <div class="info-item"><div class="info-label">Garage référent</div><div class="info-val">${v.garage||'Non renseigné'}</div></div>
-        </div>
-        ${warn?`<div class="alert alert-warn" style="margin-top:10px;">Entretien à venir : ${fmtDate(v.prochain)}</div>`:''}
-        <div style="margin-top:12px;"><button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier les dates ↗</button></div>`;
-      }
-      else if(tab==='docs') panel=`<div>${(v.docs||[]).map(d=>`<span class="doc-pill">📄 ${d}</span>`).join('')}<span class="doc-pill" style="border-style:dashed;cursor:pointer;" onclick="addDoc('${v.id}')">+ Ajouter</span></div>`;
-      else if(tab==='taches') {
-        const tasks = v.tasks||[];
-        panel=`${tasks.length?tasks.map((t,i)=>`<div class="task-item"><div class="task-dot" style="background:var(--amber);"></div><span style="flex:1;">${t}</span><button onclick="removeVTask('${v.id}',${i})" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:16px;">×</button></div>`).join(''):'<div style="color:var(--text2);font-size:13px;padding:4px 0;">Aucune tâche</div>'}
-        <div style="display:flex;gap:8px;margin-top:10px;"><input id="vt-${v.id}" placeholder="Nouvelle tâche..." style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;"><button class="btn btn-sm" onclick="addVTask('${v.id}')">+ Ajouter</button></div>`;
-      }
-
-      body = `<div class="vehicle-body">${tabs}<div class="vehicle-panel">${panel}</div></div>`;
-    }
-
-    return `<div class="vehicle-card">
-      <div class="vehicle-head" onclick="toggleVehicle('${v.id}')">
-        <div style="flex:1;">
-          <div style="display:flex;gap:6px;margin-bottom:5px;flex-wrap:wrap;">
-            <span class="badge ${STATUS_BADGE[v.statut]||'badge-gray'}">${STATUS_LABELS[v.statut]||v.statut}</span>
-            <span class="badge badge-gray">${v.detention}</span>
-            ${v.immat&&v.immat!=='—'?`<span style="font-size:11px;color:var(--text3);font-family:monospace;">${v.immat}</span>`:''}
-          </div>
-          <div style="font-weight:600;font-size:14px;">${v.nom}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${v.loc||'—'}</div>
-          ${loyerLine}
-        </div>
-        <span style="color:var(--text3);">${isOpen?'▲':'▼'}</span>
-      </div>${body}
+function vehicleCard(v){
+  const isOpen=openV[v.id];const tab=openVT[v.id]||'infos';
+  const loyerLine=v.loyer?`<div style="font-size:12px;color:var(--text2);margin-top:3px;">${v.client} · <strong>${fmt(v.loyer)}€/mois</strong> · le ${v.jpay}</div>`:v.client?`<div style="font-size:12px;color:var(--text2);margin-top:3px;">${v.client}</div>`:'';
+  let body='';
+  if(isOpen){
+    const tabs=`<div class="vehicle-tabs">${['infos','entretien','docs','taches'].map(t=>`<button class="vtab${tab===t?' active':''}" onclick="setVTab('${v.id}','${t}')">${{infos:'Infos',entretien:'Entretien',docs:'Documents',taches:'Tâches'}[t]}</button>`).join('')}</div>`;
+    let panel='';
+    if(tab==='infos')panel=`<div class="info-grid">
+      <div><div class="info-label">Immatriculation</div><div class="info-val">${v.immat||'—'}</div></div>
+      <div><div class="info-label">Année</div><div class="info-val">${v.annee||'—'}</div></div>
+      <div><div class="info-label">Couleur</div><div class="info-val">${v.couleur||'—'}</div></div>
+      <div><div class="info-label">Transmission</div><div class="info-val">${v.trans||'—'}</div></div>
+      <div><div class="info-label">Localisation</div><div class="info-val">${v.loc||'—'}</div></div>
+      <div><div class="info-label">Détention</div><div class="info-val">${v.detention||'—'}</div></div>
+      ${v.garage?`<div><div class="info-label">Garage</div><div class="info-val">${v.garage}</div></div>`:''}
+    </div>${v.notes?`<div style="margin-top:10px;font-size:12px;color:var(--text2);font-style:italic;">${v.notes}</div>`:''}
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier ↗</button>
+      <button class="btn btn-sm" onclick="showPage('bookings');setTimeout(()=>filterBookingsByVehicle('${v.nom}'),300)">Voir bookings ↗</button>
     </div>`;
-  }).join('') || '<div style="color:var(--text2);padding:20px;text-align:center;">Aucun véhicule trouvé.</div>';
-
-  set('fleet-list', html);
+    else if(tab==='entretien'){
+      const warn=v.prochain&&new Date(v.prochain)<=new Date(Date.now()+30*864e5);
+      panel=`<div class="info-grid">
+        <div><div class="info-label">Dernier entretien</div><div class="info-val">${v.entretien?fmtDate(v.entretien):'Non renseigné'}</div></div>
+        <div><div class="info-label">Prochain entretien</div><div class="info-val" style="color:${warn?'var(--red)':'inherit'}">${v.prochain?fmtDate(v.prochain):'Non renseigné'}</div></div>
+        <div><div class="info-label">Garage référent</div><div class="info-val">${v.garage||'—'}</div></div>
+      </div>${warn?`<div class="alert alert-warn" style="margin-top:10px;">⚠ Entretien prévu le ${fmtDate(v.prochain)}</div>`:''}
+      <button class="btn btn-sm" style="margin-top:10px;" onclick="openEditVehicle('${v.id}')">Modifier les dates ↗</button>`;
+    }
+    else if(tab==='docs')panel=`<div>${(v.docs||[]).map(d=>`<span class="doc-pill">📄 ${d}</span>`).join('')}<span class="doc-pill" style="border-style:dashed;" onclick="addDoc('${v.id}')">+ Ajouter</span></div>`;
+    else if(tab==='taches'){
+      const tasks=v.tasks||[];
+      panel=`${tasks.map((t,i)=>`<div class="task-item"><div class="task-dot" style="background:var(--amber)"></div><span style="flex:1">${t}</span><button onclick="removeVTask('${v.id}',${i})" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:16px;">×</button></div>`).join('')||'<div style="color:var(--text2);font-size:13px;padding:4px 0">Aucune tâche</div>'}
+      <div style="display:flex;gap:8px;margin-top:10px"><input id="vt-${v.id}" placeholder="Nouvelle tâche..." style="flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px"><button class="btn btn-sm" onclick="addVTask('${v.id}')">+ Ajouter</button></div>`;
+    }
+    body=`<div class="vehicle-body">${tabs}<div class="vehicle-panel">${panel}</div></div>`;
+  }
+  return`<div class="vehicle-card">
+    <div class="vehicle-head" onclick="toggleV('${v.id}')">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:6px;margin-bottom:5px;flex-wrap:wrap">
+          <span class="badge ${STATUS_BADGE[v.statut]||'badge-gray'}">${STATUS_LABELS[v.statut]||v.statut}</span>
+          <span class="badge badge-gray">${v.detention}</span>
+          ${v.immat&&v.immat!=='—'?`<span style="font-size:11px;color:var(--text3);font-family:monospace">${v.immat}</span>`:''}
+        </div>
+        <div style="font-weight:600;font-size:14px">${v.nom}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${v.loc||'—'}</div>
+        ${loyerLine}
+      </div>
+      <span style="color:var(--text3)">${isOpen?'▲':'▼'}</span>
+    </div>${body}
+  </div>`;
 }
 
-function toggleVehicle(id) { openVehicles[id]=!openVehicles[id]; if(!openVehicleTabs[id])openVehicleTabs[id]='infos'; renderFleetList(); }
-function setVTab(id,tab) { openVehicleTabs[id]=tab; renderFleetList(); }
+function toggleV(id){openV[id]=!openV[id];if(!openVT[id])openVT[id]='infos';renderFleetList();}
+function setVTab(id,tab){openVT[id]=tab;renderFleetList();}
+async function addVTask(id){const inp=document.getElementById('vt-'+id);if(!inp||!inp.value.trim())return;const v=fleetData.find(x=>x.id===id);const tasks=[...(v.tasks||[]),inp.value.trim()];await db.from('vehicles').update({tasks}).eq('id',id);v.tasks=tasks;inp.value='';renderFleetList();}
+async function removeVTask(id,idx){const v=fleetData.find(x=>x.id===id);const tasks=(v.tasks||[]).filter((_,i)=>i!==idx);await db.from('vehicles').update({tasks}).eq('id',id);v.tasks=tasks;renderFleetList();}
+async function addDoc(id){const n=prompt('Nom du document:');if(!n)return;const v=fleetData.find(x=>x.id===id);const docs=[...(v.docs||[]),n];await db.from('vehicles').update({docs}).eq('id',id);v.docs=docs;renderFleetList();}
 
-async function addVTask(id) {
-  const inp=document.getElementById('vt-'+id);
-  if(!inp||!inp.value.trim())return;
-  const v=fleetData.find(x=>x.id===id);
-  const tasks=[...(v.tasks||[]),inp.value.trim()];
-  await db.from('vehicles').update({tasks}).eq('id',id);
-  v.tasks=tasks; inp.value=''; renderFleetList();
-}
-
-async function removeVTask(id,idx) {
-  const v=fleetData.find(x=>x.id===id);
-  const tasks=(v.tasks||[]).filter((_,i)=>i!==idx);
-  await db.from('vehicles').update({tasks}).eq('id',id);
-  v.tasks=tasks; renderFleetList();
-}
-
-async function addDoc(id) {
-  const name=prompt('Nom du document :'); if(!name)return;
-  const v=fleetData.find(x=>x.id===id);
-  const docs=[...(v.docs||[]),name];
-  await db.from('vehicles').update({docs}).eq('id',id);
-  v.docs=docs; renderFleetList();
-}
-
-function openAddVehicle() {
-  openModal('Nouveau véhicule', `
-    <div class="form-row"><div class="form-group"><label class="form-label">Nom / Modèle</label><input class="form-input" id="nv-nom" placeholder="ex: Porsche 911 GT3"></div>
+function openAddVehicle(){
+  openModal('Nouveau véhicule',`
+    <div class="form-row"><div class="form-group"><label class="form-label">Nom / Modèle</label><input class="form-input" id="nv-nom" placeholder="ex: Porsche 911"></div>
     <div class="form-group"><label class="form-label">Immatriculation</label><input class="form-input" id="nv-immat"></div></div>
     <div class="form-row"><div class="form-group"><label class="form-label">Année</label><input class="form-input" id="nv-annee"></div>
     <div class="form-group"><label class="form-label">Couleur</label><input class="form-input" id="nv-couleur"></div></div>
-    <div class="form-row"><div class="form-group"><label class="form-label">Transmission</label><select class="form-input" id="nv-trans"><option>Automatique</option><option>Manuelle</option></select></div>
-    <div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="nv-statut"><option value="standby">Stand by</option><option value="court">Location courte</option><option value="long">Location longue</option><option value="repare">En réparation</option><option value="perso">Usage perso</option><option value="leasing">Leasing</option></select></div></div>
-    <div class="form-row"><div class="form-group"><label class="form-label">Localisation</label><input class="form-input" id="nv-loc"></div>
-    <div class="form-group"><label class="form-label">Détention</label><select class="form-input" id="nv-deten"><option>Ferdinand & Friends</option><option>Titre perso</option><option>Autre société</option></select></div></div>
-    <div class="form-row"><div class="form-group"><label class="form-label">Client / Locataire</label><input class="form-input" id="nv-client"></div>
-    <div class="form-group"><label class="form-label">Loyer mensuel (€)</label><input class="form-input" type="number" id="nv-loyer"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="nv-statut"><option value="standby">Stand by</option><option value="court">Location courte</option><option value="long">Location longue</option><option value="repare">En réparation</option><option value="leasing">Leasing</option></select></div>
+    <div class="form-group"><label class="form-label">Localisation</label><input class="form-input" id="nv-loc"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Détention</label><select class="form-input" id="nv-deten"><option>Ferdinand & Friends</option><option>Titre perso</option><option>Autre société</option></select></div>
+    <div class="form-group"><label class="form-label">Client / Locataire</label><input class="form-input" id="nv-client"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Loyer (€/mois)</label><input class="form-input" type="number" id="nv-loyer"></div>
+    <div class="form-group"><label class="form-label">Jour paiement</label><input class="form-input" type="number" id="nv-jpay"></div></div>
     <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="nv-notes" rows="2"></textarea></div>`,
-  async () => {
-    const v={id:'c'+Date.now(),nom:document.getElementById('nv-nom').value,immat:document.getElementById('nv-immat').value||'—',annee:document.getElementById('nv-annee').value||'—',couleur:document.getElementById('nv-couleur').value||'—',trans:document.getElementById('nv-trans').value,statut:document.getElementById('nv-statut').value,loc:document.getElementById('nv-loc').value,detention:document.getElementById('nv-deten').value,client:document.getElementById('nv-client').value,loyer:parseFloat(document.getElementById('nv-loyer').value)||0,jpay:0,garage:'',entretien:'',prochain:'',notes:document.getElementById('nv-notes').value,tasks:[],docs:['Carte grise','Assurance']};
+  async()=>{
+    const v={id:'c'+Date.now(),nom:document.getElementById('nv-nom').value,immat:document.getElementById('nv-immat').value||'—',annee:document.getElementById('nv-annee').value||'—',couleur:document.getElementById('nv-couleur').value||'—',trans:'Automatique',statut:document.getElementById('nv-statut').value,loc:document.getElementById('nv-loc').value,detention:document.getElementById('nv-deten').value,client:document.getElementById('nv-client').value,loyer:parseFloat(document.getElementById('nv-loyer').value)||0,jpay:parseInt(document.getElementById('nv-jpay').value)||0,garage:'',entretien:'',prochain:'',notes:document.getElementById('nv-notes').value,tasks:[],docs:['Carte grise','Assurance']};
     if(!v.nom){alert('Nom requis');return;}
-    await db.from('vehicles').insert(v);
-    fleetData.push(v); closeModal(); renderFletteHTML();
+    await db.from('vehicles').insert(v);fleetData.push(v);closeModal();renderFlotteHTML();
   });
 }
 
-function openEditVehicle(id) {
+function openEditVehicle(id){
   const v=fleetData.find(x=>x.id===id);
-  openModal(`Modifier — ${v.nom}`, `
-    <div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="ev-nom" value="${v.nom||''}"></div>
-    <div class="form-row"><div class="form-group"><label class="form-label">Immatriculation</label><input class="form-input" id="ev-immat" value="${v.immat||''}"></div>
-    <div class="form-group"><label class="form-label">Année</label><input class="form-input" id="ev-annee" value="${v.annee||''}"></div></div>
-    <div class="form-row"><div class="form-group"><label class="form-label">Couleur</label><input class="form-input" id="ev-couleur" value="${v.couleur||''}"></div>
-    <div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="ev-statut"><option value="standby" ${v.statut==='standby'?'selected':''}>Stand by</option><option value="court" ${v.statut==='court'?'selected':''}>Location courte</option><option value="long" ${v.statut==='long'?'selected':''}>Location longue</option><option value="repare" ${v.statut==='repare'?'selected':''}>En réparation</option><option value="perso" ${v.statut==='perso'?'selected':''}>Usage perso</option><option value="leasing" ${v.statut==='leasing'?'selected':''}>Leasing</option></select></div></div>
-    <div class="form-row"><div class="form-group"><label class="form-label">Localisation</label><input class="form-input" id="ev-loc" value="${v.loc||''}"></div>
-    <div class="form-group"><label class="form-label">Client</label><input class="form-input" id="ev-client" value="${v.client||''}"></div></div>
-    <div class="form-row"><div class="form-group"><label class="form-label">Loyer (€)</label><input class="form-input" type="number" id="ev-loyer" value="${v.loyer||''}"></div>
-    <div class="form-group"><label class="form-label">Jour paiement</label><input class="form-input" type="number" id="ev-jpay" value="${v.jpay||''}"></div></div>
-    <div class="form-group"><label class="form-label">Garage référent</label><input class="form-input" id="ev-garage" value="${v.garage||''}"></div>
+  openModal(`Modifier — ${v.nom}`,`
+    <div class="form-row"><div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="ev-nom" value="${esc(v.nom||'')}"></div>
+    <div class="form-group"><label class="form-label">Immatriculation</label><input class="form-input" id="ev-immat" value="${esc(v.immat||'')}"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Année</label><input class="form-input" id="ev-annee" value="${esc(v.annee||'')}"></div>
+    <div class="form-group"><label class="form-label">Couleur</label><input class="form-input" id="ev-couleur" value="${esc(v.couleur||'')}"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="ev-statut"><option value="standby" ${v.statut==='standby'?'selected':''}>Stand by</option><option value="court" ${v.statut==='court'?'selected':''}>Location courte</option><option value="long" ${v.statut==='long'?'selected':''}>Location longue</option><option value="repare" ${v.statut==='repare'?'selected':''}>En réparation</option><option value="perso" ${v.statut==='perso'?'selected':''}>Usage perso</option><option value="leasing" ${v.statut==='leasing'?'selected':''}>Leasing</option></select></div>
+    <div class="form-group"><label class="form-label">Localisation</label><input class="form-input" id="ev-loc" value="${esc(v.loc||'')}"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Client</label><input class="form-input" id="ev-client" value="${esc(v.client||'')}"></div>
+    <div class="form-group"><label class="form-label">Loyer (€)</label><input class="form-input" type="number" id="ev-loyer" value="${v.loyer||''}"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Jour paiement</label><input class="form-input" type="number" id="ev-jpay" value="${v.jpay||''}"></div>
+    <div class="form-group"><label class="form-label">Garage</label><input class="form-input" id="ev-garage" value="${esc(v.garage||'')}"></div></div>
     <div class="form-row"><div class="form-group"><label class="form-label">Dernier entretien</label><input class="form-input" type="date" id="ev-entretien" value="${v.entretien||''}"></div>
     <div class="form-group"><label class="form-label">Prochain entretien</label><input class="form-input" type="date" id="ev-prochain" value="${v.prochain||''}"></div></div>
-    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="ev-notes" rows="2">${v.notes||''}</textarea></div>`,
-  async () => {
-    const updates={nom:document.getElementById('ev-nom').value,immat:document.getElementById('ev-immat').value,annee:document.getElementById('ev-annee').value,couleur:document.getElementById('ev-couleur').value,statut:document.getElementById('ev-statut').value,loc:document.getElementById('ev-loc').value,client:document.getElementById('ev-client').value,loyer:parseFloat(document.getElementById('ev-loyer').value)||0,jpay:parseInt(document.getElementById('ev-jpay').value)||0,garage:document.getElementById('ev-garage').value,entretien:document.getElementById('ev-entretien').value,prochain:document.getElementById('ev-prochain').value,notes:document.getElementById('ev-notes').value};
-    await db.from('vehicles').update(updates).eq('id',id);
-    Object.assign(v,updates); closeModal(); renderFleetList();
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="ev-notes" rows="2">${esc(v.notes||'')}</textarea></div>`,
+  async()=>{
+    const u={nom:document.getElementById('ev-nom').value,immat:document.getElementById('ev-immat').value,annee:document.getElementById('ev-annee').value,couleur:document.getElementById('ev-couleur').value,statut:document.getElementById('ev-statut').value,loc:document.getElementById('ev-loc').value,client:document.getElementById('ev-client').value,loyer:parseFloat(document.getElementById('ev-loyer').value)||0,jpay:parseInt(document.getElementById('ev-jpay').value)||0,garage:document.getElementById('ev-garage').value,entretien:document.getElementById('ev-entretien').value,prochain:document.getElementById('ev-prochain').value,notes:document.getElementById('ev-notes').value};
+    await db.from('vehicles').update(u).eq('id',id);Object.assign(v,u);closeModal();renderFleetList();
   });
 }
 
-// ─── ELISA ───────────────────────────────────────────────────
-let elisaView='agenda';
-let elisaTasks=[];
-let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
+// ─── BOOKINGS FERDINAND ───────────────────────────────────
+let bkData=[];let bkPage=1;const BK_PER_PAGE=50;
+let bkFilter='upcoming';let bkSearch='';let bkVehicle='';
 
-const VACANCES=[
-  {label:'Printemps 2025',start:'2025-04-19',end:'2025-05-04'},
-  {label:'Été 2025',start:'2025-07-05',end:'2025-08-31'},
-  {label:'Toussaint 2025',start:'2025-10-18',end:'2025-11-02'},
-  {label:'Noël 2025',start:'2025-12-20',end:'2026-01-04'},
-  {label:'Hiver 2026',start:'2026-02-14',end:'2026-03-01'},
-  {label:'Printemps 2026',start:'2026-04-11',end:'2026-04-26'},
-];
+// Correspondance noms bookings → flotte
+const VEHICLE_MAP={
+  '911 Carrera S':'Porsche Carrera S','911 4S':'Porsche 911 4S','911 4S Cabriolet':'Porsche 911 4S Cabriolet',
+  '911 Targa 4 GTS':'Porsche Targa 4 GTS','911 Findrive':'Porsche Carrera S','911 Flo':'Porsche Carrera S',
+  'Boxster':'Porsche Boxster','Boxster S':'Porsche Boxster',
+  'Cayman GTS':'Porsche Cayman GTS','Cayman E':'Porsche Cayman GTS','Cayman F':'Porsche Cayman GTS',
+  'Macan GTS':'Porsche Macan GTS','Macan S':'Porsche Macan GTS','Macan Turbo':'Porsche Macan GTS',
+  'Cayenne Hybrid':'Cayenne Hybrid','Cayenne Craie':'Cayenne Hybrid','Cayenne Turbo':'Cayenne Hybrid',
+  'Ferrari Portofino':'Ferrari Portofino M','FERRARI':'Ferrari Portofino M',
+  'Mercedes':'Mercedes GLC Hybrid','Range Rover':'Range Rover Evoque',
+  'Taycan':'Porsche Taycan','Audi Etron':'Audi E-tron',
+};
+const FLEET_VEHICLES=['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayman GTS','Cayenne Hybrid','Ferrari Portofino','Lamborghini Huracán','Lamborghini Urus','Macan GTS','Macan S','Mercedes GLC','Range Rover Evoque','Taycan'];
+
+async function renderBookings(){
+  set('page-content','<div class="loading"><div class="spinner"></div> Chargement des bookings...</div>');
+  const{data}=await db.from('ferdinand_bookings').select('*').order('debut',{ascending:false});
+  bkData=data||[];
+  renderBookingsHTML();
+}
+
+function filterBookingsByVehicle(v){bkVehicle=v;bkFilter='tous';renderBookingsHTML();}
+
+function getBkFiltered(){
+  let list=[...bkData];
+  if(bkFilter==='upcoming')list=list.filter(b=>b.debut&&new Date(b.debut)>=today());
+  else if(bkFilter!=='tous')list=list.filter(b=>b.debut&&b.debut.startsWith(bkFilter));
+  if(bkSearch)list=list.filter(b=>(b.client||'').toLowerCase().includes(bkSearch.toLowerCase())||(b.voiture||'').toLowerCase().includes(bkSearch.toLowerCase()));
+  if(bkVehicle)list=list.filter(b=>(b.voiture||'').toLowerCase().includes(bkVehicle.toLowerCase()));
+  return list.sort((a,b)=>new Date(b.debut)-new Date(a.debut));
+}
+
+function renderBookingsHTML(){
+  const total=bkData.length;
+  const caTotal=bkData.reduce((s,b)=>s+(b.prix||0),0);
+  let html=`<div class="page-header">
+    <div><div class="page-title">Bookings Ferdinand</div><div class="page-sub">${fmt(total)} bookings · CA total ${fmt(caTotal)}€</div></div>
+    <button class="btn btn-primary" onclick="openAddBooking()">+ Nouveau booking</button>
+  </div>
+  <div class="stats-row" id="bk-stats"></div>
+  <div class="filters">
+    ${['upcoming','tous','2026','2025','2024','2023','2022','2021'].map(f=>`<button class="filter-pill${f===bkFilter?' active':''}" onclick="setBkFilter('${f}')">${f==='upcoming'?'À venir':f==='tous'?'Tous':f}</button>`).join('')}
+  </div>
+  <div class="filters">
+    <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-box" id="bk-search" placeholder="Rechercher client, voiture..." value="${esc(bkSearch)}" oninput="bkSearch=this.value;bkPage=1;renderBkList()"></div>
+    <select class="form-input" style="width:auto;padding:7px 10px;" id="bk-vehicle" onchange="bkVehicle=this.value;bkPage=1;renderBkList()">
+      <option value="">Toutes les voitures</option>
+      ${['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayman GTS','Cayenne Hybrid','Ferrari Portofino','Macan GTS','Macan S','Mercedes','Range Rover','Taycan','Lamborghini'].map(v=>`<option value="${v}" ${bkVehicle===v?'selected':''}>${v}</option>`).join('')}
+    </select>
+  </div>
+  <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Cliquez sur une ligne pour modifier</div>
+  <div id="bk-list"></div>
+  <div id="bk-pagination"></div>`;
+  set('page-content',html);
+  renderBkList();
+}
+
+function setBkFilter(f){bkFilter=f;bkPage=1;renderBkList();}
+
+function renderBkList(){
+  const list=getBkFiltered();
+  const total=list.length;
+  const pages=Math.ceil(total/BK_PER_PAGE);
+  const start=(bkPage-1)*BK_PER_PAGE;
+  const page=list.slice(start,start+BK_PER_PAGE);
+
+  // Stats dynamiques selon filtre actif
+  const caFiltre=list.reduce((s,b)=>s+(b.prix||0),0);
+  const nFiltre=list.length;
+  const nUpcoming=list.filter(b=>b.debut&&new Date(b.debut)>=today()).length;
+  const caUpcoming=list.filter(b=>b.debut&&new Date(b.debut)>=today()).reduce((s,b)=>s+(b.prix||0),0);
+  const label=bkFilter==='upcoming'?'À venir':bkFilter==='tous'?'Tous':bkFilter;
+  set('bk-stats',`
+    <div class="stat"><div class="stat-label">Bookings (${label})</div><div class="stat-val">${fmt(nFiltre)}</div></div>
+    <div class="stat"><div class="stat-label">CA (${label})</div><div class="stat-val" style="color:var(--green)">${fmt(caFiltre)}€</div></div>
+    <div class="stat"><div class="stat-label">À venir</div><div class="stat-val" style="color:var(--blue)">${nUpcoming}</div></div>
+    <div class="stat"><div class="stat-label">Pipeline à venir</div><div class="stat-val" style="color:var(--green)">${fmt(caUpcoming)}€</div></div>
+    <div class="stat"><div class="stat-label">CA total historique</div><div class="stat-val">${fmt(bkData.reduce((s,b)=>s+(b.prix||0),0))}€</div></div>
+  `);
+
+  const srcBadge=s=>{if(s==='Roadstr')return'badge-purple';if(s==='Direct')return'badge-green';return'badge-gray';};
+  const statBadge=s=>{if(s==='Fermé')return'badge-gray';if(s==='En cours')return'badge-blue';if(s==='Accident')return'badge-red';return'badge-amber';};
+
+  const html=`<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">${fmt(total)} résultats${pages>1?` · page ${bkPage}/${pages}`:''}</div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr>
+      <th>Voiture</th><th>Client</th><th>Début</th><th>Fin</th><th>Prix</th><th>Source</th><th>Statut</th><th>Contrat</th><th>Notes</th>
+    </tr></thead>
+    <tbody>${page.map(b=>{
+      const fleetName=VEHICLE_MAP[b.voiture]||b.voiture;
+      return`<tr style="cursor:pointer;" onclick="openEditBooking('${b.id}')" title="Cliquer pour modifier">
+        <td><strong>${b.voiture||'—'}</strong>${fleetName&&fleetName!==b.voiture?`<br><span style="font-size:10px;color:var(--blue)">${fleetName}</span>`:''}</td>
+        <td>${b.client||'—'}${b.email?`<br><span style="font-size:11px;color:var(--text3)">${b.email}</span>`:''}</td>
+        <td style="white-space:nowrap">${fmtShort(b.debut)}</td>
+        <td style="white-space:nowrap">${fmtShort(b.fin)||'—'}</td>
+        <td style="font-weight:700;color:var(--green)">${b.prix?fmt(b.prix)+'€':'—'}</td>
+        <td><span class="badge ${srcBadge(b.source)}">${b.source||'—'}</span></td>
+        <td><span class="badge ${statBadge(b.statut)}">${b.statut||'—'}</span></td>
+        <td>${b.lien_contrat?`<a href="${b.lien_contrat}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);font-size:12px">📄 Voir</a>`:'—'}</td>
+        <td style="font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.commentaire||''}</td>
+      </tr>`;}).join('')}
+    </tbody>
+  </table></div>`;
+  set('bk-list',html);
+
+  if(pages>1){
+    const maxP=Math.min(pages,7);
+    const pag=`<div class="pagination">
+      <button class="page-btn" onclick="bkPage=Math.max(1,bkPage-1);renderBkList()" ${bkPage===1?'disabled':''}>←</button>
+      ${Array.from({length:maxP},(_,i)=>{const p=i+1;return`<button class="page-btn${p===bkPage?' active':''}" onclick="bkPage=${p};renderBkList()">${p}</button>`;}).join('')}
+      ${pages>7?`<span style="color:var(--text3)">... ${pages}</span>`:''}
+      <button class="page-btn" onclick="bkPage=Math.min(${pages},bkPage+1);renderBkList()" ${bkPage===pages?'disabled':''}>→</button>
+    </div>`;
+    set('bk-pagination',pag);
+  } else {set('bk-pagination','');}
+}
+
+function bkFormHTML(b){
+  b=b||{};
+  return`<div class="form-row">
+    <div class="form-group"><label class="form-label">Voiture</label>
+      <select class="form-input" id="bkf-voiture">
+        ${['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayman GTS','Cayenne Hybrid','Cayenne Turbo','Ferrari Portofino','Lamborghini Urus','Lamborghini Huracán','Macan GTS','Macan S','Mercedes GLC','Range Rover Evoque','Taycan'].map(v=>`<option ${(b.voiture||'')=== v?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Client</label><input class="form-input" id="bkf-client" value="${esc(b.client||'')}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="bkf-email" value="${esc(b.email||'')}"></div>
+    <div class="form-group"><label class="form-label">Téléphone</label><input class="form-input" id="bkf-tel" value="${esc(b.tel||'')}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Début</label><input class="form-input" type="date" id="bkf-debut" value="${b.debut||''}"></div>
+    <div class="form-group"><label class="form-label">Fin</label><input class="form-input" type="date" id="bkf-fin" value="${b.fin||''}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Prix (€)</label><input class="form-input" type="number" id="bkf-prix" value="${b.prix||''}"></div>
+    <div class="form-group"><label class="form-label">KM inclus</label><input class="form-input" type="number" id="bkf-km" value="${b.km||''}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Source</label>
+      <select class="form-input" id="bkf-source">
+        ${['Direct','Roadstr','MRM'].map(s=>`<option ${(b.source||'')=== s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Statut</label>
+      <select class="form-input" id="bkf-statut">
+        ${['En cours','Fermé','Accident'].map(s=>`<option ${(b.statut||'')=== s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+  </div>
+  <div class="form-group"><label class="form-label">Lien contrat Google Doc</label><input class="form-input" id="bkf-contrat" placeholder="https://docs.google.com/..." value="${esc(b.lien_contrat||'')}"></div>
+  <div class="form-group"><label class="form-label">Pick-up</label><input class="form-input" id="bkf-pickup" value="${esc(b.pick_up||'')}"></div>
+  <div class="form-group"><label class="form-label">Commentaire</label><textarea class="form-input" id="bkf-comment" rows="2">${esc(b.commentaire||'')}</textarea></div>`;
+}
+
+function getBkFormData(){
+  return{
+    voiture:document.getElementById('bkf-voiture').value,
+    client:document.getElementById('bkf-client').value,
+    email:document.getElementById('bkf-email').value,
+    tel:document.getElementById('bkf-tel').value,
+    debut:document.getElementById('bkf-debut').value||null,
+    fin:document.getElementById('bkf-fin').value||null,
+    prix:parseFloat(document.getElementById('bkf-prix').value)||0,
+    km:parseInt(document.getElementById('bkf-km').value)||null,
+    source:document.getElementById('bkf-source').value,
+    statut:document.getElementById('bkf-statut').value,
+    lien_contrat:document.getElementById('bkf-contrat').value||null,
+    pick_up:document.getElementById('bkf-pickup').value,
+    commentaire:document.getElementById('bkf-comment').value,
+  };
+}
+
+function openAddBooking(){
+  openModal('Nouveau booking', bkFormHTML(),async()=>{
+    const b={id:'fb'+Date.now(),...getBkFormData()};
+    if(!b.client){alert('Client requis');return;}
+    const{data}=await db.from('ferdinand_bookings').insert(b).select();
+    if(data)bkData.unshift(data[0]);
+    closeModal();renderBkList();
+  });
+}
+
+function openEditBooking(id){
+  const b=bkData.find(x=>x.id===id);if(!b)return;
+  // Override modal footer to add delete button
+  openModal(`Modifier — ${b.client||'Booking'}`, bkFormHTML(b),async()=>{
+    const u=getBkFormData();
+    await db.from('ferdinand_bookings').update(u).eq('id',id);
+    Object.assign(b,u);closeModal();renderBkList();
+  });
+  // Add delete button to modal footer
+  setTimeout(()=>{
+    const footer=document.querySelector('.modal-footer');
+    if(footer&&!footer.querySelector('.btn-del')){
+      const del=document.createElement('button');
+      del.className='btn btn-danger btn-del';del.textContent='Supprimer';del.style.marginRight='auto';
+      del.onclick=async()=>{if(!confirm('Supprimer ce booking ?'))return;await db.from('ferdinand_bookings').delete().eq('id',id);bkData=bkData.filter(x=>x.id!==id);closeModal();renderBkList();};
+      footer.insertBefore(del,footer.firstChild);
+    }
+  },50);
+}
+
+// ─── STRIPE ───────────────────────────────────────────────
+function renderStripe(){
+  set('page-content',`<div class="page-header">
+    <div><div class="page-title">Stripe — Paiements</div><div class="page-sub">Ferdinand & Friends · book@ferdinandparis.com</div></div>
+  </div>
+  <div class="card" style="background:var(--blue-bg);border-color:#B5D4F4;">
+    <div style="font-size:14px;font-weight:600;color:var(--blue);margin-bottom:8px;">Connexion Stripe sécurisée</div>
+    <div style="font-size:13px;color:var(--blue);line-height:1.6;">Pour afficher tes transactions Stripe en temps réel, il faut créer une clé restreinte (lecture seule) dans Stripe.<br><br>
+    <strong>Stripe → Developers → API Keys → Create restricted key</strong><br>
+    Permissions : Charges (Read) + Payment Intents (Read)<br><br>
+    Une fois créée, donne-la à Claude pour finaliser la connexion.</div>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Transactions mentionnées dans les bookings</div>
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Client</th><th>Voiture</th><th>Date</th><th>Montant</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>Nicolas Beyaz</td><td>911 Carrera S</td><td>24 mars 2026</td><td style="color:var(--green);font-weight:600;">850€</td><td>Acompte Stripe</td></tr>
+        <tr><td>Mohamed RAMADAN</td><td>Boxster</td><td>17 oct 2025</td><td style="color:var(--green);font-weight:600;">500€</td><td>Acompte Stripe</td></tr>
+      </tbody>
+    </table></div>
+    <div style="font-size:12px;color:var(--text3);margin-top:8px;">Ces transactions ont été identifiées dans les commentaires de tes bookings. D'autres transactions existent dans Stripe — elles seront visibles dès la connexion.</div>
+  </div>`);
+}
+
+// ─── ELISA ────────────────────────────────────────────────
+let elisaView='agenda';let elisaTasks=[];
+let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
+const VACANCES=[{label:'Printemps 2025',start:'2025-04-19',end:'2025-05-04'},{label:'Été 2025',start:'2025-07-05',end:'2025-08-31'},{label:'Toussaint 2025',start:'2025-10-18',end:'2025-11-02'},{label:'Noël 2025',start:'2025-12-20',end:'2026-01-04'},{label:'Hiver 2026',start:'2026-02-14',end:'2026-03-01'},{label:'Printemps 2026',start:'2026-04-11',end:'2026-04-26'}];
 const REF_PAPA=new Date(2025,3,2);
 
-function getPeriod(date){
-  for(const v of VACANCES){const s=new Date(v.start),e=new Date(v.end);e.setHours(23,59,59);if(date>=s&&date<=e)return{type:'vac',label:v.label};}
-  const d=new Date(date);d.setHours(12);const ref=new Date(REF_PAPA);ref.setHours(12);
-  const diff=Math.floor((d-ref)/(1000*60*60*24));
-  const cycle=((diff%14)+14)%14;
-  return{type:cycle<=5?'papa':'maman'};
-}
+function getPeriod(date){for(const v of VACANCES){const s=new Date(v.start),e=new Date(v.end);e.setHours(23,59,59);if(date>=s&&date<=e)return{type:'vac',label:v.label};}const d=new Date(date);d.setHours(12);const ref=new Date(REF_PAPA);ref.setHours(12);const diff=Math.floor((d-ref)/(1000*60*60*24));const cycle=((diff%14)+14)%14;return{type:cycle<=5?'papa':'maman'};}
 function isVac(date){for(const v of VACANCES){const s=new Date(v.start),e=new Date(v.end);e.setHours(23,59,59);if(date>=s&&date<=e)return true;}return false;}
 function isSchool(date){const dow=date.getDay();if(dow===0||dow===6||dow===3)return false;return!isVac(date);}
 function isTrans(date){const d=new Date(date);d.setHours(12);const ref=new Date(REF_PAPA);ref.setHours(12);const diff=Math.floor((d-ref)/(1000*60*60*24));const cycle=((diff%14)+14)%14;return cycle===0||cycle===5;}
 
 async function renderElisa(){
   set('page-content','<div class="loading"><div class="spinner"></div> Chargement...</div>');
-  const {data}=await db.from('elisa_tasks').select('*').order('date');
-  elisaTasks=data||[];
-  renderElisaHTML();
+  const{data}=await db.from('elisa_tasks').select('*').order('date');
+  elisaTasks=data||[];renderElisaHTML();
 }
 
 function renderElisaHTML(){
-  const p=getPeriod(today());
-  const isPapa=p.type==='papa'||p.type==='vac';
-  let nextTrans=new Date(today());
-  for(let i=1;i<=14;i++){const d=new Date(today());d.setDate(d.getDate()+i);if(isTrans(d)){nextTrans=d;break;}}
+  const p=getPeriod(today());const isPapa=p.type==='papa';
+  let nextTrans=new Date(today());for(let i=1;i<=14;i++){const d=new Date(today());d.setDate(d.getDate()+i);if(isTrans(d)){nextTrans=d;break;}}
   const nextVac=VACANCES.find(v=>new Date(v.start)>today());
-
   let html=`<div class="page-header">
-    <div><div class="page-title">Elisa — Vie de père</div><div class="page-sub">Garde alternée · École Saint François d'Assise, Boulogne-Billancourt</div></div>
+    <div><div class="page-title">Elisa</div><div class="page-sub">École Saint François d'Assise · Boulogne-Billancourt</div></div>
     <button class="btn btn-primary" onclick="openAddElisaTask()">+ Tâche</button>
   </div>
   <div class="stats-row">
-    <div class="stat" style="background:${p.type==='papa'?'var(--green-bg)':'var(--pink-bg)'};">
-      <div class="stat-label" style="color:${p.type==='papa'?'var(--green)':'var(--pink)'};">Cette semaine</div>
-      <div class="stat-val" style="font-size:15px;color:${p.type==='papa'?'var(--green)':'var(--pink)'};">Semaine ${p.type==='papa'?'papa':'maman'}</div>
+    <div class="stat" style="background:${isPapa?'var(--green-bg)':'var(--pink-bg)'}">
+      <div class="stat-label" style="color:${isPapa?'var(--green)':'var(--pink)'}">Cette semaine</div>
+      <div class="stat-val" style="font-size:15px;color:${isPapa?'var(--green)':'var(--pink)'}">${isPapa?'Papa ♥':'Maman'}</div>
     </div>
-    <div class="stat"><div class="stat-label">Prochaine transition</div><div class="stat-val" style="font-size:14px;">${nextTrans.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</div></div>
-    <div class="stat"><div class="stat-label">Prochaines vacances</div><div class="stat-val" style="font-size:13px;">${nextVac?nextVac.label:'—'}</div></div>
-    <div class="stat"><div class="stat-label">Tâches ouvertes</div><div class="stat-val">${elisaTasks.filter(t=>!t.done).length}</div></div>
+    <div class="stat"><div class="stat-label">Prochaine transition</div><div class="stat-val" style="font-size:13px">${nextTrans.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</div></div>
+    <div class="stat"><div class="stat-label">Prochaines vacances</div><div class="stat-val" style="font-size:12px">${nextVac?nextVac.label:'—'}</div></div>
+    <div class="stat"><div class="stat-label">Tâches</div><div class="stat-val">${elisaTasks.filter(t=>!t.done).length}</div></div>
   </div>
   <div class="tabs">
     <button class="tab${elisaView==='agenda'?' active':''}" onclick="setElisaView('agenda')">Agenda</button>
@@ -669,93 +757,67 @@ function renderElisaHTML(){
     <button class="tab${elisaView==='infos'?' active':''}" onclick="setElisaView('infos')">Infos école</button>
   </div>
   <div id="elisa-view"></div>`;
-  set('page-content',html);
-  renderElisaView();
+  set('page-content',html);renderElisaView();
 }
 
 function setElisaView(v){elisaView=v;renderElisaView();}
-
-function renderElisaView(){
-  if(elisaView==='agenda') renderElisaAgenda();
-  else if(elisaView==='semaine') renderElisaSemaine();
-  else if(elisaView==='taches') renderElisaTaches();
-  else if(elisaView==='infos') renderElisaInfos();
-}
+function renderElisaView(){if(elisaView==='agenda')renderElisaAgenda();else if(elisaView==='semaine')renderElisaSemaine();else if(elisaView==='taches')renderElisaTaches();else renderElisaInfos();}
 
 function renderElisaAgenda(){
   const first=new Date(calYear,calMonth,1),last=new Date(calYear,calMonth+1,0);
   const startDow=(first.getDay()+6)%7;
   const monthLabel=first.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
   const todayStr=today().toISOString().split('T')[0];
-
-  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
     <button class="btn btn-sm" onclick="calPrev()">←</button>
-    <span style="font-size:15px;font-weight:600;flex:1;text-align:center;">${monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1)}</span>
+    <span style="font-size:15px;font-weight:600;flex:1;text-align:center">${monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1)}</span>
     <button class="btn btn-sm" onclick="calNext()">→</button>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:10px;font-size:12px;flex-wrap:wrap;">
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:#E1F5EE;border:1px solid #9FE1CB;display:inline-block;"></span>Papa</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:#FBEAF0;border:1px solid #F4C0D1;display:inline-block;"></span>Maman</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:#C0DD97;display:inline-block;"></span>Vacances papa</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:#F0997B;display:inline-block;"></span>Vacances maman</span>
+  <div style="display:flex;gap:8px;margin-bottom:10px;font-size:12px;flex-wrap:wrap">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E1F5EE;border:1px solid #9FE1CB;display:inline-block"></span>Papa</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FBEAF0;border:1px solid #F4C0D1;display:inline-block"></span>Maman</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#C0DD97;display:inline-block"></span>Vac. papa</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#F0997B;display:inline-block"></span>Vac. maman</span>
   </div>
   <div class="cal-grid">
     ${['Lu','Ma','Me','Je','Ve','Sa','Di'].map(d=>`<div class="cal-head">${d}</div>`).join('')}
     ${Array(startDow).fill('<div class="cal-day cal-day-empty"></div>').join('')}`;
-
   for(let d=1;d<=last.getDate();d++){
-    const date=new Date(calYear,calMonth,d);
-    const p=getPeriod(date);
-    const vac=isVac(date);
-    const trans=isTrans(date);
-    const school=isSchool(date);
-    const dow=date.getDay();
+    const date=new Date(calYear,calMonth,d);const p=getPeriod(date);const vac=isVac(date);const trans=isTrans(date);const school=isSchool(date);const dow=date.getDay();
     const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday=dateStr===todayStr;
-
     let cls='cal-day ';
-    if(vac) cls+=p.type==='papa'?'cal-day-vac-papa':'cal-day-vac-maman';
+    if(vac)cls+=p.type==='papa'?'cal-day-vac-papa':'cal-day-vac-maman';
     else cls+=p.type==='papa'?'cal-day-papa':'cal-day-maman';
-
     let pills='';
-    if(school&&p.type==='papa'){if(dow!==3)pills+=`<span class="cal-pill" style="background:#B5D4F4;color:#0C447C;">Dépôt 8h20</span>`;}
-    if(dow===3&&p.type==='papa'&&!vac)pills+=`<span class="cal-pill" style="background:#CECBF6;color:#3C3489;">Danse 15h30</span>`;
-    if(trans)pills+=`<span class="cal-pill" style="background:#FAC775;color:#633806;">${dow===3?'→ Papa':'→ Maman'}</span>`;
-
-    html+=`<div class="${cls}" style="${isToday?'outline:2px solid var(--blue);outline-offset:-2px;':''}">
-      <div class="cal-day-num">${d}${isToday?' ●':''}</div>${pills}
-    </div>`;
+    if(school&&p.type==='papa'&&dow!==3)pills+=`<span class="cal-pill" style="background:#B5D4F4;color:#0C447C">Dépôt</span>`;
+    if(dow===3&&p.type==='papa'&&!vac)pills+=`<span class="cal-pill" style="background:#CECBF6;color:#3C3489">Danse</span>`;
+    if(trans)pills+=`<span class="cal-pill" style="background:#FAC775;color:#633806">${dow===3?'→Papa':'→Maman'}</span>`;
+    html+=`<div class="${cls}" style="${isToday?'outline:2px solid var(--blue);outline-offset:-2px':''}"><div class="cal-day-num">${d}${isToday?' •':''}</div>${pills}</div>`;
   }
-  html+=`</div>`;
-  set('elisa-view',html);
+  html+=`</div>`;set('elisa-view',html);
 }
-
 function calPrev(){if(calMonth===0){calMonth=11;calYear--;}else calMonth--;renderElisaAgenda();}
 function calNext(){if(calMonth===11){calMonth=0;calYear++;}else calMonth++;renderElisaAgenda();}
 
 function renderElisaSemaine(){
-  const now=today();const dow=(now.getDay()+6)%7;
-  const mon=new Date(now);mon.setDate(mon.getDate()-dow);
+  const now=today();const dow=(now.getDay()+6)%7;const mon=new Date(now);mon.setDate(mon.getDate()-dow);
   const days=Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(d.getDate()+i);return d;});
-  const dayNames=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-
+  const dn=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
   let html='';
   days.forEach((date,i)=>{
-    const p=getPeriod(date);const vac=isVac(date);const school=isSchool(date);
-    const dow2=date.getDay();const isPapa=p.type==='papa';const trans=isTrans(date);
-    const isToday=date.getTime()===now.getTime();
+    const p=getPeriod(date);const vac=isVac(date);const school=isSchool(date);const dow2=date.getDay();const isPapa=p.type==='papa';const trans=isTrans(date);const isToday=date.getTime()===now.getTime();
     const evts=[];
     if(school&&isPapa&&dow2!==3)evts.push({t:'Dépôt école',s:'8h15–8h20 · Florian',c:'#B5D4F4',tc:'#0C447C'});
     if(school&&isPapa&&(dow2===4||dow2===5))evts.push({t:'Récupération',s:'16h30 ou 17h45 · Florian',c:'#9FE1CB',tc:'#085041'});
     if(dow2===3&&isPapa&&!vac)evts.push({t:'Danse',s:'15h30–16h30',c:'#CECBF6',tc:'#3C3489'});
     if(trans)evts.push({t:dow2===3?'Début semaine papa':'→ Maman',s:dow2===3?'Arrivée mercredi après-midi':'Dépôt école puis Magali',c:'#FAC775',tc:'#633806'});
-
-    html+=`<div style="background:${isPapa?'#E1F5EE':'#FBEAF0'};border:1px solid ${isPapa?'#9FE1CB':'#F4C0D1'};border-radius:10px;padding:10px 14px;margin-bottom:8px;${isToday?'outline:2px solid var(--blue);outline-offset:-2px;':''}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-weight:600;font-size:13px;color:${isPapa?'#085041':'#72243E'};">${dayNames[i]} ${date.getDate()}</span>
+    html+=`<div style="background:${isPapa?'#E1F5EE':'#FBEAF0'};border:1px solid ${isPapa?'#9FE1CB':'#F4C0D1'};border-radius:10px;padding:10px 14px;margin-bottom:8px;${isToday?'outline:2px solid var(--blue);outline-offset:-2px':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-weight:700;font-size:13px;color:${isPapa?'#085041':'#72243E'}">${dn[i]} ${date.getDate()}</span>
         <span class="badge ${isPapa?'badge-green':'badge-pink'}">${isPapa?'Papa':'Maman'}</span>
       </div>
-      ${evts.map(e=>`<div style="background:${e.c};border-radius:5px;padding:4px 8px;margin-bottom:4px;"><div style="font-size:12px;font-weight:600;color:${e.tc};">${e.t}</div><div style="font-size:11px;color:${e.tc};opacity:.8;">${e.s}</div></div>`).join('')||'<div style="font-size:12px;color:#888;">Jour libre</div>'}
+      ${evts.map(e=>`<div style="background:${e.c};border-radius:5px;padding:4px 8px;margin-bottom:4px"><div style="font-size:12px;font-weight:600;color:${e.tc}">${e.t}</div><div style="font-size:11px;color:${e.tc};opacity:.8">${e.s}</div></div>`).join('')||'<div style="font-size:12px;color:#888">Jour libre</div>'}
     </div>`;
   });
   set('elisa-view',html);
@@ -766,341 +828,185 @@ function renderElisaTaches(){
   const done=elisaTasks.filter(t=>t.done);
   const PRIO={high:'var(--red)',med:'var(--amber)',low:'var(--green)'};
   const ASSIGN={florian:'Florian',papa:'Moi',magali:'Magali'};
-
   let html=`<div class="filters">
-    <button class="filter-pill active" onclick="filterElisaTasks('all',this)">Toutes</button>
-    <button class="filter-pill" onclick="filterElisaTasks('florian',this)">Florian</button>
-    <button class="filter-pill" onclick="filterElisaTasks('papa',this)">Moi</button>
-    <button class="filter-pill" onclick="filterElisaTasks('magali',this)">Magali</button>
+    <button class="filter-pill active" onclick="filterET('all',this)">Toutes</button>
+    <button class="filter-pill" onclick="filterET('florian',this)">Florian</button>
+    <button class="filter-pill" onclick="filterET('papa',this)">Moi</button>
+    <button class="filter-pill" onclick="filterET('magali',this)">Magali</button>
   </div>
-  <div class="card" id="elisa-task-list">`;
-
-  if(!open.length) html+='<div style="color:var(--text2);font-size:13px;padding:8px 0;">Aucune tâche en cours.</div>';
-  open.forEach(t=>{
-    html+=`<div class="task-item" data-assign="${t.assign}">
-      <div class="task-dot" style="background:${PRIO[t.priority]||PRIO.med};"></div>
-      <div style="flex:1;">
-        <div style="font-size:14px;">${t.description}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px;">${ASSIGN[t.assign]||t.assign}${t.date?' · '+fmtDate(t.date):''}</div>
-        ${t.notes?`<div style="font-size:12px;color:var(--text3);font-style:italic;">${t.notes}</div>`:''}
+  <div class="card" id="et-list">
+    ${open.length?open.map(t=>`<div class="task-item" data-assign="${t.assign}">
+      <div class="task-dot" style="background:${PRIO[t.priority]||PRIO.med}"></div>
+      <div style="flex:1"><div style="font-size:14px">${t.description}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">${ASSIGN[t.assign]||t.assign}${t.date?' · '+fmtDate(t.date):''}</div></div>
+      <div style="display:flex;gap:4px">
+        <button onclick="doneET('${t.id}')" style="border:none;background:none;cursor:pointer;font-size:16px;color:var(--green)">✓</button>
+        <button onclick="delET('${t.id}')" style="border:none;background:none;cursor:pointer;font-size:16px;color:var(--text3)">×</button>
       </div>
-      <div style="display:flex;gap:4px;">
-        <button onclick="doneElisaTask('${t.id}')" style="border:none;background:none;cursor:pointer;font-size:16px;color:var(--green);" title="Fait">✓</button>
-        <button onclick="deleteElisaTask('${t.id}')" style="border:none;background:none;cursor:pointer;font-size:16px;color:var(--text3);">×</button>
-      </div>
-    </div>`;
-  });
-
-  if(done.length) html+=`<div style="margin-top:12px;font-size:12px;color:var(--text3);margin-bottom:6px;">Terminées (${done.length})</div>`+done.slice(0,3).map(t=>`<div style="opacity:.5;text-decoration:line-through;font-size:13px;padding:4px 0;">${t.description}</div>`).join('');
-
-  html+=`</div>`;
+    </div>`).join(''):'<div style="color:var(--text2);font-size:13px;padding:8px 0">Aucune tâche.</div>'}
+    ${done.length?`<div style="margin-top:10px;font-size:12px;color:var(--text3);margin-bottom:6px">Terminées (${done.length})</div>${done.slice(0,3).map(t=>`<div style="opacity:.5;text-decoration:line-through;font-size:13px;padding:4px 0">${t.description}</div>`).join('')}`:''}
+  </div>`;
   set('elisa-view',html);
 }
-
-function filterElisaTasks(f,btn){
-  document.querySelectorAll('#elisa-task-list .task-item').forEach(el=>{
-    el.style.display=(f==='all'||el.dataset.assign===f)?'flex':'none';
-  });
-  document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-}
+function filterET(f,btn){document.querySelectorAll('#et-list .task-item').forEach(el=>el.style.display=(f==='all'||el.dataset.assign===f)?'flex':'none');document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 
 function renderElisaInfos(){
-  set('elisa-view',`
-    <div class="card"><div class="card-title">École</div>
-      <div style="font-weight:600;font-size:14px;">École Privée Saint François d'Assise</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px;">54 Rue de l'Ancienne Mairie, 92100 Boulogne-Billancourt</div>
-      <a href="https://maps.google.com/?q=54+Rue+de+l+Ancienne+Mairie+92100+Boulogne-Billancourt" target="_blank" style="font-size:12px;color:var(--blue);margin-top:6px;display:block;">Voir sur Maps ↗</a>
-    </div>
-    <div class="card"><div class="card-title">Horaires</div>
-      <table class="table"><tr><td style="color:var(--text2);">Dépôt</td><td><strong>8h15 – 8h25</strong></td></tr>
-      <tr><td style="color:var(--text2);">Sortie normale</td><td><strong>16h30</strong></td></tr>
-      <tr><td style="color:var(--text2);">Avec étude</td><td><strong>17h45</strong></td></tr>
-      <tr><td style="color:var(--text2);">Mercredi</td><td><strong>Pas école</strong></td></tr></table>
-    </div>
-    <div class="card"><div class="card-title">Activités</div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;">
-        <span>Danse</span><span class="badge badge-purple">Mercredi 15h30 – 16h30</span>
-      </div>
-    </div>
-    <div class="card"><div class="card-title">Contacts</div>
-      <table class="table">
-        <tr><td style="color:var(--text2);">Florian de Mazière</td><td><a href="mailto:florian@ferdinandparis.com" style="color:var(--blue);">florian@ferdinandparis.com</a></td></tr>
-        <tr><td style="color:var(--text2);">Magali Brunel</td><td><a href="mailto:magali.anne.brunel@gmail.com" style="color:var(--blue);">magali.anne.brunel@gmail.com</a></td></tr>
-      </table>
-    </div>`);
+  set('elisa-view',`<div class="card"><div style="font-weight:600;font-size:14px;margin-bottom:6px">École Privée Saint François d'Assise</div>
+    <div style="color:var(--text2);font-size:13px">54 Rue de l'Ancienne Mairie, 92100 Boulogne-Billancourt</div>
+    <a href="https://maps.google.com/?q=54+Rue+Ancienne+Mairie+92100+Boulogne" target="_blank" style="font-size:12px;color:var(--blue);margin-top:6px;display:block">Voir sur Maps ↗</a></div>
+  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Horaires</div>
+    <div class="pay-row"><span style="color:var(--text2)">Dépôt</span><strong>8h15 – 8h25</strong></div>
+    <div class="pay-row"><span style="color:var(--text2)">Sortie normale</span><strong>16h30</strong></div>
+    <div class="pay-row"><span style="color:var(--text2)">Avec étude</span><strong>17h45</strong></div>
+    <div class="pay-row"><span style="color:var(--text2)">Mercredi</span><strong>Pas école</strong></div>
+    <div class="pay-row"><span style="color:var(--text2)">Danse</span><strong>Mercredi 15h30–16h30</strong></div>
+  </div>
+  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Contacts</div>
+    <div class="pay-row"><span style="color:var(--text2)">Florian de Mazière</span><a href="mailto:florian@ferdinandparis.com" style="color:var(--blue)">florian@ferdinandparis.com</a></div>
+    <div class="pay-row"><span style="color:var(--text2)">Magali Brunel</span><a href="mailto:magali.anne.brunel@gmail.com" style="color:var(--blue)">magali.anne.brunel@gmail.com</a></div>
+  </div>`);
 }
 
 function openAddElisaTask(){
-  openModal('Nouvelle tâche', `
+  openModal('Nouvelle tâche',`
     <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="et-desc" placeholder="ex: Récupérer Elisa vendredi 16h30"></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Assigné à</label><select class="form-input" id="et-assign"><option value="florian">Florian</option><option value="papa">Moi</option><option value="magali">Magali</option></select></div>
-      <div class="form-group"><label class="form-label">Priorité</label><select class="form-input" id="et-prio"><option value="high">Urgente</option><option value="med" selected>Normale</option><option value="low">Basse</option></select></div>
-    </div>
-    <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="et-date"></div>
-    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="et-notes" rows="2"></textarea></div>`,
-  async () => {
+    <div class="form-row"><div class="form-group"><label class="form-label">Assigné à</label><select class="form-input" id="et-assign"><option value="florian">Florian</option><option value="papa">Moi</option><option value="magali">Magali</option></select></div>
+    <div class="form-group"><label class="form-label">Priorité</label><select class="form-input" id="et-prio"><option value="high">Urgente</option><option value="med" selected>Normale</option><option value="low">Basse</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="et-date"></div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="et-notes"></div></div>`,
+  async()=>{
     const t={id:'et'+Date.now(),description:document.getElementById('et-desc').value,assign:document.getElementById('et-assign').value,priority:document.getElementById('et-prio').value,date:document.getElementById('et-date').value||null,notes:document.getElementById('et-notes').value,done:false};
     if(!t.description){alert('Description requise');return;}
-    const {data}=await db.from('elisa_tasks').insert(t).select();
-    if(data)elisaTasks.push(data[0]);
-    closeModal();renderElisaTaches();
+    const{data}=await db.from('elisa_tasks').insert(t).select();if(data)elisaTasks.push(data[0]);closeModal();renderElisaTaches();
   });
 }
+async function doneET(id){await db.from('elisa_tasks').update({done:true}).eq('id',id);const t=elisaTasks.find(x=>x.id===id);if(t)t.done=true;renderElisaTaches();}
+async function delET(id){await db.from('elisa_tasks').delete().eq('id',id);elisaTasks=elisaTasks.filter(x=>x.id!==id);renderElisaTaches();}
 
-async function doneElisaTask(id){
-  await db.from('elisa_tasks').update({done:true}).eq('id',id);
-  const t=elisaTasks.find(x=>x.id===id);if(t)t.done=true;renderElisaTaches();
-}
-
-async function deleteElisaTask(id){
-  await db.from('elisa_tasks').delete().eq('id',id);
-  elisaTasks=elisaTasks.filter(x=>x.id!==id);renderElisaTaches();
-}
-
-// ─── AIRBNB ──────────────────────────────────────────────────
-let airbnbBien='touquet';
-let airbnbView='reservations';
-let tqBookings=[], paBookings=[];
+// ─── AIRBNB ───────────────────────────────────────────────
+let airbnbBien='touquet';let airbnbView='reservations';let tqBk=[],paBk=[];
 
 async function renderAirbnb(){
   set('page-content','<div class="loading"><div class="spinner"></div> Chargement AirBnB...</div>');
-  const [tq,pa]=await Promise.all([
-    db.from('bookings_touquet').select('*').order('arrive'),
-    db.from('bookings_paris').select('*').order('arrive'),
-  ]);
-  tqBookings=tq.data||[];paBookings=pa.data||[];
-  renderAirbnbHTML();
+  const[tq,pa]=await Promise.all([db.from('bookings_touquet').select('*').order('arrive'),db.from('bookings_paris').select('*').order('arrive')]);
+  tqBk=tq.data||[];paBk=pa.data||[];renderAirbnbHTML();
 }
 
 function renderAirbnbHTML(){
-  const bookings=airbnbBien==='touquet'?tqBookings:paBookings;
-  const upcoming=bookings.filter(b=>b.arrive&&new Date(b.arrive)>=today()&&!b.annule);
-  const revUpcoming=upcoming.reduce((s,b)=>s+(b.airbnb||0)+(b.direct||0),0);
-  const rev2025=bookings.filter(b=>b.arrive&&b.arrive.startsWith('2025')&&!b.annule).reduce((s,b)=>s+(b.airbnb||0)+(b.direct||0),0);
-
+  const bk=airbnbBien==='touquet'?tqBk:paBk;
+  const upcoming=bk.filter(b=>b.arrive&&new Date(b.arrive)>=today()&&!b.annule);
+  const revUp=upcoming.reduce((s,b)=>s+(b.airbnb||0)+(b.direct||0),0);
   let html=`<div class="page-header">
     <div><div class="page-title">AirBnB — Mes biens</div><div class="page-sub">Luxury Forest Retreat · Appartement Trocadéro</div></div>
-    <button class="btn btn-primary" onclick="openAddBooking()">+ Réservation</button>
+    <button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button>
   </div>
-  <div class="tabs" style="margin-bottom:12px;">
-    <button class="tab${airbnbBien==='touquet'?' active':''}" onclick="setAirbnbBien('touquet')">Le Touquet</button>
-    <button class="tab${airbnbBien==='paris'?' active':''}" onclick="setAirbnbBien('paris')">Paris</button>
+  <div class="tabs" style="margin-bottom:12px">
+    <button class="tab${airbnbBien==='touquet'?' active':''}" onclick="setABien('touquet')">Le Touquet</button>
+    <button class="tab${airbnbBien==='paris'?' active':''}" onclick="setABien('paris')">Paris</button>
   </div>
   <div class="stats-row">
-    <div class="stat"><div class="stat-label">Résa à venir</div><div class="stat-val" style="color:var(--blue);">${upcoming.length}</div></div>
-    <div class="stat"><div class="stat-label">Pipeline futur</div><div class="stat-val" style="color:var(--green);">${fmt(revUpcoming)}€</div></div>
-    <div class="stat"><div class="stat-label">Revenus 2025</div><div class="stat-val" style="color:var(--green);">${fmt(rev2025)}€</div></div>
-    <div class="stat"><div class="stat-label">Total réservations</div><div class="stat-val">${bookings.filter(b=>!b.annule).length}</div></div>
+    <div class="stat"><div class="stat-label">À venir</div><div class="stat-val" style="color:var(--blue)">${upcoming.length}</div></div>
+    <div class="stat"><div class="stat-label">Pipeline</div><div class="stat-val" style="color:var(--green)">${fmt(revUp)}€</div></div>
+    <div class="stat"><div class="stat-label">Total résa</div><div class="stat-val">${bk.filter(b=>!b.annule).length}</div></div>
   </div>
   <div class="tabs">
-    <button class="tab${airbnbView==='reservations'?' active':''}" onclick="setAirbnbView('reservations')">Réservations</button>
-    <button class="tab${airbnbView==='compta'?' active':''}" onclick="setAirbnbView('compta')">Comptabilité</button>
+    <button class="tab${airbnbView==='reservations'?' active':''}" onclick="setAView('reservations')">Réservations</button>
+    <button class="tab${airbnbView==='compta'?' active':''}" onclick="setAView('compta')">Comptabilité</button>
   </div>
   <div id="airbnb-view"></div>`;
-  set('page-content',html);
-  renderAirbnbView();
+  set('page-content',html);renderAirbnbView();
 }
-
-function setAirbnbBien(b){airbnbBien=b;renderAirbnbHTML();}
-function setAirbnbView(v){airbnbView=v;renderAirbnbView();}
-
+function setABien(b){airbnbBien=b;renderAirbnbHTML();}
+function setAView(v){airbnbView=v;renderAirbnbView();}
 function renderAirbnbView(){
-  if(airbnbView==='reservations') renderAirbnbResas();
-  else renderAirbnbCompta();
-}
-
-function renderAirbnbResas(){
-  const bookings=airbnbBien==='touquet'?tqBookings:paBookings;
-  const sorted=[...bookings].sort((a,b)=>new Date(a.arrive)-new Date(b.arrive));
-  const groups={};
-  sorted.forEach(b=>{const k=(b.arrive||'0000-00').substring(0,7);if(!groups[k])groups[k]=[];groups[k].push(b);});
-
-  let html='<div class="filters"><button class="filter-pill active" id="resa-filter-upcoming" onclick="filterResaView(\'upcoming\',this)">À venir</button><button class="filter-pill" onclick="filterResaView(\'tous\',this)">Toutes</button></div><div id="resa-list">';
-
-  Object.keys(groups).sort().forEach(month=>{
-    const [y,m]=month.split('-');
-    const label=new Date(parseInt(y),parseInt(m)-1,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-    html+=`<div class="resa-month-header" data-month="${month}" style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px;">${label}</div>`;
-    groups[month].forEach(b=>{
-      const rev=(b.airbnb||0)+(b.direct||0)+(b.montant||0);
-      const isUp=b.arrive&&new Date(b.arrive)>=today()&&!b.annule;
-      const nights=b.arrive&&b.depart?Math.ceil((new Date(b.depart)-new Date(b.arrive))/(1000*60*60*24)):null;
-      html+=`<div class="booking-card${isUp?' upcoming':''} resa-item${isUp?' is-upcoming':''}" style="${b.annule?'opacity:.4;':''}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-          <div style="flex:1;">
-            <div style="display:flex;gap:6px;margin-bottom:5px;flex-wrap:wrap;">
-              <span class="badge ${b.source==='AirBNB'?'badge-red':b.source==='Gens de Confiance'?'badge-purple':'badge-green'}">${b.source||'—'}</span>
-              ${b.annule?'<span class="badge badge-gray">Annulé</span>':''}
-              ${b.pax?`<span style="font-size:11px;color:var(--text2);">${b.pax} pers.</span>`:''}
-              ${nights?`<span style="font-size:11px;color:var(--text2);">${nights} nuits</span>`:''}
-            </div>
-            <div style="font-weight:600;font-size:14px;">${b.client}</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px;">${fmtShort(b.arrive)} → ${fmtShort(b.depart)}</div>
-            ${b.notes?`<div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:2px;">${b.notes}</div>`:''}
-          </div>
-          <div style="text-align:right;flex-shrink:0;">
-            ${rev>0?`<div style="font-weight:600;font-size:15px;color:var(--green);">${fmt(rev)}€</div>`:''}
-            <button onclick="deleteBooking('${b.id}')" style="margin-top:6px;display:block;font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text2);">Suppr.</button>
-          </div>
-        </div>
-      </div>`;
-    });
-  });
-  html+='</div>';
-  set('airbnb-view',html);
-  filterResaView('upcoming',document.getElementById('resa-filter-upcoming'));
-}
-
-function filterResaView(f,btn){
-  document.querySelectorAll('.resa-item').forEach(el=>{
-    el.style.display=(f==='tous'||el.classList.contains('is-upcoming'))?'block':'none';
-  });
-  document.querySelectorAll('.resa-month-header').forEach(h=>{
-    if(f==='upcoming'){
-      const month=h.dataset.month;const hasUp=tqBookings.concat(paBookings).some(b=>b.arrive&&b.arrive.startsWith(month)&&new Date(b.arrive)>=today()&&!b.annule);
-      h.style.display=hasUp?'block':'none';
-    }else h.style.display='block';
-  });
-  document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-}
-
-function renderAirbnbCompta(){
-  const bookings=airbnbBien==='touquet'?tqBookings:paBookings;
-  const years=['2023','2024','2025','2026'];
-  let html='<div class="card"><div class="card-title">Revenus par année</div>';
-  const yearRevs=years.map(y=>{
-    const yb=bookings.filter(b=>b.arrive&&b.arrive.startsWith(y)&&!b.annule);
-    const ab=yb.reduce((s,b)=>s+(b.airbnb||0),0);
-    const dir=yb.reduce((s,b)=>s+(b.direct||0)+(b.montant||0),0);
-    return{y,ab,dir,total:ab+dir,n:yb.length};
-  });
-  const maxRev=Math.max(...yearRevs.map(r=>r.total),1);
-  yearRevs.forEach(r=>{
-    const pct=Math.round(r.total/maxRev*100);
-    html+=`<div class="bar-row">
-      <span class="bar-label">${r.y} (${r.n} résa)</span>
-      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:var(--green);"></div></div>
-      <span style="width:80px;text-align:right;font-weight:600;font-size:13px;">${fmt(r.total)}€</span>
-    </div>`;
-  });
-  const tot=bookings.filter(b=>!b.annule).reduce((s,b)=>s+(b.airbnb||0)+(b.direct||0)+(b.montant||0),0);
-  html+=`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:8px;display:flex;justify-content:space-between;font-weight:600;"><span>Total cumulé</span><span style="color:var(--green);">${fmt(tot)}€</span></div></div>`;
-
-  if(airbnbBien==='touquet'){
-    html+=`<div class="card"><div class="card-title">Données rapport AirBnB officiel</div>
-      <table class="table">
-        <tr><td style="color:var(--text2);">Revenus bruts AirBnB</td><td style="text-align:right;font-weight:600;">125 344€</td></tr>
-        <tr><td style="color:var(--text2);">Frais de service AirBnB</td><td style="text-align:right;color:var(--red);">-4 512€</td></tr>
-        <tr><td style="color:var(--text2);">Total net versé AirBnB</td><td style="text-align:right;font-weight:600;color:var(--green);">120 832€</td></tr>
-        <tr><td style="color:var(--text2);">Taxes reversées par AirBnB</td><td style="text-align:right;">3 610€</td></tr>
-      </table>
-    </div>`;
+  const bk=airbnbBien==='touquet'?tqBk:paBk;
+  if(airbnbView==='reservations'){
+    const upcoming=bk.filter(b=>b.arrive&&new Date(b.arrive)>=today()&&!b.annule).sort((a,b)=>new Date(a.arrive)-new Date(b.arrive));
+    const past=bk.filter(b=>b.arrive&&new Date(b.arrive)<today()&&!b.annule).sort((a,b)=>new Date(b.arrive)-new Date(a.arrive)).slice(0,10);
+    const html=`${upcoming.length?`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:8px">À venir</div>${upcoming.map(b=>abkCard(b,true)).join('')}`:''}
+    ${past.length?`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin:12px 0 8px">Passées (10 dernières)</div>${past.map(b=>abkCard(b,false)).join('')}`:''}
+    <button class="btn btn-sm" style="margin-top:8px" onclick="openAddABK()">+ Ajouter une réservation</button>`;
+    set('airbnb-view',html);
   } else {
-    html+=`<div class="card"><div class="card-title">Données rapport AirBnB officiel</div>
-      <table class="table">
-        <tr><td style="color:var(--text2);">Revenus bruts AirBnB</td><td style="text-align:right;font-weight:600;">42 608€</td></tr>
-        <tr><td style="color:var(--text2);">Frais de service AirBnB</td><td style="text-align:right;color:var(--red);">-1 453€</td></tr>
-        <tr><td style="color:var(--text2);">Total net versé AirBnB</td><td style="text-align:right;font-weight:600;color:var(--green);">38 650€</td></tr>
-        <tr><td style="color:var(--text2);">Taxes reversées par AirBnB</td><td style="text-align:right;">4 363€</td></tr>
-      </table>
-    </div>`;
+    const years=['2023','2024','2025','2026'];
+    const maxRev=Math.max(...years.map(y=>bk.filter(b=>b.arrive&&b.arrive.startsWith(y)&&!b.annule).reduce((s,b)=>s+(b.airbnb||0)+(b.direct||0),0)),1);
+    let html='<div class="card">';
+    years.forEach(y=>{
+      const r=bk.filter(b=>b.arrive&&b.arrive.startsWith(y)&&!b.annule).reduce((s,b)=>s+(b.airbnb||0)+(b.direct||0),0);
+      const n=bk.filter(b=>b.arrive&&b.arrive.startsWith(y)&&!b.annule).length;
+      html+=`<div class="bar-row"><span class="bar-label">${y} (${n})</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(r/maxRev*100)}%;background:var(--green)"></div></div><span style="width:80px;text-align:right;font-weight:600;font-size:13px">${fmt(r)}€</span></div>`;
+    });
+    html+=`</div>`;
+    if(airbnbBien==='touquet'){html+=`<div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Rapport AirBnB officiel</div><div class="pay-row"><span style="color:var(--text2)">Revenus bruts</span><strong>125 344€</strong></div><div class="pay-row"><span style="color:var(--text2)">Frais service AirBnB</span><span style="color:var(--red)">−4 512€</span></div><div class="pay-row"><span style="color:var(--text2)">Total net versé</span><strong style="color:var(--green)">120 832€</strong></div></div>`;}
+    else{html+=`<div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Rapport AirBnB officiel</div><div class="pay-row"><span style="color:var(--text2)">Revenus bruts</span><strong>42 608€</strong></div><div class="pay-row"><span style="color:var(--text2)">Frais service AirBnB</span><span style="color:var(--red)">−1 453€</span></div><div class="pay-row"><span style="color:var(--text2)">Total net versé</span><strong style="color:var(--green)">38 650€</strong></div></div>`;}
+    set('airbnb-view',html);
   }
-  set('airbnb-view',html);
 }
-
-function openAddBooking(){
-  const table=airbnbBien==='touquet'?'bookings_touquet':'bookings_paris';
-  openModal(`Nouvelle réservation — ${airbnbBien==='touquet'?'Le Touquet':'Paris'}`, `
-    <div class="form-group"><label class="form-label">Client</label><input class="form-input" id="nb-client"></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Source</label><select class="form-input" id="nb-source"><option value="AirBNB">AirBnB</option><option value="Direct">Direct</option><option value="Gens de Confiance">Gens de Confiance</option></select></div>
-      <div class="form-group"><label class="form-label">Personnes</label><input class="form-input" type="number" id="nb-pax"></div>
+function abkCard(b,isUp){
+  const rev=(b.airbnb||0)+(b.direct||0)+(b.montant||0);
+  const nights=b.arrive&&b.depart?Math.ceil((new Date(b.depart)-new Date(b.arrive))/(1000*60*60*24)):null;
+  return`<div class="booking-row${isUp?' upcoming':''}" style="${b.annule?'opacity:.4':''}">
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+        <span class="badge ${b.source==='AirBNB'?'badge-red':b.source==='Gens de Confiance'?'badge-purple':'badge-green'}">${b.source||'—'}</span>
+        ${b.pax?`<span style="font-size:11px;color:var(--text2)">${b.pax} pers.</span>`:''}
+        ${nights?`<span style="font-size:11px;color:var(--text2)">${nights} nuits</span>`:''}
+      </div>
+      <div style="font-weight:600;font-size:14px">${b.client}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">${fmtShort(b.arrive)} → ${fmtShort(b.depart)}</div>
+      ${b.notes?`<div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:2px">${b.notes}</div>`:''}
     </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Arrivée</label><input class="form-input" type="date" id="nb-arrive"></div>
-      <div class="form-group"><label class="form-label">Départ</label><input class="form-input" type="date" id="nb-depart"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Montant AirBnB (€)</label><input class="form-input" type="number" id="nb-airbnb"></div>
-      <div class="form-group"><label class="form-label">Montant Direct (€)</label><input class="form-input" type="number" id="nb-direct"></div>
-    </div>
-    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="nb-notes" rows="2"></textarea></div>`,
-  async () => {
-    const b={id:'b'+Date.now(),client:document.getElementById('nb-client').value,source:document.getElementById('nb-source').value,arrive:document.getElementById('nb-arrive').value||null,depart:document.getElementById('nb-depart').value||null,pax:parseInt(document.getElementById('nb-pax').value)||null,airbnb:parseFloat(document.getElementById('nb-airbnb').value)||0,direct:parseFloat(document.getElementById('nb-direct').value)||0,notes:document.getElementById('nb-notes').value,annule:false};
+    ${rev>0?`<div style="font-weight:700;font-size:15px;color:var(--green);flex-shrink:0">${fmt(rev)}€</div>`:''}
+  </div>`;
+}
+function openAddABK(){
+  const tbl=airbnbBien==='touquet'?'bookings_touquet':'bookings_paris';
+  openModal(`Nouvelle résa — ${airbnbBien==='touquet'?'Le Touquet':'Paris'}`,`
+    <div class="form-group"><label class="form-label">Client</label><input class="form-input" id="ab-client"></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Source</label><select class="form-input" id="ab-source"><option value="AirBNB">AirBnB</option><option value="Direct">Direct</option><option value="Gens de Confiance">Gens de Confiance</option></select></div>
+    <div class="form-group"><label class="form-label">Personnes</label><input class="form-input" type="number" id="ab-pax"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Arrivée</label><input class="form-input" type="date" id="ab-arrive"></div>
+    <div class="form-group"><label class="form-label">Départ</label><input class="form-input" type="date" id="ab-depart"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Montant AirBnB (€)</label><input class="form-input" type="number" id="ab-airbnb"></div>
+    <div class="form-group"><label class="form-label">Montant Direct (€)</label><input class="form-input" type="number" id="ab-direct"></div></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="ab-notes" rows="2"></textarea></div>`,
+  async()=>{
+    const b={id:'b'+Date.now(),client:document.getElementById('ab-client').value,source:document.getElementById('ab-source').value,arrive:document.getElementById('ab-arrive').value||null,depart:document.getElementById('ab-depart').value||null,pax:parseInt(document.getElementById('ab-pax').value)||null,airbnb:parseFloat(document.getElementById('ab-airbnb').value)||0,direct:parseFloat(document.getElementById('ab-direct').value)||0,notes:document.getElementById('ab-notes').value,annule:false};
     if(!b.client){alert('Client requis');return;}
-    const {data}=await db.from(table).insert(b).select();
-    if(data){if(airbnbBien==='touquet')tqBookings.push(data[0]);else paBookings.push(data[0]);}
+    const{data}=await db.from(tbl).insert(b).select();
+    if(data){if(airbnbBien==='touquet')tqBk.push(data[0]);else paBk.push(data[0]);}
     closeModal();renderAirbnbHTML();
   });
 }
 
-async function deleteBooking(id){
-  if(!confirm('Supprimer cette réservation ?'))return;
-  const table=airbnbBien==='touquet'?'bookings_touquet':'bookings_paris';
-  await db.from(table).delete().eq('id',id);
-  if(airbnbBien==='touquet')tqBookings=tqBookings.filter(b=>b.id!==id);else paBookings=paBookings.filter(b=>b.id!==id);
-  renderAirbnbHTML();
-}
-
-// ─── IMMOBILIER ──────────────────────────────────────────────
-async function renderImmo(){
+// ─── IMMOBILIER ───────────────────────────────────────────
+function renderImmo(){
   const biens=[
-    {nom:'Appartement Paris',loc:'Paris 16e',type:'AirBnB',statut:'Actif',loyer:'Variable',badge:'badge-red',notes:'Appartement de Luxe & Végétal au Trocadéro'},
-    {nom:'Villa Le Touquet',loc:'Le Touquet-Paris-Plage',type:'AirBnB + Direct',statut:'Actif',loyer:'Variable',badge:'badge-red',notes:'Luxury Forest Retreat Designer Villa'},
-    {nom:'Versailles',loc:'Versailles (78)',type:'Longue durée',statut:'Actif',loyer:'1 850€/mois',badge:'badge-green',notes:'Bail en cours — renouvellement à surveiller'},
-    {nom:'Brignoles',loc:'Brignoles (83)',type:'Longue durée',statut:'Retard loyer',loyer:'950€/mois',badge:'badge-amber',notes:'Vérifier paiement avec agence'},
-    {nom:'Siem Reap',loc:'Cambodge',type:'Longue durée',statut:'Actif',loyer:'850$/mois',badge:'badge-green',notes:'Bail international — paiement USD'},
+    {nom:'Appartement Paris — Trocadéro',loc:'Paris 16e',type:'AirBnB',loyer:'Variable',badge:'badge-red',st:'Actif',notes:'Appartement de Luxe & Végétal au Trocadéro'},
+    {nom:'Villa Le Touquet',loc:'Le Touquet-Paris-Plage',type:'AirBnB + Direct',loyer:'Variable',badge:'badge-red',st:'Actif',notes:'Luxury Forest Retreat Designer Villa'},
+    {nom:'Versailles',loc:'Versailles (78)',type:'Longue durée',loyer:'1 850€/mois',badge:'badge-green',st:'Actif',notes:'Bail en cours — renouvellement à surveiller'},
+    {nom:'Brignoles',loc:'Brignoles (83)',type:'Longue durée',loyer:'950€/mois',badge:'badge-amber',st:'Retard',notes:'Vérifier paiement avec agence Var Sud'},
+    {nom:'Siem Reap',loc:'Cambodge',type:'Longue durée',loyer:'850$/mois',badge:'badge-green',st:'Actif',notes:'Bail international — USD'},
   ];
-
-  let html=`<div class="page-header">
-    <div><div class="page-title">Immobilier locatif</div><div class="page-sub">5 biens · AirBnB + location longue durée</div></div>
-  </div>
+  let html=`<div class="page-header"><div><div class="page-title">Immobilier locatif</div><div class="page-sub">5 biens · AirBnB + location longue durée</div></div></div>
   <div class="stats-row">
-    <div class="stat"><div class="stat-label">Biens actifs</div><div class="stat-val">5</div></div>
-    <div class="stat"><div class="stat-label">AirBnB net total</div><div class="stat-val" style="color:var(--green);">159 482€</div></div>
-    <div class="stat"><div class="stat-label">Loyers mensuels</div><div class="stat-val" style="color:var(--green);">~3 585€</div></div>
-    <div class="stat"><div class="stat-label">Alertes</div><div class="stat-val" style="color:var(--red);">1</div></div>
+    <div class="stat"><div class="stat-label">Biens</div><div class="stat-val">5</div></div>
+    <div class="stat"><div class="stat-label">AirBnB net total</div><div class="stat-val" style="color:var(--green)">159 482€</div></div>
+    <div class="stat"><div class="stat-label">Loyers/mois</div><div class="stat-val" style="color:var(--green)">~3 585€</div></div>
+    <div class="stat"><div class="stat-label">Alertes</div><div class="stat-val" style="color:var(--red)">1</div></div>
   </div>
-  <div class="alert alert-warn">Brignoles — loyer en retard. Contacter l'agence Immobilière Var Sud.</div>`;
-
-  biens.forEach(b=>{
-    html+=`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-        <div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <span class="badge ${b.badge}">${b.type}</span>
-            <span class="badge ${b.statut==='Actif'?'badge-green':b.statut.includes('Retard')?'badge-red':'badge-amber'}">${b.statut}</span>
-          </div>
-          <div style="font-weight:600;font-size:15px;">${b.nom}</div>
-          <div style="font-size:13px;color:var(--text2);margin-top:2px;">${b.loc}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:4px;font-style:italic;">${b.notes}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <div style="font-weight:600;font-size:14px;color:var(--green);">${b.loyer}</div>
-        </div>
-      </div>
-    </div>`;
-  });
-
-  html+=`<div class="card" style="background:var(--blue-bg);border-color:#B5D4F4;">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div><div style="font-weight:600;font-size:14px;color:var(--blue);">Bilan AirBnB — Rapport officiel</div>
-      <div style="font-size:12px;color:var(--blue);margin-top:2px;">Fév 2023 → Avr 2026 · Olivier Billon · IBAN 6997</div></div>
-      <div style="text-align:right;"><div style="font-size:20px;font-weight:700;color:var(--blue);">159 482€</div><div style="font-size:11px;color:var(--blue);">net versé</div></div>
-    </div>
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #B5D4F4;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
-      <div><span style="color:var(--blue);">Le Touquet</span><br><strong style="color:#0C447C;">120 832€</strong></div>
-      <div><span style="color:var(--blue);">Paris Trocadéro</span><br><strong style="color:#0C447C;">38 650€</strong></div>
-    </div>
-  </div>`;
-
+  <div class="alert alert-warn">⚠ Brignoles — loyer en retard. Contacter Immobilière Var Sud.</div>`;
+  biens.forEach(b=>html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div style="display:flex;gap:8px;margin-bottom:6px"><span class="badge ${b.badge}">${b.type}</span><span class="badge ${b.st==='Actif'?'badge-green':b.st==='Retard'?'badge-red':'badge-amber'}">${b.st}</span></div>
+    <div style="font-weight:700;font-size:15px">${b.nom}</div>
+    <div style="font-size:13px;color:var(--text2);margin-top:2px">${b.loc}</div>
+    <div style="font-size:12px;color:var(--text3);margin-top:4px;font-style:italic">${b.notes}</div></div>
+    <div style="font-weight:700;font-size:14px;color:var(--green);flex-shrink:0">${b.loyer}</div>
+  </div></div>`);
   set('page-content',html);
 }
 
-// ─── DÉMARRAGE ───────────────────────────────────────────────
+// ─── START ────────────────────────────────────────────────
 init();
 </script>
 </body>
