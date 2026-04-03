@@ -946,14 +946,23 @@ function openAddBooking(){
   openModal('Nouveau booking',bookingFormHTML(),async()=>{
     const b={id:'fb'+Date.now(),...getBkFormData()};
     if(!b.client){alert('Client requis');return;}
-    const{data}=await db.from('ferdinand_bookings').insert(b).select();
-    if(data)bkData.unshift(data[0]);closeModal();refreshBkList();
+    const{data,error}=await db.from('ferdinand_bookings').insert(b).select();
+    if(error){
+      alert('Erreur lors de la sauvegarde : '+error.message+'\n\nVérifiez que les migrations SQL ont été exécutées dans Supabase.');
+      console.error('Supabase insert error:',error);
+      return;
+    }
+    if(data&&data.length>0)bkData.unshift(data[0]);
+    closeModal();renderFLocationsHTML();
   });
 }
 function openEditBooking(id){
   const b=bkData.find(x=>x.id===id);if(!b)return;
   openModal(`Modifier — ${b.client}`,bookingFormHTML(b),async()=>{
-    const u=getBkFormData();await db.from('ferdinand_bookings').update(u).eq('id',id);Object.assign(b,u);closeModal();refreshBkList();
+    const u=getBkFormData();
+    const{error}=await db.from('ferdinand_bookings').update(u).eq('id',id);
+    if(error){alert('Erreur : '+error.message);return;}
+    Object.assign(b,u);closeModal();refreshBkList();
   },`<button class="btn btn-danger" style="margin-right:auto" onclick="deleteBooking('${id}')">Supprimer</button>`);
 }
 async function deleteBooking(id){if(!confirm('Supprimer ce booking ?'))return;await db.from('ferdinand_bookings').delete().eq('id',id);bkData=bkData.filter(x=>x.id!==id);closeModal();refreshBkList();}
