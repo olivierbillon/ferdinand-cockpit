@@ -6,201 +6,212 @@
 <title>Pénélope</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --bg:#fafafa;--bg2:#ffffff;--bg3:#f4f4f5;
-  --text:#09090b;--text2:#71717a;--text3:#a1a1aa;
+  --bg:#fff;--bg2:#fff;--bg3:#fafafa;--bg4:#f4f4f5;
+  --text:#000;--text2:#52525b;--text3:#a1a1aa;
   --border:#e4e4e7;--border2:#d4d4d8;
-  --blue:#2563eb;--blue-bg:#eff6ff;
-  --green:#16a34a;--green-bg:#f0fdf4;
-  --amber:#d97706;--amber-bg:#fffbeb;
-  --red:#dc2626;--red-bg:#fef2f2;
-  --purple:#7c3aed;--purple-bg:#f5f3ff;
-  --pink:#db2777;--pink-bg:#fdf2f8;
-  --gray:#52525b;--gray-bg:#f4f4f5;
-  --radius:8px;
-  --shadow:0 1px 3px 0 rgb(0 0 0/.07),0 1px 2px -1px rgb(0 0 0/.07);
-  --shadow-md:0 4px 6px -1px rgb(0 0 0/.07),0 2px 4px -2px rgb(0 0 0/.07);
+  --blue:#0070f3;--blue-bg:#eff6ff;
+  --green:#00a67e;--green-bg:#dcfce7;
+  --amber:#f59e0b;--amber-bg:#fef3c7;
+  --red:#e00;--red-bg:#fff0f0;
+  --purple:#7928ca;--purple-bg:#f5f0ff;
+  --pink:#e5397b;--pink-bg:#fff0f8;
+  --r:6px;
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Geist','Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;}
 
-/* Layout */
+/* ── LAYOUT ─────────────────────────────────── */
 .app{display:flex;height:100vh;overflow:hidden;}
-.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
-.main{flex:1;overflow-y:auto;padding:28px 32px;}
+.sidebar{width:256px;background:#000;color:#fff;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid #1c1c1c;}
+.main{flex:1;overflow-y:auto;background:var(--bg3);padding:0;}
+.main-inner{padding:28px 32px;max-width:1200px;}
 
-/* Sidebar */
-.sidebar-logo{padding:16px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
-.sidebar-logo h1{font-size:15px;font-weight:700;letter-spacing:-.3px;}
-.sidebar-logo p{font-size:11px;color:var(--text3);margin-top:1px;}
-.sidebar-logo-mark{width:28px;height:28px;background:var(--text);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.sidebar-logo-mark span{color:#fff;font-size:12px;font-weight:800;}
-.nav-section{padding:16px 12px 4px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;}
-.nav-item{display:flex;align-items:center;gap:8px;padding:6px 12px;margin:1px 4px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--text2);transition:all .1s;}
-.nav-item:hover{background:var(--bg3);color:var(--text);}
-.nav-item.active{background:var(--bg3);color:var(--text);font-weight:500;}
-.nav-sub{padding-left:22px;font-size:12px;}
-.sidebar-user{margin-top:auto;padding:10px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;margin:auto 4px 4px;}
-.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--text);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;}
+/* ── SIDEBAR ────────────────────────────────── */
+.sidebar-logo{padding:14px 16px;border-bottom:1px solid #1c1c1c;display:flex;align-items:center;gap:10px;}
+.sidebar-logo-mark{width:24px;height:24px;background:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sidebar-logo-mark span{color:#000;font-size:11px;font-weight:800;letter-spacing:-.5px;}
+.sidebar-logo h1{font-size:14px;font-weight:600;color:#fff;letter-spacing:-.3px;}
+.sidebar-logo p{font-size:11px;color:#666;margin-top:1px;}
+.nav-section{padding:16px 14px 5px;font-size:10px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.1em;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 12px;margin:1px 4px;border-radius:5px;cursor:pointer;font-size:12.5px;font-weight:400;color:#888;transition:all .1s;}
+.nav-item svg{opacity:.6;flex-shrink:0;}
+.nav-item:hover{background:#111;color:#fff;}
+.nav-item:hover svg{opacity:1;}
+.nav-item.active{background:#111;color:#fff;font-weight:500;}
+.nav-item.active svg{opacity:1;}
+.nav-sub{padding-left:20px;}
+.sidebar-user{padding:10px 12px;border-top:1px solid #1c1c1c;display:flex;align-items:center;gap:9px;margin:auto 4px 4px;}
+.user-avatar{width:24px;height:24px;border-radius:50%;background:#333;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;}
 
-/* Page */
-.page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:10px;}
-.page-title{font-size:18px;font-weight:700;letter-spacing:-.3px;}
-.page-sub{font-size:12.5px;color:var(--text2);margin-top:2px;}
+/* ── PAGE HEADER ─────────────────────────────── */
+.main-header{background:#fff;border-bottom:1px solid var(--border);padding:0 32px;}
+.main-header-inner{display:flex;justify-content:space-between;align-items:center;height:52px;max-width:1200px;}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);}
+.breadcrumb-sep{color:var(--text3);}
+.breadcrumb-current{color:var(--text);font-weight:500;}
+.page-content-area{padding:24px 32px;max-width:1200px;}
 
-/* Stats */
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:18px;}
-.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);}
-.stat-label{font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500;}
-.stat-val{font-size:22px;font-weight:700;letter-spacing:-.5px;}
+/* ── STATS ROW ───────────────────────────────── */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;margin-bottom:20px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.stat{background:#fff;padding:16px 18px;}
+.stat-label{font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500;display:flex;align-items:center;gap:5px;}
+.stat-val{font-size:22px;font-weight:700;letter-spacing:-.8px;line-height:1;}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:3px;}
 
-/* Card */
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;box-shadow:var(--shadow);}
+/* ── CARD ────────────────────────────────────── */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:12px;}
+.card-title{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
 
-/* Badges — couleurs fixes par source */
-.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;}
-.b-direct{background:#E1F5EE;color:#0F6E56;}
-.b-airbnb{background:#FCEBEB;color:#A32D2D;}
-.b-roadstr{background:#EEEDFE;color:#534AB7;}
-.b-gdc{background:#E6F1FB;color:#185FA5;}
-.b-mrm{background:#F1EFE8;color:#5F5E5A;}
-.b-green{background:#E1F5EE;color:#0F6E56;}
-.b-amber{background:#FAEEDA;color:#854F0B;}
-.b-red{background:#FCEBEB;color:#A32D2D;}
-.b-blue{background:#E6F1FB;color:#185FA5;}
-.b-purple{background:#EEEDFE;color:#534AB7;}
-.b-gray{background:#F1EFE8;color:#5F5E5A;}
-.b-pink{background:#FBEAF0;color:#993556;}
+/* ── BADGES ──────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;white-space:nowrap;border:1px solid transparent;}
+.b-direct{background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
+.b-airbnb{background:#fff0f0;color:#c00;border-color:#fecaca;}
+.b-roadstr{background:#f5f0ff;color:#7928ca;border-color:#ddd6fe;}
+.b-gdc{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;}
+.b-mrm{background:#fafafa;color:#52525b;border-color:#e4e4e7;}
+.b-green{background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
+.b-amber{background:#fefce8;color:#a16207;border-color:#fef08a;}
+.b-red{background:#fff0f0;color:#c00;border-color:#fecaca;}
+.b-blue{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;}
+.b-purple{background:#f5f0ff;color:#7928ca;border-color:#ddd6fe;}
+.b-gray{background:#fafafa;color:#52525b;border-color:#e4e4e7;}
+.b-pink{background:#fff0f8;color:#be185d;border-color:#fbcfe8;}
 
-/* Buttons */
-.btn{padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .1s;box-shadow:var(--shadow);}
-.btn:hover{background:var(--bg3);border-color:var(--border2);}
-.btn-primary{background:var(--text);color:#fff;border-color:var(--text);box-shadow:none;}
-.btn-primary:hover{background:#27272a;}
-.btn-sm{padding:3px 10px;font-size:11.5px;}
-.btn-danger{border-color:var(--border2);color:var(--red);}
+/* ── BUTTONS ─────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:5px;border:1px solid var(--border2);background:#fff;color:var(--text);font-size:12.5px;font-weight:500;cursor:pointer;transition:background .1s,border .1s;white-space:nowrap;font-family:inherit;}
+.btn:hover{background:var(--bg4);border-color:var(--border2);}
+.btn-primary{background:#000;color:#fff;border-color:#000;}
+.btn-primary:hover{background:#111;}
+.btn-sm{padding:4px 10px;font-size:11.5px;}
+.btn-danger{color:var(--red);border-color:var(--border2);}
 .btn-danger:hover{background:var(--red-bg);border-color:var(--red);}
 
-/* Filters */
+/* ── FILTERS ─────────────────────────────────── */
 .filter-bar{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
-.fpill{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap;}
-.fpill.active{background:var(--blue-bg);color:var(--blue);border-color:var(--blue);}
+.fpill{padding:4px 12px;border-radius:5px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;white-space:nowrap;font-family:inherit;}
+.fpill:hover{background:var(--bg4);}
+.fpill.active{background:#000;color:#fff;border-color:#000;}
 .search-wrap{position:relative;flex:1;min-width:180px;}
-.search-box{width:100%;padding:7px 10px 7px 30px;border:1px solid var(--border2);border-radius:7px;font-size:13px;background:var(--bg2);color:var(--text);}
+.search-box{width:100%;padding:6px 10px 6px 30px;border:1px solid var(--border2);border-radius:5px;font-size:12.5px;background:#fff;color:var(--text);font-family:inherit;}
+.search-box:focus{outline:none;border-color:#000;box-shadow:0 0 0 2px rgba(0,0,0,.05);}
 .search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;}
 
-/* Table */
-.table-wrap{overflow-x:auto;}
+/* ── TABLE ───────────────────────────────────── */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r);background:#fff;}
 .table{width:100%;border-collapse:collapse;min-width:500px;}
-.table th{text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg3);}
-.table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12.5px;vertical-align:middle;}
+.table th{text-align:left;font-size:11px;font-weight:600;color:var(--text2);padding:10px 14px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg3);letter-spacing:.03em;}
+.table td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12.5px;vertical-align:middle;}
 .table tr:last-child td{border-bottom:none;}
 .table tr:hover td{background:var(--bg3);}
 .table tr[onclick]{cursor:pointer;}
 
-/* Forms */
-.form-group{margin-bottom:10px;}
-.form-label{display:block;font-size:12px;color:var(--text2);margin-bottom:3px;font-weight:500;}
-.form-input{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;background:var(--bg2);color:var(--text);}
-.form-input:focus{outline:none;border-color:var(--blue);}
+/* ── FORM ────────────────────────────────────── */
+.form-group{margin-bottom:12px;}
+.form-label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:500;}
+.form-input{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:5px;font-size:13px;background:#fff;color:var(--text);font-family:inherit;}
+.form-input:focus{outline:none;border-color:#000;box-shadow:0 0 0 2px rgba(0,0,0,.05);}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
-/* Modal */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;}
+/* ── MODAL ───────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000;}
 .modal-overlay.open{display:flex;}
-.modal{background:var(--bg2);border-radius:12px;padding:22px;width:90%;max-width:500px;max-height:92vh;overflow-y:auto;border:1px solid var(--border);}
-.modal-title{font-size:16px;font-weight:700;margin-bottom:14px;}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.modal{background:#fff;border-radius:8px;padding:24px;width:90%;max-width:500px;max-height:92vh;overflow-y:auto;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:16px;letter-spacing:-.3px;}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
 
-/* Tabs */
-.tabs{display:flex;gap:3px;background:var(--bg3);border-radius:8px;padding:3px;margin-bottom:14px;width:fit-content;flex-wrap:wrap;}
-.tab{padding:5px 13px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--text2);border:none;background:transparent;}
-.tab.active{background:var(--bg2);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.1);}
+/* ── TABS ────────────────────────────────────── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.tab{padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:transparent;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .1s;font-family:inherit;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--text);border-bottom-color:#000;}
 
-/* Expandable card (inventory items) */
-.inv-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;}
-.inv-head{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;cursor:pointer;}
+/* ── EXPANDABLE CARD ─────────────────────────── */
+.inv-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;overflow:hidden;}
+.inv-head{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;cursor:pointer;}
 .inv-head:hover{background:var(--bg3);}
 .inv-body{border-top:1px solid var(--border);}
-.inv-tabs{display:flex;border-bottom:1px solid var(--border);}
-.itab{flex:1;padding:7px 4px;text-align:center;font-size:12px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;}
-.itab.active{color:var(--blue);border-bottom-color:var(--blue);}
-.inv-panel{padding:12px 14px;}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.info-lbl{font-size:11px;color:var(--text2);margin-bottom:1px;}
+.inv-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg3);}
+.itab{flex:1;padding:8px 4px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:transparent;font-family:inherit;}
+.itab.active{color:var(--text);background:#fff;box-shadow:inset 0 -2px 0 #000;}
+.inv-panel{padding:14px 16px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.info-lbl{font-size:11px;color:var(--text3);margin-bottom:2px;font-weight:500;}
 .info-val{font-size:13px;font-weight:500;}
 
-/* Alerts */
-.alert{padding:10px 13px;border-radius:7px;font-size:13px;margin-bottom:10px;}
-.alert-warn{background:var(--amber-bg);color:var(--amber);}
-.alert-red{background:var(--red-bg);color:var(--red);}
-.alert-green{background:var(--green-bg);color:var(--green);}
-.alert-blue{background:var(--blue-bg);color:var(--blue);}
+/* ── ALERT ───────────────────────────────────── */
+.alert{padding:10px 14px;border-radius:5px;font-size:12.5px;margin-bottom:10px;border:1px solid transparent;display:flex;align-items:flex-start;gap:8px;}
+.alert-warn{background:#fefce8;color:#854d0e;border-color:#fef08a;}
+.alert-red{background:#fff0f0;color:#c00;border-color:#fecaca;}
+.alert-green{background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
+.alert-blue{background:#eff6ff;color:#1e40af;border-color:#bfdbfe;}
 
-/* Calendar */
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
-.cal-head{text-align:center;font-size:11px;font-weight:700;color:var(--text2);padding:4px 0;}
-.cal-cell{min-height:80px;border-radius:5px;padding:3px;border:1px solid var(--border);background:var(--bg2);}
-.cal-cell.today{border-color:var(--blue);background:var(--blue-bg);}
+/* ── CALENDAR ────────────────────────────────── */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.cal-head{text-align:center;font-size:11px;font-weight:600;color:var(--text2);padding:6px 0;background:var(--bg3);}
+.cal-cell{min-height:80px;padding:4px;background:#fff;}
+.cal-cell.today{background:#fffbf0;}
 .cal-cell.we{background:var(--bg3);}
-.cal-num{font-size:11px;font-weight:700;margin-bottom:2px;}
-.cal-ev{font-size:9px;border-radius:3px;padding:1px 3px;margin-bottom:1px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;}
+.cal-num{font-size:11px;font-weight:600;margin-bottom:3px;color:var(--text2);}
+.cal-cell.today .cal-num{color:var(--blue);font-weight:700;}
+.cal-ev{font-size:9.5px;border-radius:3px;padding:2px 4px;margin-bottom:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;font-weight:500;}
 
-/* Pagination */
-.pagination{display:flex;gap:5px;flex-wrap:wrap;margin-top:14px;align-items:center;}
-.ppage{padding:4px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:12px;color:var(--text2);}
-.ppage.active{background:var(--blue-bg);color:var(--blue);border-color:var(--blue);}
-.ppage:hover:not(.active){background:var(--bg3);}
+/* ── PAGINATION ──────────────────────────────── */
+.pagination{display:flex;gap:4px;flex-wrap:wrap;margin-top:14px;align-items:center;}
+.ppage{padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);font-family:inherit;}
+.ppage.active{background:#000;color:#fff;border-color:#000;}
+.ppage:hover:not(.active){background:var(--bg4);}
 
-/* Pay row */
-.pay-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+/* ── PAY ROW ─────────────────────────────────── */
+.pay-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
 .pay-row:last-child{border-bottom:none;}
 
-/* Doc pill */
-.doc-pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;margin:2px;}
+/* ── DOC PILL ────────────────────────────────── */
+.doc-pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 9px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;margin:2px;font-family:inherit;}
 
-/* Loading */
+/* ── BAR CHART ───────────────────────────────── */
+.bar-row{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:12.5px;}
+.bar-label{width:100px;color:var(--text2);flex-shrink:0;font-size:12px;}
+.bar-bg{flex:1;background:var(--bg4);border-radius:3px;height:6px;}
+.bar-fill{height:6px;border-radius:3px;}
+
+/* ── LOADING ─────────────────────────────────── */
 .loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--text2);font-size:13px;}
-.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite;margin-right:8px;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* Login screen */
-.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);}
-.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:40px;text-align:center;width:340px;box-shadow:0 4px 24px rgba(0,0,0,.06);}
-.login-logo{font-size:32px;font-weight:800;letter-spacing:-1px;margin-bottom:6px;}
+/* ── LOGIN ───────────────────────────────────── */
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg3);}
+.login-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:40px 36px;text-align:center;width:360px;box-shadow:0 4px 24px rgba(0,0,0,.06);}
+.login-logo{font-size:28px;font-weight:800;letter-spacing:-1px;margin-bottom:4px;}
 .login-sub{font-size:13px;color:var(--text2);margin-bottom:28px;}
-.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);font-size:14px;cursor:pointer;font-weight:500;transition:all .15s;}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:10px;border-radius:6px;border:1px solid var(--border2);background:#fff;font-size:13.5px;font-weight:500;cursor:pointer;transition:background .1s;font-family:inherit;}
 .btn-google:hover{background:var(--bg3);}
 
-/* User management */
-.role-badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;}
-.role-admin{background:#FCEBEB;color:#A32D2D;}
-.role-assistant{background:#E1F5EE;color:#0F6E56;}
-.role-coparent{background:#FBEAF0;color:#993556;}
-.role-viewer{background:#F1EFE8;color:#5F5E5A;}
+/* ── USER ROLES ──────────────────────────────── */
+.role-badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;border:1px solid transparent;}
+.role-admin{background:#fff0f0;color:#c00;border-color:#fecaca;}
+.role-assistant{background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
+.role-coparent{background:#fff0f8;color:#be185d;border-color:#fbcfe8;}
+.role-viewer{background:#fafafa;color:#52525b;border-color:#e4e4e7;}
 
-/* Bar chart */
-.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:13px;}
-.bar-label{width:100px;color:var(--text2);flex-shrink:0;font-size:12px;}
-.bar-bg{flex:1;background:var(--bg3);border-radius:3px;height:7px;}
-.bar-fill{height:7px;border-radius:3px;}
+/* ── ELISA CALENDAR ──────────────────────────── */
+.elisa-papa{background:#f0fdf4;}
+.elisa-maman{background:#fff0f8;}
+.elisa-vac-papa{background:#dcfce7;}
+.elisa-vac-maman{background:#fce7f3;}
+.elisa-empty{background:transparent;border:none;}
 
-/* Elisa calendar */
-.elisa-papa{background:#E1F5EE;border-color:#9FE1CB;}
-.elisa-maman{background:#FBEAF0;border-color:#F4C0D1;}
-.elisa-vac-papa{background:#C0DD97;border-color:#97C459;}
-.elisa-vac-maman{background:#F0997B;border-color:#F5C4B3;}
-.elisa-empty{background:transparent;border-color:transparent;}
-
-/* Mobile */
+/* ── MOBILE ──────────────────────────────────── */
 @media(max-width:768px){
-  .sidebar{position:fixed;left:-230px;top:0;bottom:0;z-index:100;transition:left .25s;}
+  .sidebar{position:fixed;left:-256px;top:0;bottom:0;z-index:100;transition:left .2s;}
   .sidebar.open{left:0;}
-  .main{padding:14px;}
+  .main-inner,.page-content-area{padding:14px;}
   .form-row{grid-template-columns:1fr;}
   .stats-row{grid-template-columns:1fr 1fr;}
 }
-.mobile-bar{display:none;align-items:center;gap:12px;padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
+.mobile-bar{display:none;align-items:center;gap:12px;padding:10px 16px;background:#000;color:#fff;position:sticky;top:0;z-index:50;}
 @media(max-width:768px){.mobile-bar{display:flex;}}
 </style>
 </head>
@@ -229,17 +240,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Geist','Segoe UI',sans-serif;
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <h1>Pénélope</h1>
-      <p id="sidebar-sub">Chargement...</p>
+      <div class="sidebar-logo-mark"><span>P</span></div>
+      <div>
+        <h1>Pénélope</h1>
+        <p id="sidebar-sub">Chargement...</p>
+      </div>
     </div>
-    <div id="sidebar-nav" style="padding:6px 0;overflow-y:auto;flex:1;"></div>
+    <div id="sidebar-nav" style="padding:4px 0;overflow-y:auto;flex:1;"></div>
     <div class="sidebar-user">
       <div class="user-avatar" id="user-avatar">?</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="user-name">—</div>
-        <div style="font-size:11px;color:var(--text3);" id="user-role">—</div>
+        <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;" id="user-name">—</div>
+        <div style="font-size:11px;color:#666;" id="user-role">—</div>
       </div>
-      <button onclick="logout()" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:12px;">✕</button>
+      <button onclick="logout()" style="border:none;background:none;cursor:pointer;color:#666;font-size:12px;">✕</button>
     </div>
   </div>
   <!-- MAIN -->
@@ -292,6 +306,31 @@ const VOI_COLORS={
   'Taycan':'#185FA5','Lamborghini':'#EF9F27',
 };
 function voiColor(nom){for(const k of Object.keys(VOI_COLORS)){if(nom&&nom.includes(k))return VOI_COLORS[k];}return '#888780';}
+
+// Statut calculé dynamiquement depuis les dates — jamais statique
+function computeStatut(b){
+  if(b.statut==='Accident')return{label:'Accident',cls:'b-red'};
+  if(b.statut==='Annulé'||b.statut==='annule')return{label:'Annulé',cls:'b-gray'};
+  const now=today();
+  const debut=b.debut?new Date(b.debut):null;
+  const fin=b.fin?new Date(b.fin):null;
+  if(debut&&debut>now)return{label:'À venir',cls:'b-green'};
+  if(debut&&debut<=now&&fin&&fin>=now)return{label:'En cours',cls:'b-blue'};
+  if(fin&&fin<now)return{label:'Terminé',cls:'b-gray'};
+  return{label:b.statut||'—',cls:'b-gray'};
+}
+
+// Même logique pour AirBnB
+function computeStatutAB(b){
+  if(b.annule)return{label:'Annulé',cls:'b-gray'};
+  const now=today();
+  const arrive=b.arrive?new Date(b.arrive):null;
+  const depart=b.depart?new Date(b.depart):null;
+  if(arrive&&arrive>now)return{label:'À venir',cls:'b-green'};
+  if(arrive&&arrive<=now&&depart&&depart>=now)return{label:'En cours',cls:'b-blue'};
+  if(depart&&depart<now)return{label:'Terminé',cls:'b-gray'};
+  return{label:'—',cls:'b-gray'};
+}
 
 // ─── AUTH & USERS ─────────────────────────────────────────
 let currentUser=null;
@@ -762,7 +801,7 @@ function refreshBkList(){
       <td style="white-space:nowrap">${fmtShort(b.fin)||'—'}</td>
       <td style="font-weight:700;color:var(--green);white-space:nowrap">${b.prix?fmt(b.prix)+'€':'—'}</td>
       <td><span class="badge ${srcBadge(b.source)}">${b.source||'—'}</span></td>
-      <td><span class="badge ${b.statut==='Fermé'?'b-gray':b.statut==='En cours'?'b-blue':b.statut==='Accident'?'b-red':'b-amber'}">${b.statut||'—'}</span></td>
+      <td>${(()=>{const s=computeStatut(b);return`<span class="badge ${s.cls}">${s.label}</span>`;})()}</td>
       <td>${b.lien_contrat?`<a href="${b.lien_contrat}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);font-size:12px">📄 Contrat</a>`:'—'}</td>
       <td style="font-size:12px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.commentaire||''}</td>
     </tr>`;
@@ -795,15 +834,15 @@ function bookingFormHTML(b){b=b||{};
     </div>
   </div>
   <div class="form-row">
-    <div class="form-group"><label class="form-label">Statut</label>
-      <select class="form-input" id="bkf-st">${['En cours','Fermé','Accident'].map(s=>`<option ${(b.statut||'')==s?'selected':''}>${s}</option>`).join('')}</select>
+    <div class="form-group"><label class="form-label">Statut (optionnel)</label>
+      <select class="form-input" id="bkf-st"><option value="">Auto (calculé)</option>${['Accident','Annulé'].map(s=>`<option value="${s}" ${(b.statut||'')==s?'selected':''}>${s}</option>`).join('')}</select>
     </div>
     <div class="form-group"><label class="form-label">Pick-up</label><input class="form-input" id="bkf-pk" value="${esc(b.pick_up||'')}"></div>
   </div>
   <div class="form-group"><label class="form-label">Lien contrat Google Doc</label><input class="form-input" id="bkf-ctr" placeholder="https://docs.google.com/..." value="${esc(b.lien_contrat||'')}"></div>
   <div class="form-group"><label class="form-label">Commentaire</label><textarea class="form-input" id="bkf-cm" rows="2">${esc(b.commentaire||'')}</textarea></div>`;
 }
-function getBkFormData(){return{voiture:document.getElementById('bkf-v').value,client:document.getElementById('bkf-c').value,email:document.getElementById('bkf-e').value,tel:document.getElementById('bkf-t').value,debut:document.getElementById('bkf-d').value||null,fin:document.getElementById('bkf-f').value||null,prix:parseFloat(document.getElementById('bkf-p').value)||0,source:document.getElementById('bkf-s').value,statut:document.getElementById('bkf-st').value,pick_up:document.getElementById('bkf-pk').value,lien_contrat:document.getElementById('bkf-ctr').value||null,commentaire:document.getElementById('bkf-cm').value};}
+function getBkFormData(){return{voiture:document.getElementById('bkf-v').value,client:document.getElementById('bkf-c').value,email:document.getElementById('bkf-e').value,tel:document.getElementById('bkf-t').value,debut:document.getElementById('bkf-d').value||null,fin:document.getElementById('bkf-f').value||null,prix:parseFloat(document.getElementById('bkf-p').value)||0,source:document.getElementById('bkf-s').value,statut:document.getElementById('bkf-st').value||null,pick_up:document.getElementById('bkf-pk').value,lien_contrat:document.getElementById('bkf-ctr').value||null,commentaire:document.getElementById('bkf-cm').value};}
 function openAddBooking(){
   openModal('Nouveau booking',bookingFormHTML(),async()=>{
     const b={id:'fb'+Date.now(),...getBkFormData()};
@@ -892,11 +931,7 @@ function renderFFinance(){
 let abData=[];let abPage=1;let abFilter='upcoming';let abSearch='';let abBienFilter='';
 let abPlanYear=new Date().getFullYear();let abPlanMonth=new Date().getMonth();
 
-const AB_BIENS=[
-  {id:'touquet',nom:'Villa Le Touquet',nomLong:'Luxury Forest Retreat Designer Villa in Le Touquet',loc:'Le Touquet-Paris-Plage',type:'AirBnB + Direct',immat:'ID: 959107333565268541',notes:'Séjours 2-365 nuits · 495-1550€/nuit',docs:['Titre propriété','Assurance PNO','Taxe foncière']},
-  {id:'paris',nom:'Appartement Paris',nomLong:'Appartement de Luxe & Végétal au Trocadéro',loc:'Paris 16e',type:'AirBnB',immat:'ID: 1193237416574591001',notes:'2-4 voyageurs',docs:['Titre propriété','Assurance PNO','Taxe foncière']},
-];
-let openAB={};let openABT={};
+let abBiens=[];let openAB={};let openABT={};
 
 function getAbFiltered(){
   let list=[...abData];
@@ -909,28 +944,31 @@ function getAbFiltered(){
 function getAbRev(b){return(b.airbnb||0)+(b.direct||0)+(b.montant||0);}
 
 // A — INVENTAIRE
-function renderAInventaire(){
+async function renderAInventaire(){
+  set('page-content','<div class="loading"><div class="spinner"></div>Chargement...</div>');
+  if(!abBiens.length){const{data}=await db.from('airbnb_biens').select('*').order('nom');abBiens=data||[];}
+  const total=abBiens.length;
   let html=`<div class="page-header">
-    <div><div class="page-title">AirBnB — Biens</div><div class="page-sub">2 biens · location court terme</div></div>
+    <div><div class="page-title">AirBnB — Biens</div><div class="page-sub">${total} biens · location court terme</div></div>
     <button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button>
   </div>`;
-  AB_BIENS.forEach(b=>{
+  abBiens.forEach(b=>{
     const isOpen=openAB[b.id];const tab=openABT[b.id]||'infos';
     let body='';
     if(isOpen){
       const tabs=`<div class="inv-tabs">${['infos','docs'].map(t=>`<button class="itab${tab===t?' active':''}" onclick="setABTab('${b.id}','${t}')">${t==='infos'?'Infos':'Documents'}</button>`).join('')}</div>`;
       let panel='';
       if(tab==='infos')panel=`<div class="info-grid">
-        <div><div class="info-lbl">Nom officiel</div><div class="info-val" style="font-size:12px">${b.nomLong}</div></div>
+        <div><div class="info-lbl">Nom officiel</div><div class="info-val" style="font-size:12px">${b.nom_long||b.nom}</div></div>
         <div><div class="info-lbl">Localisation</div><div class="info-val">${b.loc}</div></div>
         <div><div class="info-lbl">Type</div><div class="info-val">${b.type}</div></div>
-        <div><div class="info-lbl">Identifiant</div><div class="info-val" style="font-size:11px;font-family:monospace">${b.immat}</div></div>
-      </div><div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">${b.notes}</div>
+        <div><div class="info-lbl">ID AirBnB</div><div class="info-val" style="font-size:11px;font-family:monospace">${b.airbnb_id||'—'}</div></div>
+      </div><div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">${b.notes||''}</div>
       <div style="margin-top:10px;display:flex;gap:8px">
         <button class="btn btn-sm" onclick="abBienFilter='${b.id}';showPage('a-reservations')">Voir réservations ↗</button>
         <button class="btn btn-sm" onclick="abBienFilter='${b.id}';showPage('a-planning')">Voir planning ↗</button>
       </div>`;
-      else panel=`<div>${b.docs.map(d=>`<span class="doc-pill">📄 ${d}</span>`).join('')}<span class="doc-pill" style="border-style:dashed">+ Ajouter</span></div>`;
+      else panel=`<div>${(b.docs||[]).map(d=>`<span class="doc-pill">📄 ${d}</span>`).join('')}<span class="doc-pill" style="border-style:dashed">+ Ajouter</span></div>`;
       body=`<div class="inv-body">${tabs}<div class="inv-panel">${panel}</div></div>`;
     }
     html+=`<div class="inv-card">
@@ -949,7 +987,7 @@ function renderAInventaire(){
   });
   set('page-content',html);
 }
-function toggleAB(id){openAB[id]=!openAB[id];if(!openABT[id])openABT[id]='infos';renderAInventaire();}
+function toggleAB(id){openAB[id]=!openAB[id];if(!openABT[id])openABT[id]='infos';const h=document.getElementById('page-content');if(h)renderAInventaire();}
 function setABTab(id,tab){openABT[id]=tab;renderAInventaire();}
 
 // A — RÉSERVATIONS
@@ -1093,45 +1131,48 @@ async function renderAPlanning(){
 }
 
 // A — FINANCE
-function renderAFinance(){
+async function renderAFinance(){
+  set('page-content','<div class="loading"><div class="spinner"></div>Chargement...</div>');
+  if(!abBiens.length){const{data}=await db.from('airbnb_biens').select('*').order('nom');abBiens=data||[];}
+  const touquet=abBiens.find(b=>b.id==='touquet')||{net_verse:120832,nom:'Le Touquet'};
+  const paris=abBiens.find(b=>b.id==='paris')||{net_verse:38650,nom:'Paris Trocadéro'};
+  const totalNet=(touquet.net_verse||0)+(paris.net_verse||0);
   set('page-content',`<div class="page-header"><div><div class="page-title">AirBnB — Finance</div><div class="page-sub">Rapport officiel AirBnB · Olivier Billon</div></div></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
     <div class="card" style="border-left:3px solid #534AB7">
-      <div style="font-weight:600;margin-bottom:8px">Le Touquet</div>
-      ${[['Revenus bruts','125 344€'],['Frais AirBnB','-4 512€'],['Net versé','120 832€','var(--green)'],['Taxes AirBnB','3 610€']].map(r=>`<div class="pay-row"><span style="color:var(--text2)">${r[0]}</span><strong style="color:${r[2]||'inherit'}">${r[1]}</strong></div>`).join('')}
+      <div style="font-weight:600;margin-bottom:8px">${touquet.nom}</div>
+      ${[['Net versé AirBnB',fmt(touquet.net_verse||0)+'€','var(--green)']].map(r=>`<div class="pay-row"><span style="color:var(--text2)">${r[0]}</span><strong style="color:${r[2]||'inherit'}">${r[1]}</strong></div>`).join('')}
     </div>
     <div class="card" style="border-left:3px solid #185FA5">
-      <div style="font-weight:600;margin-bottom:8px">Paris Trocadéro</div>
-      ${[['Revenus bruts','42 608€'],['Frais AirBnB','-1 453€'],['Net versé','38 650€','var(--green)'],['Taxes AirBnB','4 363€']].map(r=>`<div class="pay-row"><span style="color:var(--text2)">${r[0]}</span><strong style="color:${r[2]||'inherit'}">${r[1]}</strong></div>`).join('')}
+      <div style="font-weight:600;margin-bottom:8px">${paris.nom}</div>
+      ${[['Net versé AirBnB',fmt(paris.net_verse||0)+'€','var(--green)']].map(r=>`<div class="pay-row"><span style="color:var(--text2)">${r[0]}</span><strong style="color:${r[2]||'inherit'}">${r[1]}</strong></div>`).join('')}
     </div>
   </div>
   <div class="card">
-    <div style="font-weight:600;margin-bottom:10px">Revenus AirBnB combinés par année</div>
-    ${[['2023','12 977€',13],['2024','84 016€',84],['2025 (en cours)','91 245€',91]].map(r=>`<div class="bar-row"><span class="bar-label">${r[0]}</span><div class="bar-bg"><div class="bar-fill" style="width:${r[2]}%;background:var(--blue)"></div></div><span style="font-weight:700;font-size:13px;flex-shrink:0">${r[1]}</span></div>`).join('')}
-    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:8px;display:flex;justify-content:space-between;font-weight:700"><span>Total net versé</span><span style="color:var(--green)">159 482€</span></div>
+    <div style="font-weight:600;margin-bottom:10px">Total net versé — rapport officiel AirBnB</div>
+    <div class="bar-row"><span class="bar-label">Le Touquet</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.round((touquet.net_verse||0)/totalNet*100)}%;background:var(--purple)"></div></div><span style="font-weight:700;font-size:13px;flex-shrink:0">${fmt(touquet.net_verse||0)}€</span></div>
+    <div class="bar-row"><span class="bar-label">Paris</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.round((paris.net_verse||0)/totalNet*100)}%;background:var(--blue)"></div></div><span style="font-weight:700;font-size:13px;flex-shrink:0">${fmt(paris.net_verse||0)}€</span></div>
+    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:8px;display:flex;justify-content:space-between;font-weight:700"><span>Total net versé</span><span style="color:var(--green)">${fmt(totalNet)}€</span></div>
   </div>`);
 }
 
 // ══════════════════════════════════════════════════════════
 // IMMOBILIER — LOCATIF (LONG TERME)
 // ══════════════════════════════════════════════════════════
-const LOCATIF_BIENS=[
-  {id:'versailles',nom:'Versailles',loc:'Versailles (78)',locataire:'M. et Mme Martin',agence:'Cabinet Dupré',loyer:1850,charges:120,debut_bail:'2022-09-01',fin_bail:'2025-08-31',depot:3700,statut:'actif',statut_label:'À jour',notes:'Renouvellement à surveiller avant août 2025',docs:['Bail signé','État des lieux','Assurance PNO','Assurance locataire','Relevés loyers']},
-  {id:'brignoles',nom:'Brignoles',loc:'Brignoles (83)',locataire:'Mme Petit',agence:'Immobilière Var Sud',loyer:950,charges:80,debut_bail:'2023-03-01',fin_bail:'2026-02-28',depot:1900,statut:'retard',statut_label:'Retard loyer',notes:'Loyer en retard — contacter agence',docs:['Bail signé','État des lieux','Assurance PNO']},
-  {id:'siemreap',nom:'Siem Reap',loc:'Cambodge',locataire:'M. Chen',agence:'Angkor Realty',loyer:850,charges:0,debut_bail:'2024-01-01',fin_bail:'2025-12-31',depot:1700,statut:'actif',statut_label:'À jour',notes:'USD · renouvellement à prévoir',docs:['Bail (anglais)','Titre propriété local','Assurance']},
-];
-let openLoc={};let openLocT={};
+let locBiens=[];let openLoc={};let openLocT={};
 
 // L — INVENTAIRE
-function renderLInventaire(){
-  const total=LOCATIF_BIENS.reduce((s,b)=>s+b.loyer,0);
+async function renderLInventaire(){
+  set('page-content','<div class="loading"><div class="spinner"></div>Chargement...</div>');
+  if(!locBiens.length){const{data}=await db.from('locatif_biens').select('*').order('nom');locBiens=data||[];}
+  const total=locBiens.reduce((s,b)=>s+b.loyer,0);
   let html=`<div class="page-header">
     <div><div class="page-title">Locatif — Biens</div><div class="page-sub">3 biens · ${fmt(total)}€/mois + ~785€ USD</div></div>
   </div>
   ${statsRow([{l:'Biens en location',v:3},{l:'Loyers/mois',v:fmt(total)+'€',c:'var(--green)'},{l:'Retards',v:1,c:'var(--red)'},{l:'Renouvellements',v:2,c:'var(--amber)'}])}
   <div class="alert alert-red">⚠ Brignoles — loyer en retard. Contacter Immobilière Var Sud.</div>
   <div class="alert alert-warn">⚠ Versailles — bail expire août 2025. Anticiper le renouvellement.</div>`;
-  LOCATIF_BIENS.forEach(b=>{
+  locBiens.forEach(b=>{
     const isOpen=openLoc[b.id];const tab=openLocT[b.id]||'infos';
     let body='';
     if(isOpen){
@@ -1157,7 +1198,7 @@ function renderLInventaire(){
         <div style="flex:1">
           <div style="display:flex;gap:6px;margin-bottom:4px">
             <span class="badge b-blue">Longue durée</span>
-            <span class="badge ${b.statut==='actif'?'b-green':'b-red'}">${b.statut_label}</span>
+            <span class="badge ${b.statut==='actif'?'b-green':'b-red'}">${b.statut==='retard'?'Retard loyer':b.statut==='actif'?'À jour':b.statut||'—'}</span>
           </div>
           <div style="font-weight:600;font-size:14px">${b.nom}</div>
           <div style="font-size:12px;color:var(--text2);margin-top:1px">${b.loc} · ${b.locataire}</div>
@@ -1175,14 +1216,14 @@ function toggleLoc(id){openLoc[id]=!openLoc[id];if(!openLocT[id])openLocT[id]='i
 function setLocTab(id,tab){openLocT[id]=tab;renderLInventaire();}
 
 // L — BAUX
-function renderLBaux(){
-  const rows=LOCATIF_BIENS.map(b=>`<tr>
+async function renderLBaux(){if(!locBiens.length){const{data}=await db.from('locatif_biens').select('*').order('nom');locBiens=data||[];}
+  const rows=locBiens.map(b=>`<tr>
     <td><strong>${b.nom}</strong><br><span style="font-size:11px;color:var(--text2)">${b.loc}</span></td>
     <td>${b.locataire}</td>
     <td style="font-weight:700;color:var(--green)">${fmt(b.loyer)}€</td>
     <td>${fmtDate(b.debut_bail)}</td>
     <td style="color:${new Date(b.fin_bail)<new Date(Date.now()+60*864e5)?'var(--red)':'inherit'}">${fmtDate(b.fin_bail)}</td>
-    <td><span class="badge ${b.statut==='actif'?'b-green':'b-red'}">${b.statut_label}</span></td>
+    <td><span class="badge ${b.statut==='actif'?'b-green':'b-red'}">${b.statut==='retard'?'Retard loyer':b.statut==='actif'?'À jour':b.statut||'—'}</span></td>
     <td>${b.agence}</td>
   </tr>`);
   set('page-content',`<div class="page-header">
@@ -1194,17 +1235,17 @@ function renderLBaux(){
 }
 
 // L — FINANCE
-function renderLFinance(){
-  const total=LOCATIF_BIENS.reduce((s,b)=>s+b.loyer,0);
+async function renderLFinance(){if(!locBiens.length){const{data}=await db.from('locatif_biens').select('*').order('nom');locBiens=data||[];}
+  const total=locBiens.reduce((s,b)=>s+b.loyer,0);
   set('page-content',`<div class="page-header"><div><div class="page-title">Locatif — Finance</div><div class="page-sub">Réconciliation loyers → Finary</div></div></div>
   ${statsRow([{l:'Attendu/mois',v:fmt(total)+'€'},{l:'Reçu ce mois',v:fmt(total-950)+'€',c:'var(--green)'},{l:'Manquant',v:'950€',c:'var(--red)'}])}
   <div class="card">
     <div style="font-size:13px;font-weight:600;margin-bottom:10px">Réconciliation — ce mois</div>
-    ${LOCATIF_BIENS.map(b=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+    ${locBiens.map(b=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
       <div><div style="font-size:13px;font-weight:500">${b.nom}</div><div style="font-size:12px;color:var(--text2)">${b.locataire}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:13px;color:var(--text2)">${fmt(b.loyer)}€ attendu</span>
-        <span class="badge ${b.statut==='actif'?'b-green':'b-red'}">${b.statut_label}</span>
+        <span class="badge ${b.statut==='actif'?'b-green':'b-red'}">${b.statut==='retard'?'Retard loyer':b.statut==='actif'?'À jour':b.statut||'—'}</span>
       </div>
     </div>`).join('')}
     <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px;display:flex;justify-content:space-between;font-weight:700"><span>Total attendu</span><span style="color:var(--green)">${fmt(total)}€/mois</span></div>
