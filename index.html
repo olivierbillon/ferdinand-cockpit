@@ -995,7 +995,39 @@ function toggleAboFields(type){
   document.getElementById('bkf-ponctuel-row').style.display=type==='abonnement'?'none':'grid';
   document.getElementById('bkf-abo-row').style.display=type==='abonnement'?'grid':'none';
 }
-function getBkFormData(){return{voiture:document.getElementById('bkf-v').value,client:document.getElementById('bkf-c').value,email:document.getElementById('bkf-e').value,tel:document.getElementById('bkf-t').value,debut:document.getElementById('bkf-d').value||null,fin:document.getElementById('bkf-f').value||null,prix:parseFloat(document.getElementById('bkf-p').value)||0,source:document.getElementById('bkf-s').value,statut:document.getElementById('bkf-st').value||null,pick_up:document.getElementById('bkf-pk').value,lien_contrat:document.getElementById('bkf-ctr').value||null,commentaire:document.getElementById('bkf-cm').value};}
+function getBkFormData(){
+  const type=(document.getElementById('bkf-type')?.value)||'ponctuel';
+  const isAbo=type==='abonnement';
+  const prixMensuel=parseFloat(document.getElementById('bkf-mensuel')?.value)||0;
+  const debut=document.getElementById('bkf-d')?.value||null;
+  const fin=document.getElementById('bkf-f')?.value||null;
+  let prix=0;
+  if(isAbo){
+    // Pour abonnement : prix total = mensuel × nb mois calculé depuis les dates
+    let nbMois=parseInt(document.getElementById('bkf-nbmois')?.value)||0;
+    if(debut&&fin&&!nbMois)nbMois=Math.max(1,Math.round((new Date(fin)-new Date(debut))/(1000*60*60*24*30)));
+    if(!nbMois)nbMois=1;
+    prix=prixMensuel*nbMois;
+  } else {
+    prix=parseFloat(document.getElementById('bkf-p')?.value)||0;
+  }
+  return{
+    voiture:document.getElementById('bkf-v')?.value||'',
+    client:document.getElementById('bkf-c')?.value||'',
+    email:document.getElementById('bkf-e')?.value||'',
+    tel:document.getElementById('bkf-t')?.value||'',
+    debut,fin,prix,
+    type_booking:type,
+    prix_mensuel:isAbo?prixMensuel:0,
+    source:document.getElementById('bkf-s')?.value||'Direct',
+    statut:document.getElementById('bkf-st')?.value||'En cours',
+    statut_paiement:document.getElementById('bkf-pay')?.value||'Non renseigné',
+    montant_recu:parseFloat(document.getElementById('bkf-received')?.value)||0,
+    pick_up:document.getElementById('bkf-pk')?.value||'',
+    lien_contrat:document.getElementById('bkf-ctr')?.value||null,
+    commentaire:document.getElementById('bkf-cm')?.value||''
+  };
+}
 function openAddBooking(){
   openModal('Nouveau booking',bookingFormHTML(),async()=>{
     const b={id:'fb'+Date.now(),...getBkFormData()};
