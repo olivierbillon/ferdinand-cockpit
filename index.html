@@ -437,8 +437,10 @@ function makeCalendar(year,month,bookings,colorFn,onClickFn){
     const dt=new Date(year,month,d);
     const isToday=ds===todayStr;const isWE=dt.getDay()===0||dt.getDay()===6;
     const dayBk=bookings.filter(b=>{
-      if(!b.debut||!b.fin)return false;
-      return new Date(b.debut)<=dt&&new Date(b.fin)>dt;
+      if(!b.debut)return false;
+      const s=new Date(b.debut);
+      const e=b.fin?new Date(b.fin):new Date(s.getTime()+864e5);
+      return s<=dt&&e>dt||s.toDateString()===dt.toDateString();
     });
     html+=`<div class="cal-cell${isToday?' today':isWE?' we':''}">
       <div class="cal-num" style="color:${isToday?'var(--blue)':isWE?'var(--text2)':'var(--text)'}">${d}</div>
@@ -455,8 +457,8 @@ function makeCalendar(year,month,bookings,colorFn,onClickFn){
 const NAV_CONFIG=[
   {id:'dashboard',label:'Dashboard',section:'Vue d\'ensemble',icon:'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z',roles:['admin','assistant','coparent','viewer']},
   {section:'Ferdinand',roles:['admin','assistant']},
-  {id:'f-inventaire',label:'Inventaire',parent:'Ferdinand',icon:'M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v5',roles:['admin','assistant']},
-  {id:'f-locations',label:'Locations',parent:'Ferdinand',icon:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2',roles:['admin','assistant']},
+  {id:'f-inventaire',label:'Flotte',parent:'Ferdinand',icon:'M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v5',roles:['admin','assistant']},
+  {id:'f-locations',label:'Locations & Paiements',parent:'Ferdinand',icon:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2',roles:['admin','assistant']},
   {id:'f-planning',label:'Planning',parent:'Ferdinand',icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',roles:['admin','assistant']},
   {id:'f-finance',label:'Finance Stripe',parent:'Ferdinand',icon:'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',roles:['admin']},
   {section:'Immobilier — AirBnB',roles:['admin']},
@@ -611,7 +613,7 @@ const ST_BADGE={standby:'b-green',court:'b-amber',long:'b-amber',repare:'b-red',
 
 let fleetData=[];let openV={};let openVT={};let fleetFilter='tous';
 let bkData=[];let bkPage=1;let bkFilter='upcoming';let bkSearch='';let bkVehicleFilter='';
-let planYear=new Date().getFullYear();let planMonth=new Date().getMonth();
+let planYear=new Date().getFullYear();let planMonth=new Date().getMonth();let planVehicleFilter='';
 
 const VEHICLE_MAP={'911 Carrera S':'Porsche Carrera S','911 Targa 4 GTS':'Porsche Targa 4 GTS','Boxster':'Porsche Boxster','Boxster S':'Porsche Boxster','Cayman GTS':'Porsche Cayman GTS','Cayman E':'Porsche Cayman GTS','Cayenne Hybrid':'Cayenne Hybrid','Cayenne Turbo':'Cayenne Hybrid','Ferrari Portofino':'Ferrari Portofino M','FERRARI':'Ferrari Portofino M','Macan GTS':'Porsche Macan GTS','Macan S':'Porsche Macan GTS','Mercedes':'Mercedes GLC Hybrid','Range Rover':'Range Rover Evoque'};
 
@@ -655,7 +657,8 @@ function vehicleCard(v){
     </div>${v.notes?`<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">${v.notes}</div>`:''}
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier ↗</button>
-      <button class="btn btn-sm" onclick="bkVehicleFilter='${v.nom}';showPage('f-locations')">Bookings ↗</button>
+      <button class="btn btn-sm" onclick="bkVehicleFilter='${v.nom}';showPage('f-locations')">Locations ↗</button>
+      <button class="btn btn-sm" onclick="planVehicleFilter='${v.nom}';showPage('f-planning')">Planning ↗</button>
     </div>`;
     else if(tab==='entretien'){
       const warn=v.prochain&&new Date(v.prochain)<=new Date(Date.now()+30*864e5);
@@ -806,7 +809,7 @@ function refreshBkList(){
       <td style="font-size:12px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.commentaire||''}</td>
     </tr>`;
   });
-  set('bk-table',makeTable(['Voiture','Client','Début','Fin','Prix','Source','Statut','Contrat','Notes'],rows));
+  set('bk-table',makeTable(['Voiture','Client','Début','Fin','Prix','Source','Statut','Paiement','Contrat','Notes'],rows));
   set('bk-pages',makePagination(list.length,perPage,bkPage,'setBkPage'));
 }
 function setBkPage(p){bkPage=p;refreshBkList();}
@@ -863,7 +866,8 @@ async function deleteBooking(id){if(!confirm('Supprimer ce booking ?'))return;aw
 async function renderFPlanning(){
   set('page-content','<div class="loading"><div class="spinner"></div>Chargement...</div>');
   const{data}=await db.from('ferdinand_bookings').select('*').order('debut');
-  const bookings=(data||[]).filter(b=>b.debut&&b.fin);
+  // Garder tous les bookings avec debut; si fin null, estimer fin = debut + duree ou +1j
+  const bookings=(data||[]).filter(b=>b.debut).map(b=>({...b,fin:b.fin||b.debut}));
   renderFPlanningHTML(bookings);
 }
 function renderFPlanningHTML(bookings){
