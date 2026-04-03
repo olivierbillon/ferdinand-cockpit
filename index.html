@@ -916,17 +916,48 @@ function renderFPlanningHTML(bookings){
 }
 
 // F — FINANCE STRIPE
-function renderFFinance(){
+async function renderFFinance(){
   set('page-content',`<div class="page-header"><div><div class="page-title">Ferdinand — Finance Stripe</div><div class="page-sub">book@ferdinandparis.com</div></div></div>
-  <div class="alert alert-blue">Pour connecter Stripe en lecture : Stripe → Developers → API Keys → Créer une Restricted Key avec Charges: Read + Payment Intents: Read</div>
-  <div class="card">
-    <div style="font-size:13px;font-weight:600;margin-bottom:10px">Transactions Stripe identifiées dans les bookings</div>
-    ${makeTable(['Client','Voiture','Date','Montant','Note'],[
-      `<tr><td>Nicolas Beyaz</td><td>911 Carrera S</td><td>24 mars 2026</td><td style="color:var(--green);font-weight:700">850€</td><td>Acompte Stripe</td></tr>`,
-      `<tr><td>Mohamed RAMADAN</td><td>Boxster</td><td>17 oct 2025</td><td style="color:var(--green);font-weight:700">500€</td><td>Acompte Stripe</td></tr>`,
-    ])}
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">Connecter la Restricted Key pour voir toutes les transactions automatiquement.</div>
-  </div>`);
+  <div id="stripe-stats"><div class="loading"><div class="spinner"></div>Chargement Stripe...</div></div>
+  <div id="stripe-content"></div>`);
+  try{
+    const r=await fetch('/api/stripe?limit=100');
+    if(!r.ok){const e=await r.json();throw new Error(e.error||'Erreur '+r.status);}
+    const data=await r.json();
+    renderStripeData(data);
+  }catch(e){
+    set('stripe-stats',`<div class="alert alert-red">Erreur Stripe : ${e.message}. Vérifiez que la clé STRIPE_RESTRICTED_KEY est configurée dans Vercel.</div>`);
+  }
+}
+
+function renderStripeData(data){
+  const charges=(data.data||[]);
+  const total=charges.reduce((s,c)=>s+(c.amount_captured||c.amount||0),0);
+  const reussis=charges.filter(c=>c.status==='succeeded');
+  const rembourses=charges.filter(c=>c.refunded);
+  set('stripe-stats',statsRow([
+    {l:'Transactions',v:charges.length},
+    {l:'Total encaissé',v:fmt(total/100)+'€',c:'var(--green)'},
+    {l:'Réussis',v:reussis.length,c:'var(--green)'},
+    {l:'Remboursés',v:rembourses.length,c:'var(--amber)'},
+    {l:'Période',v:'100 dernières'},
+  ]));
+
+  const rows=charges.map(c=>{
+    const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+    const montant=((c.amount_captured||c.amount||0)/100).toFixed(2);
+    const desc=(c.description||c.metadata?.client||c.billing_details?.name||'—').substring(0,40);
+    const statut=c.refunded?'Remboursé':c.status==='succeeded'?'Réussi':c.status;
+    const badgeCls=c.refunded?'b-amber':c.status==='succeeded'?'b-green':'b-red';
+    return`<tr>
+      <td style="white-space:nowrap">${d}</td>
+      <td style="font-weight:600;color:var(--green)">${montant}€</td>
+      <td><span class="badge ${badgeCls}">${statut}</span></td>
+      <td>${desc}</td>
+      <td style="font-size:11px;color:var(--text3);font-family:monospace">${c.id.substring(0,16)}...</td>
+    </tr>`;
+  });
+  set('stripe-content',`<div class="card"><div class="card-title">Transactions Stripe — 100 dernières</div>${makeTable(['Date','Montant','Statut','Description','ID'],rows,'Aucune transaction')}</div>`);
 }
 
 // ══════════════════════════════════════════════════════════
