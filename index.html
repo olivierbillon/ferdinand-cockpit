@@ -802,7 +802,7 @@ function refreshBkList(){
       <td>${b.client||'—'}${b.email?`<br><span style="font-size:11px;color:var(--text3)">${b.email}</span>`:''}</td>
       <td style="white-space:nowrap">${fmtShort(b.debut)}</td>
       <td style="white-space:nowrap">${fmtShort(b.fin)||'—'}</td>
-      <td style="font-weight:700;color:var(--green);white-space:nowrap">${b.prix?fmt(b.prix)+'€':'—'}</td>
+      <td style="white-space:nowrap">${b.prix?`<span style="font-weight:700;color:var(--green)">${fmt(b.prix)}€</span>`:''} ${b.stripe_payment_id?`<span title="Payé via Stripe" style="display:inline-flex;align-items:center;gap:2px;background:#635BFF;color:#fff;font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;vertical-align:middle">S✓</span>`:b.prix?'':'-'}</td>
       <td><span class="badge ${srcBadge(b.source)}">${b.source||'—'}</span></td>
       <td>${(()=>{const s=computeStatut(b);return`<span class="badge ${s.cls}">${s.label}</span>`;})()}</td>
       <td>${b.lien_contrat?`<a href="${b.lien_contrat}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue);font-size:12px">📄 Contrat</a>`:'—'}</td>
@@ -917,74 +917,6 @@ function renderFPlanningHTML(bookings){
 
 // F — FINANCE STRIPE
 async function renderFFinance(){
-  set('page-content',`<div class="page-header"><div><div class="page-title">Ferdinand — Finance Stripe</div><div class="page-sub">book@ferdinandparis.com</div></div></div>
-  <div id="stripe-stats"><div class="loading"><div class="spinner"></div>Chargement Stripe...</div></div>
-  <div id="stripe-content"></div>`);
-  try{
-    const r=await fetch('/api/stripe?limit=100');
-    if(!r.ok){const e=await r.json();throw new Error(e.error||'Erreur '+r.status);}
-    const data=await r.json();
-    renderStripeData(data);
-  }catch(e){
-    set('stripe-stats',`<div class="alert alert-red">Erreur Stripe : ${e.message}. Vérifiez que la clé STRIPE_RESTRICTED_KEY est configurée dans Vercel.</div>`);
-  }
-}
-
-// Similitude entre deux chaînes (0-1)
-function strSim(a,b){
-  if(!a||!b)return 0;
-  a=a.toLowerCase().trim();b=b.toLowerCase().trim();
-  if(a===b)return 1;
-  if(a.includes(b)||b.includes(a))return 0.85;
-  // Tokenize et comparer mots
-  const wa=new Set(a.split(/\s+/));const wb=new Set(b.split(/\s+/));
-  const inter=[...wa].filter(w=>wb.has(w)).length;
-  const union=new Set([...wa,...wb]).size;
-  return union>0?inter/union:0;
-}
-
-// Rapprochement automatique Stripe ↔ Bookings
-function reconcileStripe(charges,bookings){
-  const results=[];
-  charges.forEach(c=>{
-    const stripeName=(c.billing_details?.name||c.description||c.metadata?.client||'').toLowerCase();
-    const stripeAmount=(c.amount_captured||c.amount||0)/100;
-    const stripeDate=new Date(c.created*1000);
-    
-    let bestMatch=null;let bestScore=0;
-    bookings.forEach(b=>{
-      if(b.stripe_payment_id===c.id)return; // déjà lié
-      const bookingName=(b.client||'').toLowerCase();
-      const bookingAmount=b.prix||0;
-      const bookingDate=b.debut?new Date(b.debut):null;
-      
-      let score=0;
-      const nameSim=strSim(stripeName,bookingName);
-      if(nameSim>0.7)score+=2;
-      else if(nameSim>0.4)score+=1;
-      
-      const amountDiff=bookingAmount>0?Math.abs(stripeAmount-bookingAmount)/bookingAmount:1;
-      if(amountDiff<0.1)score+=2;
-      else if(amountDiff<0.3)score+=1;
-      
-      if(bookingDate){
-        const dayDiff=Math.abs(stripeDate-bookingDate)/(1000*60*60*24);
-        if(dayDiff<7)score+=2;
-        else if(dayDiff<30)score+=1;
-      }
-      
-      if(score>bestScore){bestScore=score;bestMatch={...b,_score:score,_nameSim:nameSim};}
-    });
-    
-    results.push({charge:c,match:bestMatch,score:bestScore,
-      auto:bestScore>=4,suggest:bestScore>=2&&bestScore<4});
-  });
-  return results;
-}
-
-let stripeCharges=[];let stripeBookings=[];
-
-async function renderFFinance(){
   set('page-content',`<div class="page-header">
     <div><div class="page-title">Ferdinand — Finance & Paiements</div>
     <div class="page-sub">Rapprochement Stripe ↔ Locations</div></div>
@@ -1010,15 +942,18 @@ async function renderFFinance(){
   }
 }
 
-function renderStripeData(charges,bookings){
+function renderStripeData(allCharges,bookings){
+  // Séparer paiements réels (captured) et cautions (autorisations non capturées)
+  const charges=allCharges.filter(c=>c.captured!==false&&(c.amount_captured||0)>0);
+  const cautions=allCharges.filter(c=>c.captured===false||(c.amount_captured||0)===0);
   const total=charges.reduce((s,c)=>s+(c.amount_captured||c.amount||0),0);
   const reussis=charges.filter(c=>c.status==='succeeded').length;
   const deja=bookings.filter(b=>b.stripe_payment_id).length;
   
   set('stripe-stats',statsRow([
-    {l:'Transactions Stripe',v:charges.length},
+    {l:'Paiements encaissés',v:charges.length,c:'var(--green)'},
     {l:'Total encaissé',v:fmt(total/100)+'€',c:'var(--green)'},
-    {l:'Réussis',v:reussis,c:'var(--green)'},
+    {l:'Cautions (non encaissées)',v:cautions.length,c:'var(--amber)'},
     {l:'Locations liées',v:deja,c:'var(--blue)'},
     {l:'Non pointées',v:charges.length-deja},
   ]));
@@ -1041,7 +976,7 @@ function renderStripeData(charges,bookings){
         autoMatched.map(r=>{
           const c=r.charge;const b=r.match;
           const name=c.billing_details?.name||c.description||'—';
-          const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+          const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
           const montant=fmt((c.amount_captured||c.amount||0)/100)+'€';
           const conf=r.score>=5?'Élevée':r.score>=3?'Moyenne':'Faible';
           const confCls=r.score>=5?'b-green':r.score>=3?'b-amber':'b-gray';
@@ -1068,7 +1003,7 @@ function renderStripeData(charges,bookings){
         suggested.map(r=>{
           const c=r.charge;const b=r.match;
           const name=c.billing_details?.name||c.description||'—';
-          const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+          const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
           const montant=fmt((c.amount_captured||c.amount||0)/100)+'€';
           return`<tr>
             <td><strong>${name}</strong></td>
@@ -1104,6 +1039,20 @@ function renderStripeData(charges,bookings){
         </tr>`;
       }),'Toutes les transactions sont pointées ✓')}
   </div>`;
+
+  // Section cautions
+  if(cautions.length){
+    const cautionRows=cautions.map(c=>{
+      const name=c.billing_details?.name||c.description||'—';
+      const d=new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+      const montant=fmt((c.amount||0)/100)+'€';
+      return '<tr><td>'+name+'</td><td style="color:var(--amber);font-weight:600">'+montant+'</td><td style="white-space:nowrap">'+d+'</td><td><span class="badge b-amber">Autorisation</span></td></tr>';
+    });
+    html+='<div class="card"><div class="card-title" style="color:var(--amber)">Cautions / Autorisations ('+cautions.length+') — non encaissées</div>'
+      +'<div class="alert alert-warn" style="margin-bottom:10px">Ces transactions sont des autorisations sur carte. L\'argent n\'a pas été prélevé. Ne pas pointer contre une location.</div>'
+      +makeTable(['Client','Montant autorisé','Date','Statut'],cautionRows,'Aucune caution')
+      +'</div>';
+  }
 
   set('stripe-content',html);
 }
