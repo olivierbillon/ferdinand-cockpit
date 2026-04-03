@@ -608,8 +608,8 @@ async function renderDashboard(){
 // ══════════════════════════════════════════════════════════
 // FERDINAND
 // ══════════════════════════════════════════════════════════
-const ST_LABELS={standby:'Stand by',court:'Location courte',long:'Location longue',repare:'En réparation',perso:'Usage perso',leasing:'Leasing'};
-const ST_BADGE={standby:'b-green',court:'b-amber',long:'b-amber',repare:'b-red',perso:'b-blue',leasing:'b-gray'};
+const ST_LABELS={standby:'Disponible',court:'En location',long:'Location longue',repare:'En réparation',perso:'Usage perso',leasing:'Leasing',apreparer:'À préparer'};
+const ST_BADGE={standby:'b-green',court:'b-blue',long:'b-amber',repare:'b-red',perso:'b-blue',leasing:'b-gray',apreparer:'b-amber'};
 
 let fleetData=[];let openV={};let openVT={};let fleetFilter='tous';
 let bkData=[];let bkPage=1;let bkFilter='upcoming';let bkSearch='';let bkVehicleFilter='';
@@ -618,27 +618,48 @@ let planYear=new Date().getFullYear();let planMonth=new Date().getMonth();let pl
 const VEHICLE_MAP={'911 Carrera S':'Porsche Carrera S','911 Targa 4 GTS':'Porsche Targa 4 GTS','Boxster':'Porsche Boxster','Boxster S':'Porsche Boxster','Cayman GTS':'Porsche Cayman GTS','Cayman E':'Porsche Cayman GTS','Cayenne Hybrid':'Cayenne Hybrid','Cayenne Turbo':'Cayenne Hybrid','Ferrari Portofino':'Ferrari Portofino M','FERRARI':'Ferrari Portofino M','Macan GTS':'Porsche Macan GTS','Macan S':'Porsche Macan GTS','Mercedes':'Mercedes GLC Hybrid','Range Rover':'Range Rover Evoque'};
 
 // F — INVENTAIRE
-let fleetCA={};  // CA par voiture : {nom_voiture: {total, count, dernier}}
+let fleetCA={};  // CA par voiture
+let fleetDynamicStatus={}; // Statut dynamique calculé depuis les bookings
 
 async function renderFInventaire(){
   set('page-content','<div class="loading"><div class="spinner"></div>Chargement...</div>');
   const[vRes,bkRes]=await Promise.all([
     db.from('vehicles').select('*').order('nom'),
-    db.from('ferdinand_bookings').select('voiture,prix,debut,statut').not('prix','is',null)
+    db.from('ferdinand_bookings').select('voiture,prix,debut,fin,statut').order('debut')
   ]);
   fleetData=vRes.data||[];
-  // Calculer CA par voiture
+  const bookings=bkRes.data||[];
+  const todayStr=today().toISOString().split('T')[0];
+  const tomorrowStr=new Date(today().getTime()+864e5).toISOString().split('T')[0];
+
+  // Calculer CA et statut dynamique par voiture
   fleetCA={};
-  (bkRes.data||[]).forEach(b=>{
-    if(!b.voiture||!b.prix)return;
-    // Normaliser le nom pour matching
+  fleetDynamicStatus={};
+
+  bookings.forEach(b=>{
+    if(!b.voiture)return;
     const nom=b.voiture.trim();
-    if(!fleetCA[nom])fleetCA[nom]={total:0,count:0,dernier:null,paye:0};
-    fleetCA[nom].total+=(b.prix||0);
-    fleetCA[nom].count++;
-    if(!fleetCA[nom].dernier||b.debut>fleetCA[nom].dernier)fleetCA[nom].dernier=b.debut;
-    if(b.statut==='Fermé')fleetCA[nom].paye+=(b.prix||0);
+    // CA
+    if(b.prix){
+      if(!fleetCA[nom])fleetCA[nom]={total:0,count:0,paye:0};
+      fleetCA[nom].total+=(b.prix||0);
+      fleetCA[nom].count++;
+      if(b.statut==='Fermé')fleetCA[nom].paye+=(b.prix||0);
+    }
+    // Statut dynamique
+    if(!b.debut)return;
+    const debut=b.debut;
+    const fin=b.fin||debut;
+    // En location aujourd'hui ?
+    if(debut<=todayStr&&fin>=todayStr){
+      fleetDynamicStatus[nom]={status:'court',label:'En location',booking:b};
+    }
+    // Départ demain → À préparer (priorité si pas déjà en location)
+    else if(debut===tomorrowStr&&!fleetDynamicStatus[nom]){
+      fleetDynamicStatus[nom]={status:'apreparer',label:'À préparer',booking:b};
+    }
   });
+
   renderFInventaireHTML();
 }
 
@@ -657,17 +678,21 @@ function getVehicleCA(nomVehicule){
   return null;
 }
 function renderFInventaireHTML(){
-  const cnt={standby:0,court:0,long:0,repare:0,leasing:0};
-  fleetData.forEach(v=>{if(cnt[v.statut]!==undefined)cnt[v.statut]++;});
+  const cnt={standby:0,court:0,long:0,repare:0,leasing:0,apreparer:0};
+  fleetData.forEach(v=>{
+    const ds=fleetDynamicStatus[v.nom];
+    const s=ds?ds.status:v.statut;
+    if(cnt[s]!==undefined)cnt[s]++;else cnt.standby++;
+  });
   const rev=fleetData.filter(v=>v.loyer>0).reduce((s,v)=>s+v.loyer,0);
   let filtered=fleetFilter==='tous'?[...fleetData]:fleetData.filter(v=>v.statut===fleetFilter);
   let html=`<div class="page-header">
     <div><div class="page-title">Ferdinand — Inventaire</div><div class="page-sub">${fleetData.length} véhicules · ${fmt(rev)}€/mois revenus</div></div>
     <button class="btn btn-primary" onclick="openAddVehicle()">+ Véhicule</button>
   </div>
-  ${statsRow([{l:'Stand by',v:cnt.standby,c:'var(--green)'},{l:'En location',v:cnt.court+cnt.long,c:'var(--amber)'},{l:'Réparation',v:cnt.repare,c:'var(--red)'},{l:'Leasing',v:cnt.leasing},{l:'Revenus/mois',v:fmt(rev)+'€',c:'var(--green)'}])}
+  ${statsRow([{l:'Disponibles',v:cnt.standby,c:'var(--green)'},{l:'En location',v:cnt.court+cnt.long,c:'var(--blue)'},{l:'À préparer',v:cnt.apreparer,c:'var(--amber)'},{l:'Réparation',v:cnt.repare,c:'var(--red)'},{l:'Revenus/mois',v:fmt(rev)+'€',c:'var(--green)'}])}
   ${filterBar(
-    [{v:'tous',l:'Tous'},{v:'standby',l:'Stand by'},{v:'court',l:'Courte durée'},{v:'long',l:'Longue durée'},{v:'repare',l:'Réparation'},{v:'leasing',l:'Leasing'}],
+    [{v:'tous',l:'Tous'},{v:'standby',l:'Disponible'},{v:'court',l:'Courte durée'},{v:'long',l:'Longue durée'},{v:'repare',l:'Réparation'},{v:'leasing',l:'Leasing'}],
     fleetFilter,'setFleetFilter'
   )}
   <div id="inv-list">${filtered.map(v=>vehicleCard(v)).join('')}</div>`;
@@ -695,6 +720,10 @@ function vehicleCard(v){
         <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px;font-weight:500">LOCATIONS</div><div style="font-size:17px;font-weight:700">${ca.count}</div></div>
         <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px;font-weight:500">CA FERMÉ</div><div style="font-size:17px;font-weight:700;color:var(--blue)">${fmt(ca.paye)}€</div></div>
       </div>`:'<div style="margin-top:10px;font-size:12px;color:var(--text3)">Aucun booking trouvé pour ce véhicule</div>'}
+      ${(()=>{const ds=fleetDynamicStatus[v.nom];if(!ds)return'';
+        if(ds.status==='apreparer')return`<div class="alert alert-warn" style="margin-top:10px">⚡ Départ demain — ${ds.booking.client||'Client'} · ${fmtShort(ds.booking.debut)}→${fmtShort(ds.booking.fin)}</div>`;
+        if(ds.status==='court')return`<div class="alert alert-blue" style="margin-top:10px">🚗 En location — ${ds.booking.client||'Client'} · jusqu'au ${fmtShort(ds.booking.fin)}</div>`;
+        return'';})()}
       ${v.notes?`<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">${v.notes}</div>`:''}
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier ↗</button>
@@ -723,7 +752,7 @@ function vehicleCard(v){
     <div class="inv-head" onclick="toggleV('${v.id}')">
       <div style="flex:1;min-width:0">
         <div style="display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap">
-          <span class="badge ${ST_BADGE[v.statut]||'b-gray'}">${ST_LABELS[v.statut]||v.statut}</span>
+          ${(()=>{const ds=fleetDynamicStatus[v.nom];const s=ds?ds.status:v.statut;const l=ds?ST_LABELS[ds.status]||ds.label:ST_LABELS[v.statut]||v.statut;return`<span class="badge ${ST_BADGE[s]||'b-gray'}">${l}</span>`;})()}
           <span class="badge b-gray">${v.detention}</span>
           ${v.immat&&v.immat!=='—'?`<span style="font-size:11px;color:var(--text3);font-family:monospace">${v.immat}</span>`:''}
         </div>
