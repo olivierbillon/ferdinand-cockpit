@@ -960,8 +960,13 @@ function openEditBooking(id){
   const b=bkData.find(x=>x.id===id);if(!b)return;
   openModal(`Modifier — ${b.client}`,bookingFormHTML(b),async()=>{
     const u=getBkFormData();
-    const{error}=await db.from('ferdinand_bookings').update(u).eq('id',id);
-    if(error){alert('Erreur : '+error.message);return;}
+    let{error}=await db.from('ferdinand_bookings').update(u).eq('id',id);
+    if(error){
+      // Fallback sans les nouvelles colonnes
+      const{type_booking,prix_mensuel,...uSafe}=u;
+      const res=await db.from('ferdinand_bookings').update(uSafe).eq('id',id);
+      if(res.error){alert('Erreur : '+res.error.message);return;}
+    }
     Object.assign(b,u);closeModal();refreshBkList();
   },`<button class="btn btn-danger" style="margin-right:auto" onclick="deleteBooking('${id}')">Supprimer</button>`);
 }
