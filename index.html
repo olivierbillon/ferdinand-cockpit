@@ -1433,42 +1433,63 @@ function openEditUser(id,currentRole){
 // ══════════════════════════════════════════════════════════
 // INIT & AUTH
 // ══════════════════════════════════════════════════════════
-let appStarted=false;
+let launched=false;
 
-async function startApp(user){
-  if(appStarted)return;
-  appStarted=true;
+function launchApp(user){
+  if(launched)return;
+  launched=true;
+
+  // Determine role from email immediately — no async needed
+  const email=user.email||'';
+  const adminEmails=['olivier@ykone.com','olivier.billon@gmail.com'];
+  currentRole=adminEmails.includes(email)?'admin':'viewer';
+  const name=user.user_metadata?.full_name||user.user_metadata?.name||email;
+  currentUser={email,nom:name,role:currentRole};
+
+  // Show app immediately
   document.getElementById('login-screen').style.display='none';
+  document.getElementById('loading-screen').style.display='none';
   document.getElementById('app-shell').style.display='block';
+  document.getElementById('page-content').style.display='block';
+
+  // Update sidebar
+  const initials=name.split(' ').filter(Boolean).map(n=>n[0]).join('').substring(0,2).toUpperCase()||'OB';
+  document.getElementById('user-avatar').textContent=initials;
+  document.getElementById('user-name').textContent=name;
+  document.getElementById('user-role').textContent=ROLE_LABELS[currentRole]||currentRole;
+  document.getElementById('sidebar-sub').textContent='Penelope';
+
+  buildNav();
+  showPage('dashboard');
+
+  // Background tasks — non-blocking
+  setTimeout(()=>{
+    getOrCreateProfile(user).catch(e=>console.warn('Profile:',e));
+    seedAll().catch(e=>console.warn('Seed:',e));
+  },500);
+}
+
+async function init(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-shell').style.display='none';
   document.getElementById('loading-screen').style.display='flex';
   document.getElementById('page-content').style.display='none';
-  try{
-    const profile=await getOrCreateProfile(user);
-    currentUser=profile;
-    currentRole=profile?.role||'admin';
-    const name=profile?.nom||user.email||'Utilisateur';
-    const initials=name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
-    document.getElementById('user-avatar').textContent=initials;
-    document.getElementById('user-name').textContent=name;
-    document.getElementById('user-role').textContent=ROLE_LABELS[currentRole]||currentRole;
-    document.getElementById('sidebar-sub').textContent='Penelope — '+ROLE_LABELS[currentRole];
-    buildNav();
+
+  db.auth.onAuthStateChange((event,session)=>{
+    if(session?.user&&!launched){launchApp(session.user);}
+    if(event==='SIGNED_OUT'){launched=false;location.reload();}
+  });
+
+  const{data:{session}}=await db.auth.getSession();
+  if(session?.user){
+    launchApp(session.user);
+  } else {
     document.getElementById('loading-screen').style.display='none';
-    document.getElementById('page-content').style.display='block';
-    const defaultPage={admin:'dashboard',assistant:'f-inventaire',coparent:'elisa',viewer:'dashboard'}[currentRole]||'dashboard';
-    showPage(defaultPage);
-    seedAll().catch(e=>console.error('Seed:',e));
-  }catch(e){
-    console.error('StartApp error:',e);
-    document.getElementById('loading-screen').innerHTML='<div style="text-align:center;padding:20px"><div style="color:var(--red);margin-bottom:10px">Erreur de chargement</div><button class="btn" onclick="location.reload()">Reessayer</button></div>';
+    document.getElementById('login-screen').style.display='flex';
   }
 }
 
-db.auth.onAuthStateChange(async(event,session)=>{
-  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){await startApp(session.user);}
-  else if(!session&&event==='INITIAL_SESSION'){document.getElementById('login-screen').style.display='flex';}
-  if(event==='SIGNED_OUT'){appStarted=false;location.reload();}
-});
+init();
 </script>
 </body>
 </html>
