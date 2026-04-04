@@ -41,8 +41,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .sb-avatar{width:24px;height:24px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;}
 
 /* Main */
-.main{flex:1;overflow-y:auto;background:var(--bg);}
-.pg{padding:24px 28px;max-width:1100px;}
+.main{flex:1;overflow-y:auto;background:var(--bg);display:flex;flex-direction:column;align-items:stretch;}
+.pg{padding:24px 28px;max-width:1100px;margin:0 auto;width:100%;}
 .pg-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
 .pg-title{font-size:18px;font-weight:600;letter-spacing:-.3px;}
 .pg-sub{font-size:12.5px;color:var(--text2);margin-top:2px;}
@@ -121,9 +121,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .tab.active{color:var(--text);border-bottom-color:#111827;}
 
 /* Expandable */
-.exp-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;overflow:hidden;}
-.exp-head{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;cursor:pointer;}
-.exp-head:hover{background:var(--bg3);}
+.exp-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden;transition:box-shadow .15s;}
+.exp-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.exp-head{display:flex;align-items:flex-start;gap:12px;padding:0;cursor:pointer;}
+.exp-head:hover .exp-head-inner{background:var(--bg3);}
+.exp-head-inner{flex:1;display:flex;align-items:flex-start;gap:12px;padding:12px 14px;min-width:0;}
 .exp-body{border-top:1px solid var(--border);}
 .exp-tabs{display:flex;border-bottom:1px solid var(--border);}
 .etab{flex:1;padding:7px 4px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:transparent;font-family:inherit;border-bottom:2px solid transparent;}
@@ -132,6 +134,28 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .ig{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .il{font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;}
 .iv{font-size:13px;font-weight:500;}
+
+/* Vehicle icon */
+.v-icon{width:52px;height:52px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:24px;}
+.v-icon-coupe{background:linear-gradient(135deg,#eff6ff,#dbeafe);}
+.v-icon-roadster{background:linear-gradient(135deg,#fdf2f8,#fce7f3);}
+.v-icon-suv{background:linear-gradient(135deg,#ecfdf5,#d1fae5);}
+.v-icon-suv-compact{background:linear-gradient(135deg,#f0fdf4,#bbf7d0);}
+.v-icon-spider{background:linear-gradient(135deg,#fef2f2,#fee2e2);}
+.v-icon-targa{background:linear-gradient(135deg,#f5f3ff,#ede9fe);}
+
+/* CA block in vehicle card */
+.v-ca{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--bg3);border-radius:6px;overflow:hidden;margin-top:10px;border:1px solid var(--border);}
+.v-ca-item{padding:8px 12px;border-right:1px solid var(--border);}
+.v-ca-item:last-child{border-right:none;}
+.v-ca-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.v-ca-val{font-size:16px;font-weight:700;letter-spacing:-.4px;}
+
+/* Responsive fleet grid */
+@media(min-width:900px){
+  .fleet-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .fleet-grid .exp-card{margin-bottom:0;}
+}
 
 /* Alerts */
 .alert{padding:9px 13px;border-radius:5px;font-size:12.5px;margin-bottom:8px;border:1px solid transparent;}
@@ -189,12 +213,18 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .el-vac-maman{background:#fbcfe8;}
 
 /* Mobile */
+@media(max-width:1024px){
+  .pg{padding:20px 20px;}
+}
 @media(max-width:768px){
   .sidebar{position:fixed;left:-240px;top:0;bottom:0;z-index:100;transition:left .2s;}
   .sidebar.open{left:0;}
-  .pg{padding:14px 16px;}
+  .sidebar.open + .main::before{content:'';position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99;}
+  .pg{padding:14px 14px;}
   .f2{grid-template-columns:1fr;}
   .stats{grid-template-columns:1fr 1fr;}
+  .fleet-grid{grid-template-columns:1fr !important;}
+  .tbl-wrap{border-radius:0;margin:0 -14px;border-left:none;border-right:none;}
 }
 .mob-bar{display:none;align-items:center;gap:12px;padding:10px 14px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
 @media(max-width:768px){.mob-bar{display:flex;}}
@@ -584,10 +614,10 @@ async function renderDashboard() {
 // FERDINAND — FLOTTE
 // ═══════════════════════════════════════════════════════
 let fleetData = [], fleetCA = {}, fleetDynStatus = {};
-let openV = {}, openVTab = {}, fleetFilter = 'tous';
+let openV = {}, openVTab = {}, fleetFilter = 'actifs'; // 'actifs' par défaut = cache les cédées
 
-const ST_LBL = { standby: 'Disponible', court: 'En location', long: 'Location longue', repare: 'En réparation', perso: 'Usage perso', leasing: 'Leasing' };
-const ST_BADGE = { standby: 'b-green', court: 'b-blue', long: 'b-amber', repare: 'b-red', perso: 'b-blue', leasing: 'b-gray' };
+const ST_LBL = { standby: 'Disponible', court: 'En location', long: 'Location longue', repare: 'En réparation', perso: 'Usage perso', leasing: 'Leasing', cede: 'Cédée' };
+const ST_BADGE = { standby: 'b-green', court: 'b-blue', long: 'b-amber', repare: 'b-red', perso: 'b-blue', leasing: 'b-gray', cede: 'b-gray' };
 
 // Statut dynamique d'un booking selon les dates
 function bkDynStatus(b) {
@@ -663,18 +693,26 @@ function getCA(nom) {
 }
 
 function renderFlotteHTML() {
-  const cnt = { standby: 0, court: 0, long: 0, repare: 0, leasing: 0, apreparer: 0 };
+  const cnt = { standby: 0, court: 0, long: 0, repare: 0, leasing: 0, apreparer: 0, cede: 0 };
   fleetData.forEach(v => {
     const ds = fleetDynStatus[v.nom];
     const s = ds ? ds.status : v.statut;
     if (cnt[s] !== undefined) cnt[s]++; else cnt.standby++;
   });
   const rev = fleetData.filter(v => v.loyer > 0).reduce((s,v) => s + v.loyer, 0);
-  let list = fleetFilter === 'tous' ? [...fleetData] : fleetData.filter(v => {
-    const ds = fleetDynStatus[v.nom];
-    const s = ds ? ds.status : v.statut;
-    return s === fleetFilter;
-  });
+  let list;
+  if (fleetFilter === 'tous') {
+    list = [...fleetData];
+  } else if (fleetFilter === 'actifs') {
+    // Actifs = toutes sauf cédées
+    list = fleetData.filter(v => v.statut !== 'cede');
+  } else {
+    list = fleetData.filter(v => {
+      const ds = fleetDynStatus[v.nom];
+      const s = ds ? ds.status : v.statut;
+      return s === fleetFilter;
+    });
+  }
 
   set('app-page', `
     <div class="pg-header">
@@ -686,12 +724,13 @@ function renderFlotteHTML() {
       { l: 'En location', v: cnt.court + cnt.long, c: 'var(--blue)' },
       { l: 'À préparer', v: cnt.apreparer, c: 'var(--amber)' },
       { l: 'Réparation', v: cnt.repare, c: 'var(--red)' },
+      { l: 'Cédées', v: cnt.cede, c: 'var(--text3)' },
       { l: 'Revenus/mois', v: fmt(rev) + '€', c: 'var(--green)' },
     ])}
     <div class="filters">
-      ${['tous','standby','court','repare','leasing'].map(f => `<button class="fpill${f===fleetFilter?' active':''}" onclick="setFleetFilter('${f}')">${f==='tous'?'Tous':ST_LBL[f]||f}</button>`).join('')}
+      ${[['actifs','Actives'],['tous','Toutes'],['standby','Disponibles'],['court','En location'],['repare','Réparation'],['cede','Cédées']].map(([f,l]) => `<button class="fpill${f===fleetFilter?' active':''}" onclick="setFleetFilter('${f}')">${l}</button>`).join('')}
     </div>
-    <div id="fleet-list">${list.map(v => vCard(v)).join('')}</div>
+    <div id="fleet-list" class="fleet-grid">${list.map(v => vCard(v)).join('')}</div>
   `);
 }
 
@@ -810,7 +849,7 @@ function vehicleFormHTML(v) {
   <div class="f2">
     <div class="fg"><label class="fl">Année</label><input class="fi" id="vf-annee" value="${esc(v.annee||'')}"></div>
     <div class="fg"><label class="fl">Statut</label><select class="fi" id="vf-statut">
-      ${Object.entries(ST_LBL).map(([k,l]) => `<option value="${k}" ${v.statut===k?'selected':''}>${l}</option>`).join('')}
+      ${Object.entries(ST_LBL).map(([k,l]) => `<option value="${k}" ${(v.statut||'standby')===k?'selected':''}>${l}</option>`).join('')}
     </select></div>
   </div>
   <div class="f2">
@@ -834,7 +873,23 @@ function vehicleFormHTML(v) {
   <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="vf-notes" rows="2">${esc(v.notes||'')}</textarea></div>`;
 }
 function getVehicleForm() {
-  return { nom: $('vf-nom').value, immat: $('vf-immat').value, annee: $('vf-annee').value, statut: $('vf-statut').value, loc: $('vf-loc').value, detention: $('vf-deten').value, client: $('vf-client').value, loyer: parseFloat($('vf-loyer').value) || 0, garage: $('vf-garage').value, entretien: $('vf-entretien').value, prochain: $('vf-prochain').value, notes: $('vf-notes').value };
+  const statut = $('vf-statut').value;
+  return {
+    nom: $('vf-nom').value,
+    immat: $('vf-immat').value,
+    annee: $('vf-annee').value,
+    statut,
+    loc: $('vf-loc').value,
+    detention: $('vf-deten').value,
+    client: $('vf-client').value,
+    loyer: parseFloat($('vf-loyer').value) || 0,
+    garage: $('vf-garage').value,
+    entretien: $('vf-entretien').value,
+    prochain: $('vf-prochain').value,
+    notes: $('vf-notes').value,
+    date_cession: statut === 'cede' ? ($('vf-cede-date')?.value || null) : null,
+    prix_cession: statut === 'cede' ? (parseFloat($('vf-cede-prix')?.value) || null) : null,
+  };
 }
 function openAddVehicle() {
   openModal('Nouveau véhicule', vehicleFormHTML(), async () => {
