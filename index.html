@@ -1501,21 +1501,27 @@ function vCard(v) {
     body = `<div class="exp-body">${tabs}<div class="exp-panel">${panel}</div></div>`;
   }
 
+  // Photo cliquable
+  const photoEl = v.photo_url
+    ? '<a href="' + (v.site_url||'#') + '" target="_blank" onclick="event.stopPropagation()" title="Voir sur FerdinandParis.com" style="flex-shrink:0;display:block;width:130px;height:76px;overflow:hidden;border-radius:5px;border:1px solid var(--border);margin:10px 8px 10px 0"><img src="' + v.photo_url + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy"></a>'
+    : v.site_url
+      ? '<a href="' + v.site_url + '" target="_blank" onclick="event.stopPropagation()" style="flex-shrink:0;width:56px;height:76px;border-radius:5px;border:1px dashed var(--border);margin:10px 8px 10px 0;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:11px;text-decoration:none">↗</a>'
+      : '';
+
   return `<div class="exp-card">
     <div class="exp-head" onclick="toggleV('${v.id}')">
       <div style="flex:1;min-width:0">
         <div style="display:flex;gap:5px;margin-bottom:4px;flex-wrap:wrap">
           <span class="badge ${dynBadge}">${dynLabel}</span>
           <span class="badge b-gray">${v.detention || '—'}</span>
-          ${v.immat ? `<span style="font-size:11px;color:var(--text3);font-family:monospace">${v.immat}</span>` : ''}
+          ${v.immat ? `<span style="font-size:11px;color:var(--fg3);font-family:monospace">${v.immat}</span>` : ''}
         </div>
         <div style="font-weight:600;font-size:14px">${vNom(v)}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:1px">
-          ${v.loc || '—'}
-        </div>
-        ${ca ? `<div style="font-size:11px;margin-top:2px"><span style="color:var(--green);font-weight:600">${fmt(ca.total)}€ CA</span><span style="color:var(--text3)"> · ${ca.count} locations</span>${ca.mrr > 0 ? ` <span style="color:var(--purple);font-weight:600">${fmt(ca.mrr)}€/mois</span>` : ''}</div>` : ''}
+        <div style="font-size:12px;color:var(--fg2);margin-top:1px">${v.loc || '—'}</div>
+        ${ca ? `<div style="font-size:11px;margin-top:2px"><span style="color:var(--green);font-weight:600">${fmt(ca.total)}€ réalisé</span><span style="color:var(--fg3)"> · ${ca.count} location${ca.count!==1?'s':''}</span>${ca.mrr > 0 ? ` · <span style="color:var(--purple);font-weight:600">${fmt(ca.caAboPrev||0)}€ prévi.</span>` : ''}</div>` : ''}
       </div>
-      <span style="color:var(--text3);font-size:12px">${isOpen ? '▲' : '▼'}</span>
+      ${photoEl}
+      <span style="color:var(--fg3);font-size:12px;padding:12px 8px 12px 0;flex-shrink:0">${isOpen ? '▲' : '▼'}</span>
     </div>${body}
   </div>`;
 }
@@ -1828,6 +1834,8 @@ async function deleteBooking(id) {
 // FERDINAND — PLANNING
 // ═══════════════════════════════════════════════════════
 let planYear = new Date().getFullYear(), planMonth = new Date().getMonth();
+let planVoitureFilter = '';
+let allPlanBookings = [];
 
 async function renderPlanning() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
@@ -1854,6 +1862,7 @@ async function renderPlanning() {
 }
 
 function renderPlanningHTML(bookings) {
+  allPlanBookings = bookings;
   const ml = new Date(planYear, planMonth, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const firstStr = `${planYear}-${String(planMonth+1).padStart(2,'0')}-01`;
   const lastStr = `${planYear}-${String(planMonth+1).padStart(2,'0')}-${String(new Date(planYear,planMonth+1,0).getDate()).padStart(2,'0')}`;
@@ -1862,23 +1871,40 @@ function renderPlanningHTML(bookings) {
     const fin = b.fin ? b.fin.substring(0,10) : deb;
     return deb && fin && deb <= lastStr && fin >= firstStr;
   });
-  const voiColor = v => ({ '911 Carrera S': '#2563eb', '911 Targa 4 GTS': '#7c3aed', 'Boxster': '#059669', 'Boxster S': '#059669', 'Cayman GTS': '#db2777', 'Cayenne Hybrid': '#d97706', 'Cayenne Craie': '#d97706', 'Ferrari Portofino': '#dc2626', 'Macan GTS': '#65a30d', 'Macan S': '#65a30d', 'Mercedes': '#6b7280' }[v] || '#6b7280');
-  // Couleur par type — abonnements en violet
+  const bkMoisF = planVoitureFilter ? bkMois.filter(b => b.voiture === planVoitureFilter) : bkMois;
+  // Palette dynamique — une couleur par voiture
+  const PALETTE = ['#2563eb','#dc2626','#059669','#d97706','#db2777','#0891b2','#65a30d','#c2410c','#0f766e','#6d28d9','#be185d','#92400e'];
+  const _vNames = [...new Set(fleetData.filter(v=>v.statut!=='cede').map(v=>v.nom))].sort();
+  const voiColor = nom => { const i = _vNames.indexOf(nom); return i >= 0 ? PALETTE[i % PALETTE.length] : '#6b7280'; };
   const bkColor = b => b.type_booking === 'abonnement' ? '#7c3aed' : voiColor(b.voiture);
 
   set('app-page', `
     <div class="pg-header">
-      <div><div class="pg-title">Ferdinand — Planning</div><div class="pg-sub">${bkMois.length} locations ce mois</div></div>
-      <button class="btn btn-primary" onclick="openAddBooking()">+ Booking</button>
+      <div><div class="pg-title">Ferdinand — Planning</div>
+      <div class="pg-sub">${bkMoisF.length} location${bkMoisF.length!==1?'s':''} · ${planVoitureFilter?'filtré':'ce mois'}</div></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <select class="fi" style="width:auto;padding:0 10px;height:32px;font-size:12.5px" onchange="planVoitureFilter=this.value;renderPlanningHTML(allPlanBookings)">
+          <option value="">Toutes les voitures</option>
+          ${fleetData.filter(v=>v.statut!=='cede').map(v=>`<option value="${v.nom}" ${planVoitureFilter===v.nom?'selected':''}>${vNom(v)}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary" onclick="openAddBooking()">+ Booking</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg)">
+      ${fleetData.filter(v=>v.statut!=='cede').map(v=>{
+        const col=voiColor(v.nom);
+        const sel=planVoitureFilter===v.nom;
+        return `<div onclick="planVoitureFilter='${v.nom}'===planVoitureFilter?'':'${v.nom}';renderPlanningHTML(allPlanBookings)"
+          style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:3px 8px;border-radius:4px;border:1px solid ${sel?col:'transparent'};background:${sel?col+'22':'transparent'}">
+          <span style="width:10px;height:10px;border-radius:2px;background:${col};flex-shrink:0"></span>
+          <span style="font-size:12px;color:var(--fg2)">${vNom(v)}</span>
+        </div>`;
+      }).join('')}
     </div>
     ${mkStats([
-      { l: 'Ce mois', v: bkMois.length, c: 'var(--blue)' },
-      { l: 'CA ce mois', v: fmt(bkMois.reduce((s,b) => {
-    // Pour les abonnements : compter 1 mensualité, pas le total du contrat
-    if (b.type_booking === 'abonnement' || b.prix_mensuel > 0) return s + (b.prix_mensuel || 0);
-    return s + (b.prix || 0);
-  }, 0)) + '€', c: 'var(--green)' },
-      { l: 'Voitures actives', v: [...new Set(bkMois.map(b=>b.voiture))].length },
+      { l: planVoitureFilter?vNom(fleetData.find(v=>v.nom===planVoitureFilter)||{}):'Ce mois', v: bkMoisF.length, c: 'var(--blue)' },
+      { l: 'CA', v: fmt(bkMoisF.reduce((s,b) => { if (b.type_booking==='abonnement'||b.prix_mensuel>0) return s+(b.prix_mensuel||0); return s+(b.prix||0); }, 0)) + '€', c: 'var(--green)' },
+      { l: 'Voitures', v: [...new Set(bkMoisF.map(b=>b.voiture))].length },
     ])}
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <button class="btn btn-sm" onclick="planMonth--;if(planMonth<0){planMonth=11;planYear--;}renderPlanning()">←</button>
@@ -1887,10 +1913,10 @@ function renderPlanningHTML(bookings) {
       <button class="btn btn-sm" onclick="planYear=new Date().getFullYear();planMonth=new Date().getMonth();renderPlanning()">Aujourd'hui</button>
     </div>
     <div class="card" style="padding:10px">
-      ${mkCalendar(planYear, planMonth, bkMois, b => b.type_booking==='abonnement'?'#7c3aed':voiColor(b.voiture), 'openEditBookingOrAbo')}
+      ${mkCalendar(planYear, planMonth, bkMoisF, b => b.type_booking==='abonnement'?'#7c3aed':voiColor(b.voiture), 'openEditBookingOrAbo')}
     </div>
     ${bkMois.length ? `<div style="margin-top:14px">
-      ${bkMois.sort((a,b)=>a.debut.localeCompare(b.debut)).map(b => {
+      ${bkMoisF.sort((a,b)=>a.debut.localeCompare(b.debut)).map(b => {
         const col = voiColor(b.voiture);
         const nights = b.debut && b.fin ? Math.ceil((new Date(b.fin)-new Date(b.debut))/864e5) : 0;
         return `<div onclick="openEditBooking('${b.id}')" style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:6px;padding:8px 12px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#fff">
@@ -2655,6 +2681,7 @@ async function renderAPlanning() {
     const fin = b.fin ? b.fin.substring(0,10) : deb;
     return deb && fin && deb <= lastStr && fin >= firstStr;
   });
+  const bkMoisF = planVoitureFilter ? bkMois.filter(b => b.voiture === planVoitureFilter) : bkMois;
   const bienColor = b => b.voiture === 'Paris' ? '#2563eb' : '#7c3aed';
   set('app-page', `
     <div class="pg-header"><div><div class="pg-title">AirBnB — Planning</div><div class="pg-sub">Paris + Le Touquet</div></div><button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button></div>
@@ -2670,7 +2697,7 @@ async function renderAPlanning() {
       <button class="btn btn-sm" onclick="abPlanYear=new Date().getFullYear();abPlanMonth=new Date().getMonth();renderAPlanning()">Aujourd'hui</button>
     </div>
     <div class="card" style="padding:10px">${mkCalendar(abPlanYear, abPlanMonth, bkMois, bienColor, 'openEditABK')}</div>
-    ${bkMois.length ? `<div style="margin-top:14px">${bkMois.sort((a,b)=>a.debut.localeCompare(b.debut)).map(b => {
+    ${bkMoisF.length ? `<div style="margin-top:14px">${bkMoisF.sort((a,b)=>a.debut.localeCompare(b.debut)).map(b => {
       const col = bienColor(b);
       const nights = Math.ceil((new Date(b.fin)-new Date(b.debut))/864e5);
       return `<div onclick="openEditABK('${b.id}')" style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:6px;padding:8px 12px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#fff">
