@@ -1217,6 +1217,14 @@ async function renderFlotte() {
   renderFlotteHTML();
 }
 
+// Affichage du nom complet d'un véhicule : Marque + Modèle
+function vNom(v) {
+  if (!v) return '—';
+  if (v.marque && v.modele) return v.marque + ' ' + v.modele;
+  if (v.marque) return v.marque;
+  return v.nom || '—';
+}
+
 function getCA(nom) {
   // Match exact uniquement — évite Boxster vs Boxster S
   return fleetCA[nom] || null;
@@ -1276,7 +1284,7 @@ function renderFlotteHTML() {
 
   set('app-page', `
     <div class="pg-header">
-      <div><div class="pg-title">Flotte Ferdinand</div><div class="pg-sub">${fleetData.length} véhicules · ${fmt(rev)}€/mois revenus</div></div>
+      <div><div class="pg-title">Flotte Ferdinand</div><div class="pg-sub">${fleetData.filter(v=>v.statut!=='cede').length} véhicules actifs · ${fmt(rev)}€/mois revenus</div></div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-sm${fleetView==='cards'?' btn-primary':''}" onclick="fleetView='cards';renderFlotteHTML()">⊞ Cartes</button>
         <button class="btn btn-sm${fleetView==='table'?' btn-primary':''}" onclick="fleetView='table';renderFlotteHTML()">⊟ Tableau</button>
@@ -1304,15 +1312,14 @@ function setFleetFilter(f) { fleetFilter = f; renderFlotteHTML(); }
 // ── VUE TABLEAU FLOTTE ──────────────────────────────────
 function renderFlotteTable(list) {
   const cols = [
-    { key: 'nom',          label: 'Nom',         type: 'text',   width: '160px' },
-    { key: 'immat',        label: 'Immat',        type: 'text',   width: '110px', mono: true },
-    { key: 'annee',        label: 'Année',        type: 'text',   width: '70px'  },
+    { key: 'marque',       label: 'Marque',       type: 'text',   width: '100px' },
+    { key: 'modele',       label: 'Modèle',       type: 'text',   width: '150px' },
+    { key: 'immat',        label: 'Immat',        type: 'text',   width: '105px', mono: true },
+    { key: 'annee',        label: 'Année',        type: 'text',   width: '65px'  },
     { key: 'statut',       label: 'Statut',       type: 'select', width: '130px', opts: Object.entries(ST_LBL).map(([k,l])=>({k,l})) },
-    { key: 'loc',          label: 'Localisation', type: 'text',   width: '120px' },
+    { key: 'loc',          label: 'Localisation', type: 'text',   width: '110px' },
     { key: 'detention',    label: 'Détention',    type: 'select', width: '140px', opts: ['Ferdinand & Friends','Titre perso','Autre société'].map(v=>({k:v,l:v})) },
-    { key: 'client',       label: 'Client',       type: 'text',   width: '140px' },
-    { key: 'loyer',        label: 'Loyer/mois',   type: 'number', width: '90px'  },
-    { key: 'date_cession', label: 'Cession',      type: 'date',   width: '110px' },
+    { key: 'date_cession', label: 'Cession',      type: 'date',   width: '105px' },
     { key: 'prix_cession', label: 'Prix cession', type: 'number', width: '100px' },
     { key: 'garage',       label: 'Garage',       type: 'text',   width: '120px' },
     { key: 'notes',        label: 'Notes',        type: 'text',   width: '180px' },
@@ -1376,24 +1383,43 @@ async function saveFleetCell(el) {
   let val = el.type === 'number' ? (parseFloat(el.value) || 0) : el.value;
   if (el.type === 'date' && !val) val = null;
 
-  // Find vehicle in memory
   const v = fleetData.find(x => x.id === id);
   if (!v) return;
-  const oldVal = v[key];
-
-  // Cascade rename if nom changed
-  if (key === 'nom' && val && val !== oldVal) {
-    await Promise.all([
-      db.from('ferdinand_bookings').update({ voiture: val }).eq('voiture', oldVal),
-      db.from('entretiens').update({ voiture: val }).eq('voiture', oldVal),
-      db.from('fleet_tasks').update({ voiture: val }).eq('voiture', oldVal),
-    ]);
-    bkData.forEach(b => { if (b.voiture === oldVal) b.voiture = val; });
-    _voitureNames = []; // reset cache
-  }
+  const oldNom = v.nom;
 
   v[key] = val;
-  await db.from('vehicles').update({ [key]: val }).eq('id', id);
+
+  // Si marque ou modele change → recalculer nom et propager en cascade
+  if (key === 'marque' || key === 'modele') {
+    const newNom = ((v.marque||'') + ' ' + (v.modele||'')).trim();
+    if (newNom && newNom !== oldNom) {
+      v.nom = newNom;
+      await Promise.all([
+        db.from('ferdinand_bookings').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('entretiens').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('fleet_tasks').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('vehicles').update({ [key]: val, nom: newNom }).eq('id', id),
+      ]);
+      bkData.forEach(b => { if (b.voiture === oldNom) b.voiture = newNom; });
+      _voitureNames = [];
+    } else {
+      await db.from('vehicles').update({ [key]: val }).eq('id', id);
+    }
+  } else if (key === 'nom') {
+    // Direct nom change (legacy) → cascade
+    if (val && val !== oldNom) {
+      await Promise.all([
+        db.from('ferdinand_bookings').update({ voiture: val }).eq('voiture', oldNom),
+        db.from('entretiens').update({ voiture: val }).eq('voiture', oldNom),
+        db.from('fleet_tasks').update({ voiture: val }).eq('voiture', oldNom),
+      ]);
+      bkData.forEach(b => { if (b.voiture === oldNom) b.voiture = val; });
+      _voitureNames = [];
+    }
+    await db.from('vehicles').update({ [key]: val }).eq('id', id);
+  } else {
+    await db.from('vehicles').update({ [key]: val }).eq('id', id);
+  }
 
   // Visual feedback
   el.classList.add('saved');
@@ -1416,11 +1442,12 @@ function vCard(v) {
     let panel = '';
     if (tab === 'infos') {
       panel = `<div class="ig">
-        <div><div class="il">Immatriculation</div><div class="iv">${v.immat || '—'}</div></div>
+        <div><div class="il">Marque</div><div class="iv">${v.marque || '—'}</div></div>
+        <div><div class="il">Modèle</div><div class="iv">${v.modele || '—'}</div></div>
+        <div><div class="il">Immatriculation</div><div class="iv" style="font-family:monospace">${v.immat || '—'}</div></div>
         <div><div class="il">Année</div><div class="iv">${v.annee || '—'}</div></div>
         <div><div class="il">Localisation</div><div class="iv">${v.loc || '—'}</div></div>
         <div><div class="il">Détention</div><div class="iv">${v.detention || '—'}</div></div>
-        ${v.client ? `<div><div class="il">Client</div><div class="iv">${v.client}${v.loyer ? ` · ${fmt(v.loyer)}€/mois` : ''}</div></div>` : ''}
         ${v.garage ? `<div><div class="il">Garage</div><div class="iv">${v.garage}</div></div>` : ''}
       </div>
       ${v.statut === 'cede' ? `<div class="alert a-gray" style="margin-top:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text2)">Cédée${v.date_cession ? ' le ' + fmtDate(v.date_cession) : ''}${v.prix_cession ? ' · ' + fmt(v.prix_cession) + '€' : ''} · Historique conservé.</div>` : ''}
@@ -1471,9 +1498,9 @@ function vCard(v) {
           <span class="badge b-gray">${v.detention || '—'}</span>
           ${v.immat ? `<span style="font-size:11px;color:var(--text3);font-family:monospace">${v.immat}</span>` : ''}
         </div>
-        <div style="font-weight:600;font-size:14px">${v.nom}</div>
+        <div style="font-weight:600;font-size:14px">${vNom(v)}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:1px">
-          ${v.loc || '—'}${v.client ? ` · ${v.client}` : ''}${v.loyer ? ` · ${fmt(v.loyer)}€/mois` : ''}
+          ${v.loc || '—'}
         </div>
         ${ca ? `<div style="font-size:11px;margin-top:2px"><span style="color:var(--green);font-weight:600">${fmt(ca.total)}€ CA</span><span style="color:var(--text3)"> · ${ca.count} locations</span>${ca.mrr > 0 ? ` <span style="color:var(--purple);font-weight:600">${fmt(ca.mrr)}€/mois</span>` : ''}</div>` : ''}
       </div>
@@ -1539,15 +1566,18 @@ function vehicleFormHTML(v) {
 }
 function getVehicleForm() {
   const statut = $('vf-statut').value;
+  const marque = ($('vf-marque')?.value || '').trim();
+  const modele = ($('vf-modele')?.value || '').trim();
+  const nom = marque && modele ? marque + ' ' + modele : modele || marque;
   return {
-    nom: $('vf-nom').value,
+    nom,  // Marque + Modèle = identifiant FK dans les bookings
+    marque,
+    modele,
     immat: $('vf-immat').value,
     annee: $('vf-annee').value,
     statut,
     loc: $('vf-loc').value,
     detention: $('vf-deten').value,
-    client: $('vf-client').value,
-    loyer: parseFloat($('vf-loyer').value) || 0,
     garage: $('vf-garage').value,
     entretien: $('vf-entretien').value,
     prochain: $('vf-prochain').value,
@@ -1558,8 +1588,9 @@ function getVehicleForm() {
 }
 function openAddVehicle() {
   openModal('Nouveau véhicule', vehicleFormHTML(), async () => {
-    const v = { id: 'v' + Date.now(), ...getVehicleForm(), tasks: [], docs: ['Carte grise', 'Assurance'] };
-    if (!v.nom) { alert('Nom requis'); return; }
+    const vf = getVehicleForm();
+    const v = { id: 'v' + Date.now(), ...vf, tasks: [], docs: ['Carte grise', 'Assurance'] };
+    if (!v.marque && !v.modele && !v.nom) { alert('Marque ou modèle requis'); return; }
     await db.from('vehicles').insert(v);
     fleetData.push(v);
     _voitureNames = []; // reset cache
@@ -1568,7 +1599,7 @@ function openAddVehicle() {
 }
 function openEditVehicle(id) {
   const v = fleetData.find(x => x.id === id);
-  openModal('Modifier — ' + v.nom, vehicleFormHTML(v), async () => {
+  openModal('Modifier — ' + vNom(v), vehicleFormHTML(v), async () => {
     const u = getVehicleForm();
     const oldNom = v.nom;
     const newNom = u.nom;
