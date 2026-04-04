@@ -402,6 +402,8 @@ const PAGES = {
   'f-locations': renderLocations,
   'f-planning': renderPlanning,
     'f-abonnements': renderAbonnements,
+    'f-entretiens': renderEntretiens,
+    'f-taches': renderFleetTasks,
   'f-finance': renderFinance,
   'a-biens': renderABiens,
   'a-reservations': renderAReservations,
@@ -421,6 +423,8 @@ function buildNav() {
     { id: 'f-locations', label: 'Locations', sub: true, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2' },
     { id: 'f-planning', label: 'Planning', sub: true, icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
     { id: 'f-abonnements', label: 'Abonnements', sub: true, icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z' },
+    { id: 'f-entretiens', label: 'Entretiens', sub: true, icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
+    { id: 'f-taches', label: 'Tâches flotte', sub: true, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
     { id: 'f-finance', label: 'Finance Stripe', sub: true, icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
     { section: 'AirBnB' },
     { id: 'a-biens', label: 'Biens', sub: true, icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' },
@@ -538,16 +542,18 @@ db.auth.onAuthStateChange(async (event, session) => {
 async function renderDashboard() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
   try {
-  const [vRes, bkRes, tqRes, etRes] = await Promise.all([
+  const [vRes, bkRes, tqRes, etRes, ftRes] = await Promise.all([
     db.from('vehicles').select('*'),
     db.from('ferdinand_bookings').select('voiture,client,debut,fin,prix,source').gte('debut', todayStr()).order('debut').limit(6),
     db.from('bookings_touquet').select('*').gte('arrive', todayStr()).order('arrive').limit(5),
     db.from('elisa_tasks').select('*').eq('done', false).limit(4),
+    db.from('fleet_tasks').select('*').eq('done', false).order('echeance').limit(10),
   ]);
   const fleet = vRes.data || [];
   const fbk = bkRes.data || [];
   const tq = tqRes.data || [];
   const tasks = etRes.data || [];
+  const ftasks = ftRes.data || [];
   const REF = new Date(2025,3,2);
   const diff = Math.floor((today() - REF) / 864e5);
   const isPapa = ((diff % 14) + 14) % 14 <= 5;
@@ -558,10 +564,10 @@ async function renderDashboard() {
       <div class="pg-sub">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
     </div>
     ${mkStats([
-      { l: 'Véhicules', v: fleet.length },
+      { l: 'Véhicules actifs', v: fleet.filter(v=>v.statut!=='cede').length },
       { l: 'Bookings à venir', v: fbk.length, c: 'var(--blue)' },
       { l: 'Résa AirBnB', v: tq.length, c: 'var(--blue)' },
-      { l: 'Tâches Elisa', v: tasks.length },
+      { l: 'Tâches flotte', v: ftasks.length, c: ftasks.length>0?'var(--amber)':'var(--green)' },
       { l: 'Semaine Elisa', v: isPapa ? 'Papa ♥' : 'Maman', c: isPapa ? 'var(--green)' : 'var(--pink)' },
     ])}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -595,7 +601,22 @@ async function renderDashboard() {
 // FERDINAND — FLOTTE
 // ═══════════════════════════════════════════════════════
 let fleetData = [], fleetCA = {}, fleetDynStatus = {};
-let openV = {}, openVTab = {}, fleetFilter = 'actifs'; // 'actifs' par défaut = cache les cédées
+let openV = {}, openVTab = {}, fleetFilter = 'actifs';
+let _voitureNames = []; // cache de la liste des voitures actives
+
+// Charge les noms de voitures depuis Supabase (actives seulement)
+async function loadVoitureNames() {
+  if (_voitureNames.length) return _voitureNames;
+  // Essai depuis fleetData d'abord (si déjà chargé)
+  if (fleetData.length) {
+    _voitureNames = fleetData.filter(v => v.statut !== 'cede').map(v => v.nom).sort();
+    return _voitureNames;
+  }
+  // Sinon requête Supabase
+  const { data } = await db.from('vehicles').select('nom,statut').order('nom');
+  _voitureNames = (data || []).filter(v => v.statut !== 'cede').map(v => v.nom);
+  return _voitureNames;
+}
 
 const ST_LBL = { standby: 'Disponible', court: 'En location', long: 'Location longue', repare: 'En réparation', perso: 'Usage perso', leasing: 'Leasing', cede: 'Cédée' };
 const ST_BADGE = { standby: 'b-green', court: 'b-blue', long: 'b-amber', repare: 'b-red', perso: 'b-blue', leasing: 'b-gray', cede: 'b-gray' };
@@ -684,6 +705,8 @@ async function renderFlotte() {
       }
     }
   });
+  // Mettre à jour le cache des noms de voitures
+  _voitureNames = fleetData.filter(v => v.statut !== 'cede').map(v => v.nom).sort();
   renderFlotteHTML();
 }
 
@@ -773,6 +796,7 @@ function vCard(v) {
         <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier</button>
         <button class="btn btn-sm" onclick="fleetVehicleFilter='${v.nom}';showPage('f-locations')">Locations ↗</button>
         <button class="btn btn-sm" onclick="showPage('f-planning')">Planning ↗</button>
+        <button class="btn btn-sm" onclick="openAddEntretien('${v.nom}')">+ Entretien</button>
       </div>`;
     } else if (tab === 'entretien') {
       const warn = v.prochain && v.prochain <= new Date(Date.now()+30*864e5).toISOString().split('T')[0];
@@ -897,15 +921,33 @@ function openAddVehicle() {
     const v = { id: 'v' + Date.now(), ...getVehicleForm(), tasks: [], docs: ['Carte grise', 'Assurance'] };
     if (!v.nom) { alert('Nom requis'); return; }
     await db.from('vehicles').insert(v);
-    fleetData.push(v); closeModal(); renderFlotteHTML();
+    fleetData.push(v);
+    _voitureNames = []; // reset cache
+    closeModal(); renderFlotteHTML();
   });
 }
 function openEditVehicle(id) {
   const v = fleetData.find(x => x.id === id);
   openModal('Modifier — ' + v.nom, vehicleFormHTML(v), async () => {
     const u = getVehicleForm();
+    const oldNom = v.nom;
+    const newNom = u.nom;
     await db.from('vehicles').update(u).eq('id', id);
-    Object.assign(v, u); closeModal(); renderFlotteHTML();
+    // Si le nom a changé → mettre à jour partout en cascade
+    if (oldNom && newNom && oldNom !== newNom) {
+      await Promise.all([
+        db.from('ferdinand_bookings').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('entretiens').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('fleet_tasks').update({ voiture: newNom }).eq('voiture', oldNom),
+      ]);
+      // Mettre à jour aussi dans bkData et entData si chargés en mémoire
+      bkData.forEach(b => { if (b.voiture === oldNom) b.voiture = newNom; });
+      if (typeof entData !== 'undefined') entData.forEach(e => { if (e.voiture === oldNom) e.voiture = newNom; });
+      if (typeof ftData !== 'undefined') ftData.forEach(t => { if (t.voiture === oldNom) t.voiture = newNom; });
+    }
+    Object.assign(v, u);
+    _voitureNames = []; // reset cache
+    closeModal(); renderFlotteHTML();
   }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteVehicle('${id}')">Supprimer</button>`);
 }
 async function deleteVehicle(id) {
@@ -1013,9 +1055,9 @@ function refreshBkList() {
 }
 function setBkPage(p) { bkPage = p; refreshBkList(); }
 
-function bookingFormHTML(b) {
+function bookingFormHTML(b, voitures) {
   b = b || {};
-  const voitures = ['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayenne Hybrid','Cayenne Craie','Cayman GTS','Ferrari Portofino','Macan GTS','Macan S','Mercedes'];
+  voitures = voitures || _voitureNames.length ? _voitureNames : ['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayenne Hybrid','Cayenne Craie','Cayman GTS','Ferrari Portofino','Macan GTS','Macan S','Mercedes'];
   return `<div class="f2">
     <div class="fg"><label class="fl">Voiture</label><select class="fi" id="bf-v">${voitures.map(v => `<option ${(b.voiture||'')==v?'selected':''}>${v}</option>`).join('')}</select></div>
     <div class="fg"><label class="fl">Client</label><input class="fi" id="bf-c" value="${esc(b.client||'')}"></div>
@@ -1058,8 +1100,9 @@ function getBkForm() {
   }
   return { voiture: $('bf-v').value, client: $('bf-c').value, email: $('bf-e').value, tel: $('bf-t').value, debut, fin, prix: parseFloat($('bf-p').value) || 0, source: $('bf-s').value, statut, km: parseInt($('bf-km').value) || 0, lien_contrat: $('bf-ctr').value || null, commentaire: $('bf-cm').value, type_booking: 'ponctuel', prix_mensuel: 0 };
 }
-function openAddBooking() {
-  openModal('Nouveau booking', bookingFormHTML(), async () => {
+async function openAddBooking() {
+  const voitures = await loadVoitureNames();
+  openModal('Nouveau booking', bookingFormHTML({}, voitures), async () => {
     const b = { id: 'fb' + Date.now(), ...getBkForm() };
     if (!b.client) { alert('Client requis'); return; }
     const { data } = await db.from('ferdinand_bookings').insert(b).select();
@@ -1067,9 +1110,10 @@ function openAddBooking() {
     closeModal(); refreshBkList();
   });
 }
-function openEditBooking(id) {
+async function openEditBooking(id) {
   const b = bkData.find(x => x.id === id); if (!b) return;
-  openModal('Modifier — ' + b.client, bookingFormHTML(b), async () => {
+  const voitures = await loadVoitureNames();
+  openModal('Modifier — ' + b.client, bookingFormHTML(b, voitures), async () => {
     const u = getBkForm();
     await db.from('ferdinand_bookings').update(u).eq('id', id);
     Object.assign(b, u); closeModal(); refreshBkList();
@@ -1088,16 +1132,23 @@ let planYear = new Date().getFullYear(), planMonth = new Date().getMonth();
 
 async function renderPlanning() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
-  // Filtrer par plage de dates autour du mois affiché pour éviter la limite 1000 lignes
+  // Filtrer par plage ±1 an — requête simple sans .or() qui pose problème
   const yearStart = (planYear - 1) + '-01-01';
   const yearEnd   = (planYear + 1) + '-12-31';
   const { data } = await db.from('ferdinand_bookings')
-    .select('id,voiture,client,debut,fin,prix,source,statut')
-    .or(`debut.gte.${yearStart},fin.gte.${yearStart}`)
+    .select('id,voiture,client,debut,fin,prix,source,statut,type_booking,prix_mensuel')
+    .gte('debut', yearStart)
     .lte('debut', yearEnd)
     .order('debut')
     .limit(2000);
-  const bookings = (data || []).filter(b => b.debut).map(b => ({
+  // Abonnements longs commencés avant la fenêtre mais encore actifs
+  const { data: aboLongs } = await db.from('ferdinand_bookings')
+    .select('id,voiture,client,debut,fin,prix,source,statut,type_booking,prix_mensuel')
+    .eq('type_booking', 'abonnement')
+    .lt('debut', yearStart)
+    .gte('fin', yearStart)
+    .limit(100);
+  const bookings = [...(data||[]), ...(aboLongs||[])].filter(b => b.debut).map(b => ({
     ...b, fin: b.fin || b.debut
   }));
   renderPlanningHTML(bookings);
@@ -1200,13 +1251,17 @@ function renderFinanceData(charges, cautions, bookings) {
     const name = (c.billing_details?.name || c.description || '').toLowerCase();
     const amount = (c.amount_captured || 0) / 100;
     const date = new Date(c.created * 1000);
+    // Un paiement Stripe peut être un acompte (partiel) — on tolère un écart jusqu'à 80%
     let best = null, bestScore = 0;
     bookings.filter(b => !b.stripe_payment_id).forEach(b => {
       let score = 0;
       const sim = strSim(name, (b.client||'').toLowerCase());
       if (sim > 0.7) score += 2; else if (sim > 0.4) score += 1;
+      // Tolérance élargie : un acompte peut être 30-70% du montant total
       const diff = b.prix ? Math.abs(amount - b.prix) / b.prix : 1;
-      if (diff < 0.1) score += 2; else if (diff < 0.3) score += 1;
+      if (diff < 0.1) score += 2;
+      else if (diff < 0.4) score += 1;   // acompte probable
+      else if (diff < 0.75) score += 0;  // possible mais faible confiance
       if (b.debut) { const days = Math.abs(date - new Date(b.debut)) / 864e5; if (days < 7) score += 2; else if (days < 30) score += 1; }
       if (score > bestScore) { bestScore = score; best = b; }
     });
@@ -1233,7 +1288,7 @@ function renderFinanceData(charges, cautions, bookings) {
     ${mkTable(['Client Stripe','Montant','Date','↔ Booking','Voiture','Action'],
       auto.map(r => `<tr>
         <td><strong>${r.c.billing_details?.name||r.c.description||'—'}</strong></td>
-        <td style="color:var(--green);font-weight:600">${fmt((r.c.amount_captured||0)/100)}€</td>
+        <td style="color:var(--green);font-weight:600">${fmt((r.c.amount_captured||0)/100)}€${r.match && r.match.prix && Math.abs((r.c.amount_captured||0)/100 - r.match.prix)/r.match.prix > 0.1 ? ' <span class="badge b-amber" title="Paiement partiel / acompte">Acompte</span>' : ''}</td>
         <td>${new Date(r.c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}</td>
         <td>${r.match?.client||'—'}</td>
         <td>${r.match?.voiture||'—'}</td>
@@ -1427,9 +1482,9 @@ function openEditBookingOrAbo(id) {
 }
 function setAboFilter(f) { aboFilter = f; renderAbonnementsHTML(); }
 
-function aboFormHTML(b) {
+function aboFormHTML(b, voitures) {
   b = b || {};
-  const voitures = ['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayenne Hybrid','Cayenne Craie','Cayman GTS','Ferrari Portofino','Macan GTS','Macan S','Mercedes'];
+  voitures = voitures || (_voitureNames.length ? _voitureNames : ['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayenne Hybrid','Cayenne Craie','Cayman GTS','Ferrari Portofino','Macan GTS','Macan S','Mercedes']);
   return `<div class="f2">
     <div class="fg"><label class="fl">Voiture</label>
       <select class="fi" id="af2-v">${voitures.map(v => `<option ${(b.voiture||'')==v?'selected':''}>${v}</option>`).join('')}</select>
@@ -1475,8 +1530,9 @@ function getAboForm() {
   };
 }
 
-function openAddAbonnement() {
-  openModal('Nouvel abonnement', aboFormHTML(), async () => {
+async function openAddAbonnement() {
+  const voitures = await loadVoitureNames();
+  openModal('Nouvel abonnement', aboFormHTML({}, voitures), async () => {
     const b = { id: 'abo' + Date.now(), ...getAboForm() };
     if (!b.client) { alert('Client requis'); return; }
     const { data } = await db.from('ferdinand_bookings').insert(b).select();
@@ -1485,9 +1541,10 @@ function openAddAbonnement() {
   });
 }
 
-function openEditAbonnement(id) {
+async function openEditAbonnement(id) {
   const b = aboData.find(x => x.id === id); if (!b) return;
-  openModal(`Modifier — ${b.client}`, aboFormHTML(b), async () => {
+  const voitures = await loadVoitureNames();
+  openModal(`Modifier — ${b.client}`, aboFormHTML(b, voitures), async () => {
     const u = getAboForm();
     await db.from('ferdinand_bookings').update(u).eq('id', id);
     Object.assign(b, u); closeModal(); renderAbonnementsHTML();
@@ -1498,6 +1555,268 @@ async function deleteAbonnement(id) {
   if (!confirm('Supprimer cet abonnement ?')) return;
   await db.from('ferdinand_bookings').delete().eq('id', id);
   aboData = aboData.filter(x => x.id !== id); closeModal(); renderAbonnementsHTML();
+}
+
+
+// ═══════════════════════════════════════════════════════
+// FERDINAND — ENTRETIENS
+// ═══════════════════════════════════════════════════════
+let entData = [], entFilter = 'tous';
+
+const ENT_TYPES = ['Révision', 'Pneus', 'Carrosserie', 'Moteur', 'Contrôle technique', 'Climatisation', 'Freins', 'Autre'];
+const ENT_COLORS = {'Révision':'b-blue','Pneus':'b-amber','Carrosserie':'b-pink','Moteur':'b-red','Contrôle technique':'b-green','Climatisation':'b-gray','Freins':'b-red','Autre':'b-gray'};
+
+async function renderEntretiens() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  const { data } = await db.from('entretiens').select('*').order('date_entretien', { ascending: false }).limit(500);
+  entData = data || [];
+  renderEntretiensHTML();
+}
+
+function renderEntretiensHTML() {
+  const ts = todayStr();
+  const faits = entData.filter(e => e.statut === 'Fait');
+  const planifies = entData.filter(e => e.statut === 'Planifié');
+  const alertes = planifies.filter(e => e.date_entretien && e.date_entretien <= new Date(Date.now()+30*864e5).toISOString().split('T')[0]);
+
+  let list = entFilter === 'planifies' ? planifies : entFilter === 'faits' ? faits : entData;
+
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Entretiens & Maintenance</div>
+      <div class="pg-sub">${entData.length} entrées · ${planifies.length} planifiés</div></div>
+      <button class="btn btn-primary" onclick="openAddEntretien()">+ Entretien</button>
+    </div>
+    ${mkStats([
+      { l: 'Total', v: entData.length },
+      { l: 'Planifiés', v: planifies.length, c: 'var(--blue)' },
+      { l: 'Alertes 30j', v: alertes.length, c: alertes.length > 0 ? 'var(--red)' : 'var(--green)' },
+      { l: 'Coût total', v: fmt(entData.reduce((s,e)=>s+(e.montant||0),0)) + '€', c: 'var(--text2)' },
+    ])}
+    ${alertes.length ? `<div class="alert a-warn">⚠ ${alertes.length} entretien${alertes.length>1?'s':''} planifié${alertes.length>1?'s':''} dans les 30 prochains jours — ${alertes.map(e=>e.voiture+' ('+fmtDate(e.date_entretien)+')').join(', ')}</div>` : ''}
+    <div class="filters">
+      ${[['tous','Tous'],['planifies','Planifiés'],['faits','Faits']].map(([f,l])=>`<button class="fpill${f===entFilter?' active':''}" onclick="setEntFilter('${f}')">${l}</button>`).join('')}
+    </div>
+    ${mkTable(
+      ['Voiture','Date','Type','Garage','Montant','Statut','Contrat','Notes'],
+      list.map(e => `<tr class="clickable" onclick="openEditEntretien('${e.id}')">
+        <td><strong>${e.voiture||'—'}</strong></td>
+        <td style="white-space:nowrap">${fmtDate(e.date_entretien)}</td>
+        <td><span class="badge ${ENT_COLORS[e.type]||'b-gray'}">${e.type||'—'}</span></td>
+        <td>${e.garage||'—'}</td>
+        <td>${e.montant?fmt(e.montant)+'€':'—'}</td>
+        <td><span class="badge ${e.statut==='Planifié'?'b-blue':'b-gray'}">${e.statut||'Fait'}</span></td>
+        <td>${e.facture_url?`<a href="${e.facture_url}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue)">📄</a>`:'—'}</td>
+        <td style="font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.description||''}</td>
+      </tr>`)
+    , 'Aucun entretien enregistré')}
+  `);
+}
+
+function setEntFilter(f) { entFilter = f; renderEntretiensHTML(); }
+
+function entFormHTML(e) {
+  e = e || {};
+  const voitures = _voitureNames.length ? _voitureNames : [];
+  return `<div class="f2">
+    <div class="fg"><label class="fl">Voiture</label>
+      <select class="fi" id="ef-v"><option value="">— Sélectionner —</option>${voitures.map(v=>`<option ${(e.voiture||'')==v?'selected':''}>${v}</option>`).join('')}</select>
+    </div>
+    <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="ef-d" value="${e.date_entretien||''}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Type</label>
+      <select class="fi" id="ef-t">${ENT_TYPES.map(t=>`<option ${(e.type||'Révision')==t?'selected':''}>${t}</option>`).join('')}</select>
+    </div>
+    <div class="fg"><label class="fl">Statut</label>
+      <select class="fi" id="ef-st">
+        <option ${(e.statut||'Fait')==='Fait'?'selected':''}>Fait</option>
+        <option ${e.statut==='Planifié'?'selected':''}>Planifié</option>
+      </select>
+    </div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Garage</label><input class="fi" id="ef-g" value="${esc(e.garage||'')}"></div>
+    <div class="fg"><label class="fl">Montant (€)</label><input class="fi" type="number" id="ef-m" value="${e.montant||''}"></div>
+  </div>
+  <div class="fg"><label class="fl">Lien facture / document</label><input class="fi" id="ef-f" placeholder="https://drive.google.com/..." value="${esc(e.facture_url||'')}"></div>
+  <div class="fg"><label class="fl">Description / notes</label><textarea class="fi" id="ef-n" rows="2">${esc(e.description||'')}</textarea></div>`;
+}
+
+function getEntForm() {
+  return {
+    voiture: $('ef-v').value,
+    date_entretien: $('ef-d').value || null,
+    type: $('ef-t').value,
+    statut: $('ef-st').value,
+    garage: $('ef-g').value,
+    montant: parseFloat($('ef-m').value) || 0,
+    facture_url: $('ef-f').value || null,
+    description: $('ef-n').value,
+  };
+}
+
+async function openAddEntretien(voiturePrefill) {
+  const voitures = await loadVoitureNames();
+  const e = voiturePrefill ? { voiture: voiturePrefill } : {};
+  openModal('Nouvel entretien', entFormHTML(e), async () => {
+    const data = getEntForm();
+    if (!data.voiture || !data.date_entretien) { alert('Voiture et date requises'); return; }
+    const { data: row } = await db.from('entretiens').insert({ id: 'ent' + Date.now(), ...data }).select();
+    if (row) entData.unshift(row[0]);
+    closeModal(); renderEntretiensHTML();
+  });
+  // Set voiture prefill after modal opens
+  if (voiturePrefill && $('ef-v')) $('ef-v').value = voiturePrefill;
+}
+
+async function openEditEntretien(id) {
+  const e = entData.find(x => x.id === id); if (!e) return;
+  await loadVoitureNames();
+  openModal('Modifier entretien — ' + e.voiture, entFormHTML(e), async () => {
+    const u = getEntForm();
+    await db.from('entretiens').update(u).eq('id', id);
+    Object.assign(e, u); closeModal(); renderEntretiensHTML();
+  }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteEntretien('${id}')">Supprimer</button>`);
+}
+
+async function deleteEntretien(id) {
+  if (!confirm('Supprimer cet entretien ?')) return;
+  await db.from('entretiens').delete().eq('id', id);
+  entData = entData.filter(x => x.id !== id); closeModal(); renderEntretiensHTML();
+}
+
+// ═══════════════════════════════════════════════════════
+// FERDINAND — TÂCHES FLOTTE
+// ═══════════════════════════════════════════════════════
+let ftData = [], ftFilter = 'open';
+
+async function renderFleetTasks() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  const { data } = await db.from('fleet_tasks').select('*').order('echeance', { ascending: true, nullsFirst: false }).limit(500);
+  ftData = data || [];
+  renderFleetTasksHTML();
+}
+
+function renderFleetTasksHTML() {
+  const open = ftData.filter(t => !t.done);
+  const done = ftData.filter(t => t.done);
+  const urgentes = open.filter(t => t.priorite === 'urgente');
+  const ts = todayStr();
+  const enRetard = open.filter(t => t.echeance && t.echeance < ts);
+
+  let list = ftFilter === 'open' ? open : ftFilter === 'done' ? done : ftData;
+
+  const PRIO_BADGE = { urgente: 'b-red', normale: 'b-blue', basse: 'b-gray' };
+
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Tâches Flotte</div>
+      <div class="pg-sub">${open.length} tâches ouvertes</div></div>
+      <button class="btn btn-primary" onclick="openAddFleetTask()">+ Tâche</button>
+    </div>
+    ${mkStats([
+      { l: 'Ouvertes', v: open.length, c: 'var(--blue)' },
+      { l: 'Urgentes', v: urgentes.length, c: urgentes.length>0?'var(--red)':'var(--green)' },
+      { l: 'En retard', v: enRetard.length, c: enRetard.length>0?'var(--red)':'var(--green)' },
+      { l: 'Terminées', v: done.length, c: 'var(--text3)' },
+    ])}
+    ${urgentes.length ? `<div class="alert a-red">🚨 ${urgentes.length} tâche${urgentes.length>1?'s':''} urgente${urgentes.length>1?'s':''} — ${urgentes.map(t=>t.titre).join(', ')}</div>` : ''}
+    <div class="filters">
+      ${[['open','Ouvertes'],['done','Terminées'],['tous','Toutes']].map(([f,l])=>`<button class="fpill${f===ftFilter?' active':''}" onclick="setFtFilter('${f}')">${l}</button>`).join('')}
+    </div>
+    <div>
+      ${list.map(t => {
+        const isRetard = !t.done && t.echeance && t.echeance < ts;
+        return `<div class="exp-card" style="border-left:3px solid ${t.priorite==='urgente'?'var(--red)':t.priorite==='basse'?'var(--border)':'var(--blue)'}">
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px">
+            <button onclick="toggleFtDone('${t.id}')" style="margin-top:2px;width:18px;height:18px;border-radius:4px;border:2px solid ${t.done?'var(--green)':'var(--border2)'};background:${t.done?'var(--green)':'#fff'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px">${t.done?'✓':''}</button>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:3px">
+                <span style="font-weight:${t.done?'400':'600'};text-decoration:${t.done?'line-through':'none'};color:${t.done?'var(--text3)':'var(--text)'}">${t.titre}</span>
+                <span class="badge ${PRIO_BADGE[t.priorite]||'b-gray'}">${t.priorite||'normale'}</span>
+                ${t.voiture?`<span class="badge b-gray">${t.voiture}</span>`:''}
+              </div>
+              ${t.notes?`<div style="font-size:12px;color:var(--text2)">${t.notes}</div>`:''}
+              ${t.echeance?`<div style="font-size:12px;color:${isRetard?'var(--red)':'var(--text3)'}">📅 ${isRetard?'En retard · ':''}${fmtDate(t.echeance)}</div>`:''}
+            </div>
+            <button onclick="openEditFleetTask('${t.id}')" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px 6px">✏</button>
+          </div>
+        </div>`;
+      }).join('') || `<div style="text-align:center;padding:40px;color:var(--text2)">
+        <div style="font-size:32px;margin-bottom:8px">✅</div>
+        <div style="font-weight:500">Aucune tâche ${ftFilter==='open'?'ouverte':''}</div>
+        <button class="btn btn-primary" style="margin-top:12px" onclick="openAddFleetTask()">+ Créer une tâche</button>
+      </div>`}
+    </div>
+  `);
+}
+
+function setFtFilter(f) { ftFilter = f; renderFleetTasksHTML(); }
+
+async function toggleFtDone(id) {
+  const t = ftData.find(x => x.id === id); if (!t) return;
+  t.done = !t.done;
+  await db.from('fleet_tasks').update({ done: t.done }).eq('id', id);
+  renderFleetTasksHTML();
+}
+
+function ftFormHTML(t) {
+  t = t || {};
+  const voitures = _voitureNames.length ? _voitureNames : [];
+  return `<div class="fg"><label class="fl">Titre de la tâche</label><input class="fi" id="ft-titre" value="${esc(t.titre||'')}" placeholder="ex: Renouveler assurance Boxster"></div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Priorité</label>
+      <select class="fi" id="ft-prio">
+        <option value="urgente" ${(t.priorite||'')==='urgente'?'selected':''}>🚨 Urgente</option>
+        <option value="normale" ${(t.priorite||'normale')==='normale'?'selected':''}>Normale</option>
+        <option value="basse" ${(t.priorite||'')==='basse'?'selected':''}>Basse</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Voiture concernée</label>
+      <select class="fi" id="ft-v"><option value="">— Générale —</option>${voitures.map(v=>`<option ${(t.voiture||'')==v?'selected':''}>${v}</option>`).join('')}</select>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">Échéance</label><input class="fi" type="date" id="ft-ech" value="${t.echeance||''}"></div>
+  <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="ft-notes" rows="2">${esc(t.notes||'')}</textarea></div>`;
+}
+
+function getFtForm() {
+  return {
+    titre: $('ft-titre').value,
+    priorite: $('ft-prio').value,
+    voiture: $('ft-v').value || null,
+    echeance: $('ft-ech').value || null,
+    notes: $('ft-notes').value,
+    done: false,
+  };
+}
+
+async function openAddFleetTask() {
+  await loadVoitureNames();
+  openModal('Nouvelle tâche', ftFormHTML(), async () => {
+    const t = getFtForm();
+    if (!t.titre) { alert('Titre requis'); return; }
+    const { data } = await db.from('fleet_tasks').insert({ id: 'ft' + Date.now(), ...t }).select();
+    if (data) ftData.unshift(data[0]);
+    closeModal(); renderFleetTasksHTML();
+  });
+}
+
+async function openEditFleetTask(id) {
+  const t = ftData.find(x => x.id === id); if (!t) return;
+  await loadVoitureNames();
+  openModal('Modifier tâche', ftFormHTML(t), async () => {
+    const u = getFtForm();
+    await db.from('fleet_tasks').update(u).eq('id', id);
+    Object.assign(t, u); closeModal(); renderFleetTasksHTML();
+  }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteFt('${id}')">Supprimer</button>`);
+}
+
+async function deleteFt(id) {
+  if (!confirm('Supprimer cette tâche ?')) return;
+  await db.from('fleet_tasks').delete().eq('id', id);
+  ftData = ftData.filter(x => x.id !== id); closeModal(); renderFleetTasksHTML();
 }
 
 // ═══════════════════════════════════════════════════════
