@@ -486,30 +486,25 @@ async function startApp(user) {
   }
 }
 
-let _appStarted = false;
-
-db.auth.onAuthStateChange(async (event, session) => {
-  if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session && !_appStarted) {
-    _appStarted = true;
-    await startApp(session.user);
-  } else if (event === 'INITIAL_SESSION' && !session) {
+// Init simple et robuste
+async function init() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+      await startApp(session.user);
+    } else {
+      $('login-screen').style.display = 'flex';
+    }
+  } catch(e) {
     $('login-screen').style.display = 'flex';
   }
-  if (event === 'SIGNED_OUT') { _appStarted = false; location.reload(); }
+}
+
+db.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') location.reload();
 });
 
-// Fallback direct — si onAuthStateChange ne tire pas INITIAL_SESSION
-(async () => {
-  await new Promise(r => setTimeout(r, 800));
-  if (_appStarted) return;
-  const { data: { session } } = await db.auth.getSession();
-  if (session && !_appStarted) {
-    _appStarted = true;
-    await startApp(session.user);
-  } else if (!session) {
-    $('login-screen').style.display = 'flex';
-  }
-})();
+init();
 
 // ═══════════════════════════════════════════════════════
 // DASHBOARD
