@@ -450,20 +450,40 @@ async function startApp(user) {
   $('app-loading').style.display = 'flex';
   $('app-page').style.display = 'none';
 
-  const profile = await getProfile(user);
-  currentUser = profile;
-  currentRole = profile.role || 'admin';
+  try {
+    // Profil avec timeout de 5s
+    const profilePromise = getProfile(user);
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 5000));
+    const profile = await Promise.race([profilePromise, timeout]);
 
-  const name = profile.nom || user.email;
-  $('sb-av').textContent = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  $('sb-name').textContent = name;
-  $('sb-role').textContent = currentRole;
-  $('sb-sub').textContent = 'Pénélope';
+    currentUser = profile;
+    currentRole = profile.role || 'admin';
 
-  buildNav();
-  $('app-loading').style.display = 'none';
-  $('app-page').style.display = 'block';
-  showPage('dashboard');
+    const name = profile.nom || user.email || 'Utilisateur';
+    $('sb-av').textContent = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    $('sb-name').textContent = name;
+    $('sb-role').textContent = currentRole;
+    $('sb-sub').textContent = 'Pénélope';
+
+    buildNav();
+    $('app-loading').style.display = 'none';
+    $('app-page').style.display = 'block';
+    showPage('dashboard');
+  } catch(err) {
+    // En cas d'erreur — on continue quand même avec rôle admin par défaut
+    console.error('startApp error:', err);
+    currentUser = { email: user.email, nom: user.email, role: 'admin' };
+    currentRole = 'admin';
+    const name = user.email || 'Olivier';
+    $('sb-av').textContent = name.charAt(0).toUpperCase();
+    $('sb-name').textContent = name;
+    $('sb-role').textContent = 'admin';
+    $('sb-sub').textContent = 'Pénélope';
+    buildNav();
+    $('app-loading').style.display = 'none';
+    $('app-page').style.display = 'block';
+    showPage('dashboard');
+  }
 }
 
 let _appStarted = false;
@@ -496,6 +516,7 @@ db.auth.onAuthStateChange(async (event, session) => {
 // ═══════════════════════════════════════════════════════
 async function renderDashboard() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  try {
   const [vRes, bkRes, tqRes, etRes] = await Promise.all([
     db.from('vehicles').select('*'),
     db.from('ferdinand_bookings').select('voiture,client,debut,fin,prix,source').gte('debut', todayStr()).order('debut').limit(6),
@@ -546,6 +567,7 @@ async function renderDashboard() {
       </div>
     </div>
   `);
+  } catch(e) { set('app-page', `<div class="alert a-red" style="margin:20px">Erreur de chargement : ${e.message}</div>`); }
 }
 
 // ═══════════════════════════════════════════════════════
