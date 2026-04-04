@@ -1107,6 +1107,7 @@ async function renderDashboard() {
 // ═══════════════════════════════════════════════════════
 let fleetData = [], fleetCA = {}, fleetDynStatus = {};
 let openV = {}, openVTab = {}, fleetFilter = 'actifs';
+let fleetView = 'cards'; // 'cards' ou 'table'
 let _voitureNames = []; // cache de la liste des voitures actives
 
 // Charge les noms de voitures depuis Supabase (actives seulement)
@@ -1276,7 +1277,11 @@ function renderFlotteHTML() {
   set('app-page', `
     <div class="pg-header">
       <div><div class="pg-title">Flotte Ferdinand</div><div class="pg-sub">${fleetData.length} véhicules · ${fmt(rev)}€/mois revenus</div></div>
-      <button class="btn btn-primary" onclick="openAddVehicle()">+ Véhicule</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm${fleetView==='cards'?' btn-primary':''}" onclick="fleetView='cards';renderFlotteHTML()">⊞ Cartes</button>
+        <button class="btn btn-sm${fleetView==='table'?' btn-primary':''}" onclick="fleetView='table';renderFlotteHTML()">⊟ Tableau</button>
+        <button class="btn btn-primary" onclick="openAddVehicle()">+ Véhicule</button>
+      </div>
     </div>
     ${mkStats([
       { l: 'Disponibles', v: cnt.standby, c: 'var(--green)' },
@@ -1289,12 +1294,111 @@ function renderFlotteHTML() {
     <div class="filters">
       ${[['actifs','Actives'],['tous','Toutes'],['standby','Disponibles'],['court','En location'],['repare','Réparation'],['cede','Cédées']].map(([f,l]) => `<button class="fpill${f===fleetFilter?' active':''}" onclick="setFleetFilter('${f}')">${l}</button>`).join('')}
     </div>
-    <div id="fleet-list">${list.map(v => vCard(v)).join('')}</div>
+    ${fleetView === 'table' ? renderFlotteTable(list) : `<div id="fleet-list">${list.map(v => vCard(v)).join('')}</div>`}
   `);
 }
 
 function setFleetFilter(f) { fleetFilter = f; renderFlotteHTML(); }
 
+
+// ── VUE TABLEAU FLOTTE ──────────────────────────────────
+function renderFlotteTable(list) {
+  const cols = [
+    { key: 'nom',          label: 'Nom',         type: 'text',   width: '160px' },
+    { key: 'immat',        label: 'Immat',        type: 'text',   width: '110px', mono: true },
+    { key: 'annee',        label: 'Année',        type: 'text',   width: '70px'  },
+    { key: 'statut',       label: 'Statut',       type: 'select', width: '130px', opts: Object.entries(ST_LBL).map(([k,l])=>({k,l})) },
+    { key: 'loc',          label: 'Localisation', type: 'text',   width: '120px' },
+    { key: 'detention',    label: 'Détention',    type: 'select', width: '140px', opts: ['Ferdinand & Friends','Titre perso','Autre société'].map(v=>({k:v,l:v})) },
+    { key: 'client',       label: 'Client',       type: 'text',   width: '140px' },
+    { key: 'loyer',        label: 'Loyer/mois',   type: 'number', width: '90px'  },
+    { key: 'date_cession', label: 'Cession',      type: 'date',   width: '110px' },
+    { key: 'prix_cession', label: 'Prix cession', type: 'number', width: '100px' },
+    { key: 'garage',       label: 'Garage',       type: 'text',   width: '120px' },
+    { key: 'notes',        label: 'Notes',        type: 'text',   width: '180px' },
+  ];
+
+  const header = cols.map(c => `<th style="width:${c.width}">${c.label}</th>`).join('');
+  const rows = list.map(v => {
+    const ca = getCA(v.nom);
+    const ds = fleetDynStatus[v.nom];
+    const dynLabel = ds ? (ds.label || 'En location') : (ST_LBL[v.statut] || v.statut);
+    const dynBadge = ds ? (ds.status === 'court' ? 'b-blue' : ds.status === 'long' ? 'b-purple' : 'b-amber') : (ST_BADGE[v.statut] || 'b-gray');
+
+    const cells = cols.map(c => {
+      const val = v[c.key] !== null && v[c.key] !== undefined ? v[c.key] : '';
+      if (c.type === 'select') {
+        const opts = c.opts.map(o => `<option value="${o.k}" ${val===o.k?'selected':''}>${o.l}</option>`).join('');
+        return `<td><select class="etbl-cell etbl-select" data-id="${v.id}" data-key="${c.key}"
+          onchange="saveFleetCell(this)" style="font-size:12.5px;padding:4px 6px;width:100%;border:1px solid transparent;border-radius:4px;background:transparent;cursor:pointer;color:var(--fg);font-family:inherit"
+          onfocus="this.style.borderColor='var(--fg)'" onblur="this.style.borderColor='transparent'">${opts}</select></td>`;
+      }
+      return `<td><input class="etbl-cell${c.mono?' style=\"font-family:monospace\"':''}"
+        type="${c.type}" data-id="${v.id}" data-key="${c.key}"
+        value="${esc(String(val))}"
+        onchange="saveFleetCell(this)"
+        onkeydown="if(event.key==='Enter'){this.blur()}"
+        ${c.type==='number'?'style="text-align:right"':''}/></td>`;
+    }).join('');
+
+    const caStr = ca ? `<span style="font-size:11px;color:var(--green);font-weight:600">${fmt(ca.total)}€</span>` : '';
+    return `<tr>
+      <td style="width:20px;text-align:center;padding:4px 8px">
+        <span class="badge ${dynBadge}" style="font-size:9px;padding:1px 5px">${dynLabel.substring(0,10)}</span>
+      </td>
+      ${cells}
+      <td style="text-align:center;padding:4px 8px">${caStr}</td>
+      <td style="text-align:center;padding:4px 6px">
+        <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')" style="padding:0 6px;height:22px;font-size:11px">↗</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `<div style="margin-top:4px">
+    <div style="font-size:11.5px;color:var(--fg3);margin-bottom:8px">Cliquez sur une cellule pour modifier. Entrée ou Tab pour confirmer — sauvegarde automatique.</div>
+    <div class="etbl-wrap">
+      <table class="etbl">
+        <thead><tr>
+          <th style="width:85px">Statut</th>
+          ${header}
+          <th style="width:70px">CA réalisé</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function saveFleetCell(el) {
+  const id = el.dataset.id;
+  const key = el.dataset.key;
+  let val = el.type === 'number' ? (parseFloat(el.value) || 0) : el.value;
+  if (el.type === 'date' && !val) val = null;
+
+  // Find vehicle in memory
+  const v = fleetData.find(x => x.id === id);
+  if (!v) return;
+  const oldVal = v[key];
+
+  // Cascade rename if nom changed
+  if (key === 'nom' && val && val !== oldVal) {
+    await Promise.all([
+      db.from('ferdinand_bookings').update({ voiture: val }).eq('voiture', oldVal),
+      db.from('entretiens').update({ voiture: val }).eq('voiture', oldVal),
+      db.from('fleet_tasks').update({ voiture: val }).eq('voiture', oldVal),
+    ]);
+    bkData.forEach(b => { if (b.voiture === oldVal) b.voiture = val; });
+    _voitureNames = []; // reset cache
+  }
+
+  v[key] = val;
+  await db.from('vehicles').update({ [key]: val }).eq('id', id);
+
+  // Visual feedback
+  el.classList.add('saved');
+  setTimeout(() => el.classList.remove('saved'), 1200);
+}
 function vCard(v) {
   const isOpen = openV[v.id];
   const tab = openVTab[v.id] || 'infos';
