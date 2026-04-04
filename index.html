@@ -1,34 +1,3042 @@
--- Ajout des colonnes marque et modele sur vehicles
-alter table vehicles add column if not exists marque text;
-alter table vehicles add column if not exists modele text;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pénélope</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap');
 
--- Pre-remplir depuis le nom existant
--- Logique : premier mot = marque, reste = modèle
--- Exemples : "911 Carrera S" -> marque=null, modele="911 Carrera S" (pas de marque Porsche explicite)
--- On laisse l'utilisateur compléter manuellement via le tableau éditable
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
--- Pour les voitures connues, on peut pre-remplir intelligemment :
-update vehicles set marque = 'Porsche', modele = regexp_replace(nom, '^Porsche ', '')
-  where nom ilike 'porsche%' or nom in ('911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayman GTS','Cayenne Hybrid','Cayenne Craie','Macan GTS','Macan S');
+/* ── TOKENS ── */
+:root {
+  --fg:         #000000;
+  --fg2:        #666666;
+  --fg3:        #999999;
+  --fg4:        #c0c0c0;
+  --bg:         #ffffff;
+  --bg1:        #fafafa;
+  --bg2:        #f5f5f5;
+  --bg3:        #ebebeb;
+  --border:     #eaeaea;
+  --border2:    #d4d4d4;
 
-update vehicles set marque = 'Ferrari', modele = regexp_replace(nom, '^Ferrari ', '')
-  where nom ilike 'ferrari%';
+  /* Sidebar (light) */
+  --sb-bg:      #ffffff;
+  --sb-border:  #eaeaea;
+  --sb-text:    #666666;
+  --sb-active:  #000000;
+  --sb-hover:   #f5f5f5;
 
-update vehicles set marque = 'Mercedes', modele = regexp_replace(nom, '^Mercedes ', '')
-  where nom ilike 'mercedes%';
+  /* Accents */
+  --blue:       #0070f3;
+  --blue-bg:    #eff6ff;
+  --green:      #00a67e;
+  --green-bg:   #f0fdf4;
+  --red:        #e00000;
+  --red-bg:     #fff0f0;
+  --amber:      #f5a623;
+  --amber-bg:   #fffbeb;
+  --purple:     #7928ca;
+  --purple-bg:  #f5f0ff;
+  --pink:       #eb367f;
+  --pink-bg:    #fff0f6;
 
-update vehicles set marque = 'Lamborghini', modele = regexp_replace(nom, '^Lamborghini ', '')
-  where nom ilike 'lamborghini%';
+  --r:          6px;
+  --r-lg:       8px;
+}
 
-update vehicles set marque = 'Range Rover', modele = regexp_replace(nom, '^Range Rover ', '')
-  where nom ilike 'range rover%';
+/* ── BASE ── */
+body {
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
--- Pour les voitures sans marque définie, mettre le nom entier en modele
-update vehicles set modele = nom where marque is null;
+/* ── LAYOUT ── */
+.app { display: flex; height: 100vh; overflow: hidden; }
 
--- Vérification
-select id, nom, marque, modele from vehicles order by nom;
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 232px;
+  background: var(--sb-bg);
+  border-right: 1px solid var(--sb-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.sb-logo {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--sb-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+}
+.sb-logo-mark {
+  width: 22px; height: 22px;
+  background: #000;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.sb-logo h1 { font-size: 13px; font-weight: 500; color: #000; letter-spacing: -.01em; }
+.sb-logo p  { font-size: 11px; color: var(--sb-text); margin-top: 0; }
+.sb-section {
+  padding: 16px 14px 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--fg3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  margin: 1px 3px;
+  border-radius: var(--r);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--sb-text);
+  transition: background .1s, color .1s;
+  user-select: none;
+  border: 1px solid transparent;
+}
+.sb-item svg { flex-shrink: 0; opacity: .55; }
+.sb-item:hover {
+  background: var(--sb-hover);
+  color: var(--fg);
+}
+.sb-item:hover svg { opacity: .9; }
+.sb-item.active {
+  color: var(--fg);
+  background: var(--bg2);
+  border-color: var(--border);
+}
+.sb-item.active svg { opacity: 1; }
+.sb-sub { padding-left: 18px; }
+.sb-user {
+  padding: 10px 12px;
+  border-top: 1px solid var(--sb-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
+.sb-avatar {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: var(--fg); flex-shrink: 0;
+}
 
--- Ajout colonnes photo et site web sur vehicles
-alter table vehicles add column if not exists photo_url text;
-alter table vehicles add column if not exists site_url text;
+/* ── MAIN ── */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg1);
+  display: flex;
+  flex-direction: column;
+}
+.pg {
+  padding: 24px 32px;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── PAGE HEADER ── */
+.pg-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.pg-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+  color: var(--fg);
+  line-height: 1.3;
+}
+.pg-sub {
+  font-size: 12px;
+  color: var(--fg2);
+  margin-top: 2px;
+  font-weight: 400;
+}
+
+/* ── STATS ROW ── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--border);
+}
+.stat {
+  background: var(--bg);
+  padding: 14px 16px;
+}
+.stat-l {
+  font-size: 11px;
+  color: var(--fg3);
+  margin-bottom: 4px;
+  font-weight: 500;
+  letter-spacing: .01em;
+}
+.stat-v {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -.04em;
+  line-height: 1.1;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  margin-bottom: 8px;
+}
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: .01em;
+}
+.b-green  { background: #e6f6ef; color: #00663b; }
+.b-blue   { background: #e6f0ff; color: #0055cc; }
+.b-amber  { background: #fef3e6; color: #7a4200; }
+.b-red    { background: #fff0f0; color: #b00000; }
+.b-purple { background: #f0ebff; color: #5c0fbf; }
+.b-gray   { background: #f5f5f5; color: #555; border: 1px solid var(--border2); }
+.b-pink   { background: #fff0f6; color: #ab0052; }
+/* Sources */
+.b-direct  { background: #e6f6ef; color: #00663b; }
+.b-airbnb  { background: #fff0f0; color: #b00000; }
+.b-roadstr { background: #f0ebff; color: #5c0fbf; }
+.b-gdc     { background: #e6f0ff; color: #0055cc; }
+.b-mrm     { background: #f5f5f5; color: #555; border: 1px solid var(--border2); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: var(--r);
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  letter-spacing: -.01em;
+  transition: background .1s, border-color .1s, color .1s;
+  line-height: 1;
+}
+.btn:hover { background: var(--bg2); border-color: var(--border2); }
+.btn-primary {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+.btn-primary:hover { background: #333; border-color: #333; }
+.btn-sm { padding: 0 10px; height: 28px; font-size: 12px; }
+.btn-danger { color: var(--red); }
+.btn-danger:hover { background: var(--red-bg); border-color: #fca5a5; }
+
+/* ── FILTERS ── */
+.filters {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.fpill {
+  padding: 0 11px;
+  height: 28px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .1s;
+  display: inline-flex;
+  align-items: center;
+}
+.fpill:hover { background: var(--bg2); color: var(--fg); }
+.fpill.active {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+.search-wrap { position: relative; flex: 1; min-width: 160px; }
+.search-box {
+  width: 100%;
+  padding: 0 10px 0 28px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font-size: 12.5px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: inherit;
+  transition: border-color .1s;
+}
+.search-box:focus {
+  outline: none;
+  border-color: var(--fg);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.06);
+}
+.search-icon {
+  position: absolute;
+  left: 8px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--fg3);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* ── TABLE ── */
+.tbl-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--bg);
+}
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 500px;
+}
+.tbl th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg3);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--bg1);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.tbl td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  vertical-align: middle;
+  color: var(--fg);
+}
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--bg1); }
+.tbl tr.clickable { cursor: pointer; }
+
+/* ── FORM ── */
+.fg-label, .fg { margin-bottom: 10px; }
+.fl {
+  display: block;
+  font-size: 12px;
+  color: var(--fg2);
+  margin-bottom: 4px;
+  font-weight: 500;
+  letter-spacing: .01em;
+}
+.fi {
+  width: 100%;
+  padding: 0 10px;
+  height: 34px;
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: inherit;
+  transition: border-color .1s, box-shadow .1s;
+}
+textarea.fi { height: auto; padding: 8px 10px; }
+.fi:focus {
+  outline: none;
+  border-color: var(--fg);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.06);
+}
+.f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* ── MODAL ── */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  display: none; align-items: center; justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: var(--bg);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  width: 90%;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 48px rgba(0,0,0,.18);
+}
+.modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  letter-spacing: -.02em;
+}
+.modal-footer {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+  gap: 0;
+}
+.tab {
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--fg3);
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: inherit;
+  transition: color .1s;
+  letter-spacing: -.01em;
+}
+.tab:hover { color: var(--fg); }
+.tab.active { color: var(--fg); border-bottom-color: var(--fg); }
+
+/* ── EXPANDABLE CARD ── */
+.exp-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: 6px;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.exp-card:hover { border-color: var(--border2); }
+.exp-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.exp-head:hover { background: var(--bg1); }
+.exp-body { border-top: 1px solid var(--border); }
+.exp-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg1);
+}
+.etab {
+  flex: 1;
+  padding: 7px 4px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--fg3);
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  border-bottom: 2px solid transparent;
+  transition: color .1s;
+}
+.etab:hover { color: var(--fg); }
+.etab.active { color: var(--fg); border-bottom-color: var(--fg); background: var(--bg); }
+.exp-panel { padding: 12px 14px; }
+.ig { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.il {
+  font-size: 10.5px;
+  color: var(--fg3);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 2px;
+}
+.iv { font-size: 13px; font-weight: 500; color: var(--fg); }
+
+/* ── ALERTS ── */
+.alert {
+  padding: 10px 12px;
+  border-radius: var(--r);
+  font-size: 12.5px;
+  margin-bottom: 8px;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  line-height: 1.5;
+}
+.a-warn  { background: var(--amber-bg); color: #7a4200; border-color: #fde68a; }
+.a-red   { background: var(--red-bg);   color: #7f1d1d; border-color: #fca5a5; }
+.a-green { background: var(--green-bg); color: #064e3b; border-color: #6ee7b7; }
+.a-blue  { background: var(--blue-bg);  color: #1e3a8a; border-color: #93c5fd; }
+
+/* ── CALENDAR ── */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.cal-hd {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--fg3);
+  padding: 6px 0;
+  background: var(--bg1);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.cal-day { min-height: 72px; padding: 3px 4px; background: var(--bg); }
+.cal-day.today { background: #fefce8; }
+.cal-day.we { background: var(--bg1); }
+.cal-num {
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  color: var(--fg3);
+}
+.cal-day.today .cal-num { color: var(--blue); font-weight: 700; }
+.cal-ev {
+  font-size: 9.5px;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-bottom: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* ── PAGINATION ── */
+.pag { display: flex; gap: 3px; margin-top: 12px; flex-wrap: wrap; }
+.pp {
+  padding: 0 9px;
+  height: 28px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg2);
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+}
+.pp.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.pp:hover:not(.active) { background: var(--bg2); }
+.pp:disabled { opacity: .4; cursor: default; }
+
+/* ── MISC ── */
+.prow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.prow:last-child { border-bottom: none; }
+.dpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  padding: 2px 8px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg1);
+  cursor: pointer;
+  margin: 2px;
+  font-family: inherit;
+  color: var(--fg2);
+}
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.bar-lbl { width: 100px; font-size: 12px; color: var(--fg2); flex-shrink: 0; }
+.bar-bg { flex: 1; background: var(--bg2); border-radius: 3px; height: 4px; }
+.bar-fill { height: 4px; border-radius: 3px; }
+
+/* ── LOADING ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: var(--fg3);
+  font-size: 13px;
+}
+.spin {
+  width: 14px; height: 14px;
+  border: 1.5px solid var(--border2);
+  border-top-color: var(--fg);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── LOGIN ── */
+.login-bg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg1);
+}
+.login-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 32px;
+  text-align: center;
+  width: 360px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.08);
+}
+.login-logo {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -.04em;
+  margin-bottom: 4px;
+}
+.login-sub { font-size: 12.5px; color: var(--fg2); margin-bottom: 24px; }
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  height: 36px;
+  border-radius: var(--r);
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--fg);
+  transition: background .1s;
+}
+.btn-google:hover { background: var(--bg1); }
+
+/* ── ELISA ── */
+.el-papa      { background: #f0fdf4; }
+.el-maman     { background: #fdf2f8; }
+.el-vac-papa  { background: #bbf7d0; }
+.el-vac-maman { background: #fbcfe8; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .pg { padding: 20px 20px; }
+}
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed; left: -232px; top: 0; bottom: 0;
+    z-index: 100; transition: left .2s;
+  }
+  .sidebar.open { left: 0; }
+  .pg { padding: 14px 14px; }
+  .f2 { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .tbl-wrap { border-radius: 0; margin: 0 -14px; border-left: none; border-right: none; }
+}
+.mob-bar {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 50;
+}
+@media (max-width: 768px) { .mob-bar { display: flex; } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="login-bg" style="display:none">
+  <div class="login-card">
+    <div class="login-logo">Pénélope</div>
+    <div class="login-sub">Cockpit de vie · Olivier Billon</div>
+    <button class="btn-google" onclick="loginGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continuer avec Google
+    </button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <div class="mob-bar">
+    <button onclick="document.getElementById('sidebar').classList.toggle('open')" style="background:none;border:none;cursor:pointer;font-size:18px;">☰</button>
+    <span style="font-size:14px;font-weight:600;">Pénélope</span>
+  </div>
+  <div class="app">
+    <div class="sidebar" id="sidebar">
+      <div class="sb-logo">
+        <div class="sb-logo-mark">P</div>
+        <div><h1>Pénélope</h1><p id="sb-sub">Chargement...</p></div>
+      </div>
+      <div id="sb-nav" style="flex:1;overflow-y:auto;padding:4px 0;"></div>
+      <div class="sb-user">
+        <div class="sb-avatar" id="sb-av">?</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg)" id="sb-name">—</div>
+          <div style="font-size:11px;color:var(--fg3)" id="sb-role">—</div>
+        </div>
+        <button onclick="logout()" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:11px;">Déco</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="loading" id="app-loading"><div class="spin"></div> Chargement...</div>
+      <div id="app-page" style="display:none" class="pg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="m-title"></div>
+    <div id="m-body"></div>
+    <div class="modal-footer" id="m-footer">
+      <button class="btn" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="doSave()">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ─────────────────────────────────────────────
+const SB_URL = 'https://ucoxqqrzdbutvtskpevh.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjb3hxcXJ6ZGJ1dHZ0c2twZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjE3NjYsImV4cCI6MjA5MDc5Nzc2Nn0.GYFRNB1nXxUucUEp-1_xanfZOBWho6JjBkbtmFMFhJY';
+const db = supabase.createClient(SB_URL, SB_KEY);
+
+// ─── UTILS ───────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const set = (id, html) => { const e = $(id); if (e) e.innerHTML = html; };
+const fmt = n => (n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+
+// Date avec année obligatoire
+const fmtDate = s => {
+  if (!s) return '—';
+  return new Date(s).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+const fmtShort = s => {
+  if (!s) return '—';
+  return new Date(s).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+const fmtMonth = s => {
+  if (!s) return '—';
+  return new Date(s).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+};
+
+const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const todayStr = () => today().toISOString().split('T')[0];
+const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');
+
+// Source badge class
+const srcBadge = s => ({ 'Direct': 'b-direct', 'Roadstr': 'b-roadstr', 'MRM': 'b-mrm', 'AirBNB': 'b-airbnb', 'Gens de Confiance': 'b-gdc' }[s] || 'b-gray');
+const srcColor = s => ({ 'Direct': '#059669', 'Roadstr': '#7c3aed', 'MRM': '#6b7280', 'AirBNB': '#dc2626', 'Gens de Confiance': '#2563eb' }[s] || '#6b7280');
+
+// Modal
+let saveFn = null;
+function openModal(title, body, saveCb, extraBtn) {
+  $('m-title').textContent = title;
+  $('m-body').innerHTML = body;
+  saveFn = saveCb;
+  let footer = '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="doSave()">Sauvegarder</button>';
+  if (extraBtn) footer = extraBtn + footer;
+  $('m-footer').innerHTML = footer;
+  $('modal').classList.add('open');
+}
+function closeModal() { $('modal').classList.remove('open'); saveFn = null; }
+function doSave() { if (saveFn) saveFn(); }
+
+// Generic table builder
+function mkTable(headers, rows, empty = 'Aucun résultat') {
+  if (!rows.length) return `<div style="padding:20px;text-align:center;color:var(--text2)">${empty}</div>`;
+  return `<div class="tbl-wrap"><table class="tbl">
+    <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.join('')}</tbody>
+  </table></div>`;
+}
+
+// Stats row builder
+function mkStats(items) {
+  return `<div class="stats">${items.map(i =>
+    `<div class="stat"><div class="stat-l">${i.l}</div><div class="stat-v" style="color:${i.c||'var(--text)'}">${i.v}</div></div>`
+  ).join('')}</div>`;
+}
+
+// Pagination
+function mkPag(total, perPage, current, onClickFn) {
+  const pages = Math.ceil(total / perPage);
+  if (pages <= 1) return '';
+  let html = '';
+  for (let i = 1; i <= Math.min(pages, 9); i++)
+    html += `<button class="pp${i === current ? ' active' : ''}" onclick="${onClickFn}(${i})">${i}</button>`;
+  if (pages > 9) html += `<span style="color:var(--text3);padding:4px 6px">…${pages}</span>`;
+  return `<div class="pag">
+    <button class="pp" onclick="${onClickFn}(${Math.max(1, current-1)})" ${current===1?'disabled':''}>←</button>
+    ${html}
+    <button class="pp" onclick="${onClickFn}(${Math.min(pages, current+1)})" ${current===pages?'disabled':''}>→</button>
+  </div>`;
+}
+
+// Calendar builder
+function mkCalendar(year, month, bookings, colorFn, clickFn) {
+  const first = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startDow = (first.getDay() + 6) % 7;
+  const ts = todayStr();
+  const firstStr = `${year}-${String(month+1).padStart(2,'0')}-01`;
+  const lastStr = `${year}-${String(month+1).padStart(2,'0')}-${String(daysInMonth).padStart(2,'0')}`;
+
+  let html = `<div class="cal-grid">
+    ${['Lu','Ma','Me','Je','Ve','Sa','Di'].map(d => `<div class="cal-hd">${d}</div>`).join('')}
+    ${Array(startDow).fill('<div class="cal-day we"></div>').join('')}`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const date = new Date(year, month, d);
+    const isToday = ds === ts;
+    const isWE = date.getDay() === 0 || date.getDay() === 6;
+    const dayBk = bookings.filter(b => {
+      if (!b.debut) return false;
+      const deb = b.debut.substring(0, 10);
+      const fin = (b.fin || b.debut).substring(0, 10);
+      return deb <= ds && fin >= ds;
+    });
+    html += `<div class="cal-day${isToday ? ' today' : isWE ? ' we' : ''}">
+      <div class="cal-num">${d}</div>
+      ${dayBk.map(b => `<div class="cal-ev" onclick="${clickFn}('${b.id}')" style="background:${colorFn(b)}22;color:${colorFn(b)};border-left:2px solid ${colorFn(b)}" title="${esc(b.client||'')} — ${esc(b.voiture||'')}">
+        ${(b.voiture || b.client || '').substring(0, 14)}
+      </div>`).join('')}
+    </div>`;
+  }
+  return html + '</div>';
+}
+
+// ─── AUTH ────────────────────────────────────────────────
+let currentUser = null, currentRole = 'admin';
+
+async function loginGoogle() {
+  await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
+}
+async function logout() { await db.auth.signOut(); location.reload(); }
+
+async function getProfile(user) {
+  try {
+    const { data } = await db.from('user_profiles').select('*').eq('id', user.id);
+    if (data && data.length > 0) return data[0];
+    const role = user.email === 'olivier@ykone.com' ? 'admin' : 'viewer';
+    const nom = user.user_metadata?.full_name || user.email;
+    await db.from('user_profiles').upsert({ id: user.id, email: user.email, nom, role });
+    return { id: user.id, email: user.email, nom, role };
+  } catch { return { id: user.id, email: user.email, nom: user.email, role: 'admin' }; }
+}
+
+// ─── NAV ─────────────────────────────────────────────────
+const PAGES = {
+  dashboard: renderDashboard,
+  'f-flotte': renderFlotte,
+  'f-locations': renderLocations,
+  'f-planning': renderPlanning,
+    'f-abonnements': renderAbonnements,
+    'f-entretiens': renderEntretiens,
+    'f-taches': renderFleetTasks,
+  'f-finance': renderFinance,
+  'a-biens': renderABiens,
+  'a-reservations': renderAReservations,
+  'a-planning': renderAPlanning,
+  'a-finance': renderAFinance,
+  'l-biens': renderLBiens,
+  'l-baux': renderLBaux,
+  elisa: renderElisa,
+  admin: renderAdmin,
+};
+
+function buildNav() {
+  const nav = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z' },
+    { section: 'Ferdinand' },
+    { id: 'f-flotte', label: 'Flotte', sub: true, icon: 'M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v5M16 20a2 2 0 100-4 2 2 0 000 4zM7 20a2 2 0 100-4 2 2 0 000 4z' },
+    { id: 'f-locations', label: 'Locations', sub: true, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2' },
+    { id: 'f-planning', label: 'Planning', sub: true, icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+    { id: 'f-abonnements', label: 'Abonnements', sub: true, icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z' },
+    { id: 'f-entretiens', label: 'Entretiens', sub: true, icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
+    { id: 'f-taches', label: 'Tâches flotte', sub: true, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+    { id: 'f-finance', label: 'Finance Stripe', sub: true, icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+    { section: 'AirBnB' },
+    { id: 'a-biens', label: 'Biens', sub: true, icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' },
+    { id: 'a-reservations', label: 'Réservations', sub: true, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2' },
+    { id: 'a-planning', label: 'Planning', sub: true, icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+    { id: 'a-finance', label: 'Finance', sub: true, icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z' },
+    { section: 'Locatif' },
+    { id: 'l-biens', label: 'Biens locatifs', sub: true, icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16' },
+    { id: 'l-baux', label: 'Baux & loyers', sub: true, icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586' },
+    { section: 'Vie perso' },
+    { id: 'elisa', label: 'Elisa', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+    { section: 'Admin' },
+    { id: 'admin', label: 'Utilisateurs', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197' },
+  ];
+  let html = '';
+  nav.forEach(item => {
+    if (item.section) { html += `<div class="sb-section">${item.section}</div>`; return; }
+    html += `<div class="sb-item${item.sub?' sb-sub':''}" id="nav-${item.id}" onclick="showPage('${item.id}',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="${item.icon}"/></svg>
+      ${item.label}
+    </div>`;
+  });
+  set('sb-nav', html);
+}
+
+function showPage(page, el) {
+  document.querySelectorAll('.sb-item').forEach(n => n.classList.remove('active'));
+  const navEl = el || $('nav-' + page);
+  if (navEl) navEl.classList.add('active');
+  if (PAGES[page]) PAGES[page]();
+  if (window.innerWidth <= 768) $('sidebar').classList.remove('open');
+}
+
+// ─── INIT ────────────────────────────────────────────────
+async function startApp(user) {
+  $('login-screen').style.display = 'none';
+  $('app').style.display = 'block';
+  $('app-loading').style.display = 'flex';
+  $('app-page').style.display = 'none';
+
+  try {
+    // Profil avec timeout de 5s
+    const profilePromise = getProfile(user);
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 5000));
+    const profile = await Promise.race([profilePromise, timeout]);
+
+    currentUser = profile;
+    currentRole = profile.role || 'admin';
+
+    const name = profile.nom || user.email || 'Utilisateur';
+    $('sb-av').textContent = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    $('sb-name').textContent = name;
+    $('sb-role').textContent = currentRole;
+    $('sb-sub').textContent = 'Pénélope';
+
+    buildNav();
+    $('app-loading').style.display = 'none';
+    $('app-page').style.display = 'block';
+    showPage('dashboard');
+  } catch(err) {
+    // En cas d'erreur — on continue quand même avec rôle admin par défaut
+    console.error('startApp error:', err);
+    currentUser = { email: user.email, nom: user.email, role: 'admin' };
+    currentRole = 'admin';
+    const name = user.email || 'Olivier';
+    $('sb-av').textContent = name.charAt(0).toUpperCase();
+    $('sb-name').textContent = name;
+    $('sb-role').textContent = 'admin';
+    $('sb-sub').textContent = 'Pénélope';
+    buildNav();
+    $('app-loading').style.display = 'none';
+    $('app-page').style.display = 'block';
+    showPage('dashboard');
+  }
+}
+
+// Init robuste avec fallback OAuth
+let _started = false;
+
+async function startAppOnce(user) {
+  if (_started) return;
+  _started = true;
+  await startApp(user);
+}
+
+// Écoute les changements d'auth (nécessaire pour le redirect OAuth Google)
+db.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    await startAppOnce(session.user);
+  }
+  if (event === 'SIGNED_OUT') { _started = false; location.reload(); }
+});
+
+// Vérifie immédiatement s'il y a déjà une session
+(async () => {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+      await startAppOnce(session.user);
+    } else {
+      // Attend 1.5s pour laisser le temps au redirect OAuth de se traiter
+      await new Promise(r => setTimeout(r, 1500));
+      if (!_started) {
+        $('login-screen').style.display = 'flex';
+      }
+    }
+  } catch(e) {
+    $('login-screen').style.display = 'flex';
+  }
+})();
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════
+async function renderDashboard() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  try {
+  const [vRes, bkRes, tqRes, etRes, ftRes] = await Promise.all([
+    db.from('vehicles').select('*'),
+    db.from('ferdinand_bookings').select('voiture,client,debut,fin,prix,source').gte('debut', todayStr()).order('debut').limit(6),
+    db.from('bookings_touquet').select('*').gte('arrive', todayStr()).order('arrive').limit(5),
+    db.from('elisa_tasks').select('*').eq('done', false).limit(4),
+    db.from('fleet_tasks').select('*').eq('done', false).order('echeance').limit(10),
+  ]);
+  const fleet = vRes.data || [];
+  const fbk = bkRes.data || [];
+  const tq = tqRes.data || [];
+  const tasks = etRes.data || [];
+  const ftasks = ftRes.data || [];
+  const REF = new Date(2025,3,2);
+  const diff = Math.floor((today() - REF) / 864e5);
+  const isPapa = ((diff % 14) + 14) % 14 <= 5;
+
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Bonjour Olivier</div>
+      <div class="pg-sub">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
+    </div>
+    ${mkStats([
+      { l: 'Véhicules actifs', v: fleet.filter(v=>v.statut!=='cede').length },
+      { l: 'Bookings à venir', v: fbk.length, c: 'var(--blue)' },
+      { l: 'Résa AirBnB', v: tq.length, c: 'var(--blue)' },
+      { l: 'Tâches flotte', v: ftasks.length, c: ftasks.length>0?'var(--amber)':'var(--green)' },
+      { l: 'Semaine Elisa', v: isPapa ? 'Papa ♥' : 'Maman', c: isPapa ? 'var(--green)' : 'var(--pink)' },
+    ])}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">Prochains bookings Ferdinand</div>
+        ${fbk.length ? fbk.map(b => `<div class="prow">
+          <div><div style="font-weight:500">${b.client||'—'}</div>
+          <div style="font-size:12px;color:var(--text2)">${b.voiture||'—'} · ${fmtShort(b.debut)}</div></div>
+          <div style="text-align:right">
+            <span class="badge ${srcBadge(b.source)}">${b.source||'—'}</span>
+            ${b.prix ? `<div style="font-size:12px;color:var(--green);font-weight:600">${fmt(b.prix)}€</div>` : ''}
+          </div>
+        </div>`).join('') : '<div style="color:var(--text2);font-size:13px">Aucun booking à venir</div>'}
+        <button class="btn btn-sm" style="margin-top:8px" onclick="showPage('f-locations')">Voir tous ↗</button>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">Prochaines résa AirBnB</div>
+        ${tq.length ? tq.map(b => `<div class="prow">
+          <div><div style="font-weight:500">${b.client||'—'}</div>
+          <div style="font-size:12px;color:var(--text2)">${b.bien==='paris'?'Paris':'Le Touquet'} · ${fmtShort(b.arrive)}</div></div>
+          <div style="font-size:13px;font-weight:600;color:var(--green)">${fmt((b.airbnb||0)+(b.direct||0))}€</div>
+        </div>`).join('') : '<div style="color:var(--text2);font-size:13px">Aucune réservation</div>'}
+        <button class="btn btn-sm" style="margin-top:8px" onclick="showPage('a-reservations')">Voir toutes ↗</button>
+      </div>
+    </div>
+  `);
+  } catch(e) { set('app-page', `<div class="alert a-red" style="margin:20px">Erreur de chargement : ${e.message}</div>`); }
+}
+
+// ═══════════════════════════════════════════════════════
+// FERDINAND — FLOTTE
+// ═══════════════════════════════════════════════════════
+let fleetData = [], fleetCA = {}, fleetDynStatus = {};
+let openV = {}, openVTab = {}, fleetFilter = 'actifs';
+let fleetView = 'cards'; // 'cards' ou 'table'
+let _voitureNames = []; // cache de la liste des voitures actives
+
+// Charge les noms de voitures depuis Supabase (actives seulement)
+async function loadVoitureNames() {
+  if (_voitureNames.length) return _voitureNames;
+  // Essai depuis fleetData d'abord (si déjà chargé)
+  if (fleetData.length) {
+    _voitureNames = fleetData.filter(v => v.statut !== 'cede').map(v => v.nom).sort();
+    return _voitureNames;
+  }
+  // Sinon requête Supabase
+  const { data } = await db.from('vehicles').select('nom,statut').order('nom');
+  _voitureNames = (data || []).filter(v => v.statut !== 'cede').map(v => v.nom);
+  return _voitureNames;
+}
+
+const ST_LBL = { standby: 'Disponible', court: 'En location', long: 'Location longue', repare: 'En réparation', perso: 'Usage perso', leasing: 'Leasing', cede: 'Cédée' };
+const ST_BADGE = { standby: 'b-green', court: 'b-blue', long: 'b-amber', repare: 'b-red', perso: 'b-blue', leasing: 'b-gray', cede: 'b-gray' };
+
+// Statut dynamique d'un booking selon les dates
+function bkDynStatus(b) {
+  if (!b || !b.debut) return { label: '—', badge: 'b-gray' };
+  const ts = todayStr();
+  const debut = b.debut.substring(0, 10);
+  const fin = b.fin ? b.fin.substring(0, 10) : debut;
+  if (fin < ts) return { label: 'Fermé', badge: 'b-gray' };
+  if (debut > ts) return { label: 'À venir', badge: 'b-blue' };
+  return { label: 'En cours', badge: 'b-green' };
+}
+
+// Calcule le statut dynamique d'un booking selon les dates
+function bkDynStatus(b) {
+  if (!b || !b.debut) return { label: '—', badge: 'b-gray' };
+  const ts = todayStr();
+  const debut = b.debut.substring(0, 10);
+  const fin = b.fin ? b.fin.substring(0, 10) : debut;
+  if (fin < ts) return { label: 'Fermé', badge: 'b-gray' };
+  if (debut > ts) return { label: 'À venir', badge: 'b-blue' };
+  return { label: 'En cours', badge: 'b-green' };
+}
+
+async function renderFlotte() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  // Charger aussi les tâches flotte pour les afficher dans chaque fiche
+  if (!ftData.length) {
+    const { data: ftRes } = await db.from('fleet_tasks').select('*').eq('done', false).order('echeance');
+    if (ftRes) ftData = ftRes;
+  }
+  const [vRes, bkRes] = await Promise.all([
+    db.from('vehicles').select('*').order('marque').order('modele'),
+    (async () => {
+      let all = [];
+      let from = 0;
+      while(true) {
+        const { data: p } = await db.from('ferdinand_bookings')
+          .select('voiture,prix,debut,fin,statut,type_booking,prix_mensuel')
+          .not('voiture','is',null)
+          .range(from, from+999);
+        if(!p||!p.length) break;
+        all=all.concat(p);
+        if(p.length<1000) break;
+        from+=1000;
+      }
+      return { data: all };
+    })()
+  ]);
+  fleetData = vRes.data || [];
+  const bookings = bkRes.data || [];
+  const ts = todayStr();
+  const tom = new Date(); tom.setDate(tom.getDate()+1);
+  const tomStr = tom.toISOString().split('T')[0];
+
+  // Calculate CA and dynamic status (locations + abonnements)
+  fleetCA = {}; fleetDynStatus = {};
+  bookings.forEach(b => {
+    const nom = (b.voiture || '').trim();
+    if (!fleetCA[nom]) fleetCA[nom] = { total: 0, count: 0, mrr: 0, caAbo: 0 };
+    const isAbo = b.type_booking === 'abonnement' || (b.prix_mensuel && b.prix_mensuel > 0);
+
+    if (isAbo && b.prix_mensuel > 0) {
+      // Règle IFRS : séparer réalisé (mois terminés) et prévisionnel (mois courant+futurs)
+      const { realise, previsionnel } = getAbonnementCA(b);
+      if (!fleetCA[nom].caAboRealise) fleetCA[nom].caAboRealise = 0;
+      if (!fleetCA[nom].caAboPrev) fleetCA[nom].caAboPrev = 0;
+      fleetCA[nom].caAboRealise += realise;
+      fleetCA[nom].caAboPrev += previsionnel;
+      fleetCA[nom].total += realise; // total = locations + réalisé abo seulement
+      // MRR si actif maintenant
+      const fin = b.fin || '';
+      if ((!fin || fin >= ts) && b.debut <= ts) fleetCA[nom].mrr += b.prix_mensuel;
+    } else if (b.prix) {
+      fleetCA[nom].total += b.prix;
+      fleetCA[nom].count++;
+    }
+
+    // Statut dynamique
+    if (b.debut && (b.fin || isAbo)) {
+      const fin = b.fin || new Date(new Date(b.debut).setMonth(new Date(b.debut).getMonth()+24)).toISOString().split('T')[0];
+      if (b.debut <= ts && fin >= ts && !fleetDynStatus[nom]) {
+        fleetDynStatus[nom] = {
+          status: isAbo ? 'long' : 'court',
+          booking: b,
+          label: isAbo ? 'Abonnement actif' : 'En location'
+        };
+      } else if (b.debut === tomStr && !fleetDynStatus[nom]) {
+        fleetDynStatus[nom] = { status: 'apreparer', booking: b };
+      }
+    }
+  });
+  // Mettre à jour le cache des noms de voitures
+  _voitureNames = fleetData.filter(v => v.statut !== 'cede').map(v => v.nom).sort();
+  renderFlotteHTML();
+}
+
+// Affichage du nom complet d'un véhicule : Marque + Modèle
+function vNom(v) {
+  if (!v) return '—';
+  if (v.marque && v.modele) return v.marque + ' ' + v.modele;
+  if (v.marque) return v.marque;
+  return v.nom || '—';
+}
+
+function getCA(nom) {
+  // Match exact uniquement — évite Boxster vs Boxster S
+  return fleetCA[nom] || null;
+}
+
+// CA abonnement selon règles IFRS
+// Réalisé = mois dont le DERNIER JOUR est antérieur au 1er du mois courant
+// Prévisionnel = mois courant + mois futurs (pas de prorata)
+function getAbonnementCA(b) {
+  if (!b.debut || !b.prix_mensuel) return { realise: 0, previsionnel: 0 };
+  const today = new Date();
+  // 1er jour du mois courant = frontière réalisé/prévisionnel
+  const frontier = new Date(today.getFullYear(), today.getMonth(), 1);
+  const start = new Date(b.debut);
+  const end = b.fin ? new Date(b.fin) : null;
+  // Si l'abonnement n'a pas encore commencé → tout prévisionnel
+  // Si terminé → tout réalisé (jusqu'à la fin)
+  let realise = 0, previsionnel = 0;
+  // Itérer mois par mois
+  let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endLimit = end || new Date(today.getFullYear(), today.getMonth() + 24, 1);
+  let count = 0;
+  while (cur <= endLimit && count < 60) {
+    count++;
+    const lastDayOfMonth = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+    if (lastDayOfMonth < frontier) {
+      realise += b.prix_mensuel; // mois terminé → réalisé
+    } else {
+      previsionnel += b.prix_mensuel; // mois courant ou futur → prévisionnel
+    }
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+  return { realise, previsionnel };
+}
+
+function renderFlotteHTML() {
+  const cnt = { standby: 0, court: 0, long: 0, repare: 0, leasing: 0, apreparer: 0, cede: 0 };
+  fleetData.forEach(v => {
+    const ds = fleetDynStatus[v.nom];
+    const s = ds ? ds.status : v.statut;
+    if (cnt[s] !== undefined) cnt[s]++; else cnt.standby++;
+  });
+  const rev = fleetData.filter(v => v.loyer > 0).reduce((s,v) => s + v.loyer, 0);
+  let list;
+  if (fleetFilter === 'tous') {
+    list = [...fleetData];
+  } else if (fleetFilter === 'actifs') {
+    // Actifs = toutes sauf cédées
+    list = fleetData.filter(v => v.statut !== 'cede');
+  } else {
+    list = fleetData.filter(v => {
+      const ds = fleetDynStatus[v.nom];
+      const s = ds ? ds.status : v.statut;
+      return s === fleetFilter;
+    });
+  }
+
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Flotte Ferdinand</div><div class="pg-sub">${fleetData.filter(v=>v.statut!=='cede').length} véhicules actifs · ${fmt(rev)}€/mois revenus</div></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm${fleetView==='cards'?' btn-primary':''}" onclick="fleetView='cards';renderFlotteHTML()">⊞ Cartes</button>
+        <button class="btn btn-sm${fleetView==='table'?' btn-primary':''}" onclick="fleetView='table';renderFlotteHTML()">⊟ Tableau</button>
+        <button class="btn btn-primary" onclick="openAddVehicle()">+ Véhicule</button>
+      </div>
+    </div>
+    ${mkStats([
+      { l: 'Disponibles', v: cnt.standby, c: 'var(--green)' },
+      { l: 'En location', v: cnt.court + cnt.long, c: 'var(--blue)' },
+      { l: 'À préparer', v: cnt.apreparer, c: 'var(--amber)' },
+      { l: 'Réparation', v: cnt.repare, c: 'var(--red)' },
+      { l: 'Cédées', v: cnt.cede, c: 'var(--text3)' },
+      { l: 'Revenus/mois', v: fmt(rev) + '€', c: 'var(--green)' },
+    ])}
+    <div class="filters">
+      ${[['actifs','Actives'],['tous','Toutes'],['standby','Disponibles'],['court','En location'],['repare','Réparation'],['cede','Cédées']].map(([f,l]) => `<button class="fpill${f===fleetFilter?' active':''}" onclick="setFleetFilter('${f}')">${l}</button>`).join('')}
+    </div>
+    ${fleetView === 'table' ? renderFlotteTable(list) : `<div id="fleet-list">${list.map(v => vCard(v)).join('')}</div>`}
+  `);
+}
+
+function setFleetFilter(f) { fleetFilter = f; renderFlotteHTML(); }
+
+
+// ── VUE TABLEAU FLOTTE ──────────────────────────────────
+function renderFlotteTable(list) {
+  const cols = [
+    { key: 'marque',       label: 'Marque',       type: 'text',   width: '100px' },
+    { key: 'modele',       label: 'Modèle',       type: 'text',   width: '150px' },
+    { key: 'immat',        label: 'Immat',        type: 'text',   width: '105px', mono: true },
+    { key: 'annee',        label: 'Année',        type: 'text',   width: '65px'  },
+    { key: 'statut',       label: 'Statut',       type: 'select', width: '130px', opts: Object.entries(ST_LBL).map(([k,l])=>({k,l})) },
+    { key: 'loc',          label: 'Localisation', type: 'text',   width: '110px' },
+    { key: 'detention',    label: 'Détention',    type: 'select', width: '140px', opts: ['Ferdinand & Friends','Titre perso','Autre société'].map(v=>({k:v,l:v})) },
+    { key: 'date_cession', label: 'Cession',      type: 'date',   width: '105px' },
+    { key: 'prix_cession', label: 'Prix cession', type: 'number', width: '100px' },
+    { key: 'garage',       label: 'Garage',       type: 'text',   width: '120px' },
+    { key: 'notes',        label: 'Notes',        type: 'text',   width: '180px' },
+  ];
+
+  const header = cols.map(c => `<th style="width:${c.width}">${c.label}</th>`).join('');
+  const rows = list.map(v => {
+    const ca = getCA(v.nom);
+    const ds = fleetDynStatus[v.nom];
+    const dynLabel = ds ? (ds.label || 'En location') : (ST_LBL[v.statut] || v.statut);
+    const dynBadge = ds ? (ds.status === 'court' ? 'b-blue' : ds.status === 'long' ? 'b-purple' : 'b-amber') : (ST_BADGE[v.statut] || 'b-gray');
+
+    const cells = cols.map(c => {
+      const val = v[c.key] !== null && v[c.key] !== undefined ? v[c.key] : '';
+      if (c.type === 'select') {
+        const opts = c.opts.map(o => `<option value="${o.k}" ${val===o.k?'selected':''}>${o.l}</option>`).join('');
+        return `<td><select class="etbl-cell etbl-select" data-id="${v.id}" data-key="${c.key}"
+          onchange="saveFleetCell(this)" style="font-size:12.5px;padding:4px 6px;width:100%;border:1px solid transparent;border-radius:4px;background:transparent;cursor:pointer;color:var(--fg);font-family:inherit"
+          onfocus="this.style.borderColor='var(--fg)'" onblur="this.style.borderColor='transparent'">${opts}</select></td>`;
+      }
+      return `<td><input class="etbl-cell${c.mono?' style=\"font-family:monospace\"':''}"
+        type="${c.type}" data-id="${v.id}" data-key="${c.key}"
+        value="${esc(String(val))}"
+        onchange="saveFleetCell(this)"
+        onkeydown="if(event.key==='Enter'){this.blur()}"
+        ${c.type==='number'?'style="text-align:right"':''}/></td>`;
+    }).join('');
+
+    const caStr = ca ? `<span style="font-size:11px;color:var(--green);font-weight:600">${fmt(ca.total)}€</span>` : '';
+    return `<tr>
+      <td style="width:20px;text-align:center;padding:4px 8px">
+        <span class="badge ${dynBadge}" style="font-size:9px;padding:1px 5px">${dynLabel.substring(0,10)}</span>
+      </td>
+      ${cells}
+      <td style="text-align:center;padding:4px 8px">${caStr}</td>
+      <td style="text-align:center;padding:4px 6px">
+        <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')" style="padding:0 6px;height:22px;font-size:11px">↗</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `<div style="margin-top:4px">
+    <div style="font-size:11.5px;color:var(--fg3);margin-bottom:8px">Cliquez sur une cellule pour modifier. Entrée ou Tab pour confirmer — sauvegarde automatique.</div>
+    <div class="etbl-wrap">
+      <table class="etbl">
+        <thead><tr>
+          <th style="width:85px">Statut</th>
+          ${header}
+          <th style="width:70px">CA réalisé</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function saveFleetCell(el) {
+  const id = el.dataset.id;
+  const key = el.dataset.key;
+  let val = el.type === 'number' ? (parseFloat(el.value) || 0) : el.value;
+  if (el.type === 'date' && !val) val = null;
+
+  const v = fleetData.find(x => x.id === id);
+  if (!v) return;
+  const oldNom = v.nom;
+
+  v[key] = val;
+
+  // Si marque ou modele change → recalculer nom et propager en cascade
+  if (key === 'marque' || key === 'modele') {
+    const newNom = ((v.marque||'') + ' ' + (v.modele||'')).trim();
+    if (newNom && newNom !== oldNom) {
+      v.nom = newNom;
+      await Promise.all([
+        db.from('ferdinand_bookings').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('entretiens').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('fleet_tasks').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('vehicles').update({ [key]: val, nom: newNom }).eq('id', id),
+      ]);
+      bkData.forEach(b => { if (b.voiture === oldNom) b.voiture = newNom; });
+      _voitureNames = [];
+    } else {
+      await db.from('vehicles').update({ [key]: val }).eq('id', id);
+    }
+  } else if (key === 'nom') {
+    // Direct nom change (legacy) → cascade
+    if (val && val !== oldNom) {
+      await Promise.all([
+        db.from('ferdinand_bookings').update({ voiture: val }).eq('voiture', oldNom),
+        db.from('entretiens').update({ voiture: val }).eq('voiture', oldNom),
+        db.from('fleet_tasks').update({ voiture: val }).eq('voiture', oldNom),
+      ]);
+      bkData.forEach(b => { if (b.voiture === oldNom) b.voiture = val; });
+      _voitureNames = [];
+    }
+    await db.from('vehicles').update({ [key]: val }).eq('id', id);
+  } else {
+    await db.from('vehicles').update({ [key]: val }).eq('id', id);
+  }
+
+  // Visual feedback
+  el.classList.add('saved');
+  setTimeout(() => el.classList.remove('saved'), 1200);
+}
+function vCard(v) {
+  const isOpen = openV[v.id];
+  const tab = openVTab[v.id] || 'infos';
+  const ds = fleetDynStatus[v.nom];
+  const dynStatus = ds ? ds.status : v.statut;
+  const dynLabel = ds ? (ds.label || (ds.status === 'court' ? 'En location' : ds.status === 'long' ? 'Abonnement actif' : 'À préparer')) : (ST_LBL[v.statut] || v.statut);
+  const dynBadge = ds ? (ds.status === 'court' ? 'b-blue' : ds.status === 'long' ? 'b-purple' : 'b-amber') : (ST_BADGE[v.statut] || 'b-gray');
+  const ca = getCA(v.nom);
+
+  let body = '';
+  if (isOpen) {
+    const tabs = `<div class="exp-tabs">
+      ${['infos','entretien','docs','taches'].map(t => `<button class="etab${tab===t?' active':''}" onclick="setVTab('${v.id}','${t}')">${{infos:'Infos',entretien:'Entretien',docs:'Documents',taches:'Tâches'}[t]}</button>`).join('')}
+    </div>`;
+    let panel = '';
+    if (tab === 'infos') {
+      panel = `<div class="ig">
+        <div><div class="il">Marque</div><div class="iv">${v.marque || '—'}</div></div>
+        <div><div class="il">Modèle</div><div class="iv">${v.modele || '—'}</div></div>
+        <div><div class="il">Immatriculation</div><div class="iv" style="font-family:monospace">${v.immat || '—'}</div></div>
+        <div><div class="il">Année</div><div class="iv">${v.annee || '—'}</div></div>
+        <div><div class="il">Localisation</div><div class="iv">${v.loc || '—'}</div></div>
+        <div><div class="il">Détention</div><div class="iv">${v.detention || '—'}</div></div>
+        ${v.garage ? `<div><div class="il">Garage</div><div class="iv">${v.garage}</div></div>` : ''}
+      </div>
+      ${v.statut === 'cede' ? `<div class="alert a-gray" style="margin-top:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text2)">Cédée${v.date_cession ? ' le ' + fmtDate(v.date_cession) : ''}${v.prix_cession ? ' · ' + fmt(v.prix_cession) + '€' : ''} · Historique conservé.</div>` : ''}
+      ${ds && ds.status === 'court' && v.statut !== 'cede' ? `<div class="alert a-blue" style="margin-top:10px">🚗 En location — ${ds.booking.client || '?'} · jusqu'au ${fmtShort(ds.booking.fin)}</div>` : ''}
+      ${ds && ds.status === 'apreparer' ? `<div class="alert a-warn" style="margin-top:10px">⚡ Départ demain — ${ds.booking.client || '?'}</div>` : ''}
+      ${ca ? `<div style="margin-top:12px;background:var(--bg3);border-radius:6px;padding:10px 14px;display:grid;grid-template-columns:${ca.mrr>0?'1fr 1fr 1fr':'1fr 1fr'};gap:8px;text-align:center">
+        <div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:3px">CA Total</div><div style="font-size:18px;font-weight:700;color:var(--green)">${fmt(ca.total)}€</div></div>
+        <div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Locations</div><div style="font-size:18px;font-weight:700">${ca.count}</div></div>
+        ${ca.mrr > 0 ? `<div style="background:var(--purple-bg);border-radius:5px;padding:4px"><div style="font-size:10px;color:var(--purple);font-weight:600;text-transform:uppercase;margin-bottom:3px">MRR</div><div style="font-size:18px;font-weight:700;color:var(--purple)">${fmt(ca.mrr)}€/m</div></div>` : ''}
+      </div>` : ''}
+      ${v.notes ? `<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">${v.notes}</div>` : ''}
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier</button>
+        <button class="btn btn-sm" onclick="fleetVehicleFilter='${v.nom}';showPage('f-locations')">Locations ↗</button>
+        <button class="btn btn-sm" onclick="showPage('f-planning')">Planning ↗</button>
+        <button class="btn btn-sm" onclick="openAddEntretien('${v.nom}')">+ Entretien</button>
+      </div>`;
+    } else if (tab === 'entretien') {
+      const warn = v.prochain && v.prochain <= new Date(Date.now()+30*864e5).toISOString().split('T')[0];
+      panel = `<div class="ig">
+        <div><div class="il">Dernier entretien</div><div class="iv">${fmtDate(v.entretien)}</div></div>
+        <div><div class="il">Prochain entretien</div><div class="iv" style="color:${warn?'var(--red)':'inherit'}">${fmtDate(v.prochain)}</div></div>
+        <div><div class="il">Garage</div><div class="iv">${v.garage || '—'}</div></div>
+      </div>
+      ${warn ? `<div class="alert a-warn" style="margin-top:8px">⚠ Entretien prévu ${fmtDate(v.prochain)}</div>` : ''}
+      <button class="btn btn-sm" style="margin-top:8px" onclick="openEditVehicle('${v.id}')">Modifier les dates</button>`;
+    } else if (tab === 'docs') {
+      panel = `<div>${(v.docs || []).map(d => `<span class="dpill">📄 ${d}</span>`).join('')}<span class="dpill" style="border-style:dashed" onclick="addVDoc('${v.id}')">+ Ajouter</span></div>`;
+    } else {
+      // Tâches flotte liées à cette voiture (chargées depuis fleet_tasks)
+      const vTaches = (typeof ftData !== 'undefined' ? ftData : []).filter(t => t.voiture === v.nom && !t.done);
+      const PRIO_C = { urgente: 'var(--red)', normale: 'var(--blue)', basse: 'var(--fg3)' };
+      panel = `<div style="margin-bottom:8px">
+        ${vTaches.length ? vTaches.map(t => `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+          <span style="width:6px;height:6px;border-radius:50%;background:${PRIO_C[t.priorite]||PRIO_C.normale};flex-shrink:0;margin-top:5px"></span>
+          <div style="flex:1">
+            <div style="font-size:13px">${t.titre}</div>
+            ${t.echeance?`<div style="font-size:11px;color:var(--fg3)">📅 ${fmtDate(t.echeance)}</div>`:''}
+          </div>
+          <button onclick="toggleFtDone('${t.id}');renderFlotteHTML()" style="border:none;background:none;cursor:pointer;color:var(--green);font-size:14px" title="Marquer terminée">✓</button>
+        </div>`).join('') : '<div style="color:var(--fg3);font-size:13px;padding:4px 0">Aucune tâche ouverte pour ce véhicule.</div>'}
+      </div>
+      <button class="btn btn-sm" onclick="openAddFleetTaskForVehicle('${v.nom}')">+ Nouvelle tâche</button>
+      <button class="btn btn-sm" onclick="showPage('f-taches')" style="margin-left:4px">Voir toutes ↗</button>`;
+    }
+    body = `<div class="exp-body">${tabs}<div class="exp-panel">${panel}</div></div>`;
+  }
+
+  return `<div class="exp-card">
+    <div class="exp-head" onclick="toggleV('${v.id}')">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:5px;margin-bottom:4px;flex-wrap:wrap">
+          <span class="badge ${dynBadge}">${dynLabel}</span>
+          <span class="badge b-gray">${v.detention || '—'}</span>
+          ${v.immat ? `<span style="font-size:11px;color:var(--text3);font-family:monospace">${v.immat}</span>` : ''}
+        </div>
+        <div style="font-weight:600;font-size:14px">${vNom(v)}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:1px">
+          ${v.loc || '—'}
+        </div>
+        ${ca ? `<div style="font-size:11px;margin-top:2px"><span style="color:var(--green);font-weight:600">${fmt(ca.total)}€ CA</span><span style="color:var(--text3)"> · ${ca.count} locations</span>${ca.mrr > 0 ? ` <span style="color:var(--purple);font-weight:600">${fmt(ca.mrr)}€/mois</span>` : ''}</div>` : ''}
+      </div>
+      <span style="color:var(--text3);font-size:12px">${isOpen ? '▲' : '▼'}</span>
+    </div>${body}
+  </div>`;
+}
+
+function toggleV(id) { openV[id] = !openV[id]; if (!openVTab[id]) openVTab[id] = 'infos'; renderFlotteHTML(); }
+function setVTab(id, tab) { openVTab[id] = tab; renderFlotteHTML(); }
+async function addVTask(id) {
+  const inp = $('vt-' + id); if (!inp || !inp.value.trim()) return;
+  const v = fleetData.find(x => x.id === id);
+  const tasks = [...(v.tasks || []), inp.value.trim()];
+  await db.from('vehicles').update({ tasks }).eq('id', id);
+  v.tasks = tasks; inp.value = ''; renderFlotteHTML();
+}
+async function removeVTask(id, idx) {
+  const v = fleetData.find(x => x.id === id);
+  const tasks = (v.tasks || []).filter((_, i) => i !== idx);
+  await db.from('vehicles').update({ tasks }).eq('id', id);
+  v.tasks = tasks; renderFlotteHTML();
+}
+async function addVDoc(id) {
+  const n = prompt('Nom du document :'); if (!n) return;
+  const v = fleetData.find(x => x.id === id);
+  const docs = [...(v.docs || []), n];
+  await db.from('vehicles').update({ docs }).eq('id', id);
+  v.docs = docs; renderFlotteHTML();
+}
+
+function vehicleFormHTML(v) {
+  v = v || {};
+  return `<div class="f2">
+    <div class="fg"><label class="fl">Marque</label><input class="fi" id="vf-marque" value="${esc(v.marque||'')}" placeholder="ex: Porsche"></div>
+    <div class="fg"><label class="fl">Modèle</label><input class="fi" id="vf-modele" value="${esc(v.modele||v.nom||'')}" placeholder="ex: 911 Carrera S"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Immatriculation</label><input class="fi" id="vf-immat" value="${esc(v.immat||'')}" style="font-family:monospace;letter-spacing:.5px"></div>
+    <div class="fg"><label class="fl">Année</label><input class="fi" id="vf-annee" value="${esc(v.annee||'')}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Statut</label><select class="fi" id="vf-statut" onchange="this.value==='cede'?document.getElementById('vf-cede-row').style.display='grid':document.getElementById('vf-cede-row').style.display='none'">
+      ${Object.entries(ST_LBL).map(([k,l]) => `<option value="${k}" ${(v.statut||'standby')===k?'selected':''}>${l}</option>`).join('')}
+    </select></div>
+    <div class="fg"><label class="fl">Localisation</label><input class="fi" id="vf-loc" value="${esc(v.loc||'')}"></div>
+  </div>
+  <div class="f2" id="vf-cede-row" style="display:${(v.statut==='cede')?'grid':'none'}">
+    <div class="fg"><label class="fl">Date de cession</label><input class="fi" type="date" id="vf-cede-date" value="${v.date_cession||''}"></div>
+    <div class="fg"><label class="fl">Prix de cession (€)</label><input class="fi" type="number" id="vf-cede-prix" value="${v.prix_cession||''}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Détention</label><select class="fi" id="vf-deten">
+      ${['Ferdinand & Friends','Titre perso','Autre société'].map(d => `<option ${v.detention===d?'selected':''}>${d}</option>`).join('')}
+    </select></div>
+    <div class="fg"><label class="fl">Garage référent</label><input class="fi" id="vf-garage" value="${esc(v.garage||'')}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Dernier entretien</label><input class="fi" type="date" id="vf-entretien" value="${v.entretien||''}"></div>
+    <div class="fg"><label class="fl">Prochain entretien</label><input class="fi" type="date" id="vf-prochain" value="${v.prochain||''}"></div>
+  </div>
+  <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="vf-notes" rows="2">${esc(v.notes||'')}</textarea></div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Photo (URL image)</label><input class="fi" id="vf-photo" placeholder="https://..." value="${esc(v.photo_url||'')}"></div>
+    <div class="fg"><label class="fl">Fiche produit FerdinandParis.com</label><input class="fi" id="vf-site" placeholder="https://ferdinandparis.com/..." value="${esc(v.site_url||'')}"></div>
+  </div>`;
+}
+
+function getVehicleForm() {
+  const statut = $('vf-statut').value;
+  const marque = ($('vf-marque')?.value || '').trim();
+  const modele = ($('vf-modele')?.value || '').trim();
+  const nom = marque && modele ? marque + ' ' + modele : modele || marque;
+  return {
+    nom,  // Marque + Modèle = identifiant FK dans les bookings
+    marque,
+    modele,
+    immat: $('vf-immat').value,
+    annee: $('vf-annee').value,
+    statut,
+    loc: $('vf-loc').value,
+    detention: $('vf-deten').value,
+    garage: $('vf-garage').value,
+    entretien: $('vf-entretien').value,
+    prochain: $('vf-prochain').value,
+    notes: $('vf-notes').value,
+    photo_url: $('vf-photo')?.value || null,
+    site_url: $('vf-site')?.value || null,
+    date_cession: statut === 'cede' ? ($('vf-cede-date')?.value || null) : null,
+    prix_cession: statut === 'cede' ? (parseFloat($('vf-cede-prix')?.value) || null) : null,
+  };
+}
+function openAddVehicle() {
+  openModal('Nouveau véhicule', vehicleFormHTML(), async () => {
+    const vf = getVehicleForm();
+    const v = { id: 'v' + Date.now(), ...vf, tasks: [], docs: ['Carte grise', 'Assurance'] };
+    if (!v.marque && !v.modele && !v.nom) { alert('Marque ou modèle requis'); return; }
+    await db.from('vehicles').insert(v);
+    fleetData.push(v);
+    _voitureNames = []; // reset cache
+    closeModal(); renderFlotteHTML();
+  });
+}
+function openEditVehicle(id) {
+  const v = fleetData.find(x => x.id === id);
+  openModal('Modifier — ' + vNom(v), vehicleFormHTML(v), async () => {
+    const u = getVehicleForm();
+    const oldNom = v.nom;
+    const newNom = u.nom;
+    await db.from('vehicles').update(u).eq('id', id);
+    // Si le nom a changé → mettre à jour partout en cascade
+    if (oldNom && newNom && oldNom !== newNom) {
+      await Promise.all([
+        db.from('ferdinand_bookings').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('entretiens').update({ voiture: newNom }).eq('voiture', oldNom),
+        db.from('fleet_tasks').update({ voiture: newNom }).eq('voiture', oldNom),
+      ]);
+      // Mettre à jour aussi dans bkData et entData si chargés en mémoire
+      bkData.forEach(b => { if (b.voiture === oldNom) b.voiture = newNom; });
+      if (typeof entData !== 'undefined') entData.forEach(e => { if (e.voiture === oldNom) e.voiture = newNom; });
+      if (typeof ftData !== 'undefined') ftData.forEach(t => { if (t.voiture === oldNom) t.voiture = newNom; });
+    }
+    Object.assign(v, u);
+    _voitureNames = []; // reset cache
+    closeModal(); renderFlotteHTML();
+  }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteVehicle('${id}')">Supprimer</button>`);
+}
+async function deleteVehicle(id) {
+  if (!confirm('Supprimer ce véhicule ?')) return;
+  await db.from('vehicles').delete().eq('id', id);
+  fleetData = fleetData.filter(x => x.id !== id); closeModal(); renderFlotteHTML();
+}
+
+// ═══════════════════════════════════════════════════════
+// FERDINAND — LOCATIONS
+// ═══════════════════════════════════════════════════════
+let bkData = [], bkPage = 1, bkFilter = 'upcoming', bkSearch = '', fleetVehicleFilter = '';
+const BK_PER = 50;
+
+async function renderLocations() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  // Charger tous les bookings en plusieurs pages si nécessaire
+  let allData = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data: page } = await db.from('ferdinand_bookings')
+      .select('*')
+      .order('debut', { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (!page || page.length === 0) break;
+    allData = allData.concat(page);
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
+  const data = allData;
+  bkData = data || [];
+  renderLocationsHTML();
+}
+
+function getBkList() {
+  let list = [...bkData];
+  const ts = todayStr();
+  if (bkFilter === 'upcoming') list = list.filter(b => {
+    const fin = b.fin ? b.fin.substring(0,10) : (b.debut ? b.debut.substring(0,10) : '');
+    return fin >= ts;
+  });
+  else if (bkFilter !== 'tous') list = list.filter(b => b.debut && b.debut.startsWith(bkFilter));
+  if (bkSearch) { const q = bkSearch.toLowerCase(); list = list.filter(b => (b.client||'').toLowerCase().includes(q) || (b.voiture||'').toLowerCase().includes(q)); }
+  if (fleetVehicleFilter) list = list.filter(b => (b.voiture||'') === fleetVehicleFilter);
+  return list;
+}
+
+function renderLocationsHTML() {
+  const caTotal = bkData.reduce((s, b) => s + (b.prix || 0), 0);
+  const voitures = ['', '911 Carrera S', '911 Targa 4 GTS', 'Boxster', 'Boxster S', 'Cayenne Hybrid', 'Cayenne Craie', 'Cayman GTS', 'Ferrari Portofino', 'Macan GTS', 'Macan S', 'Mercedes'];
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Ferdinand — Locations</div><div class="pg-sub">${bkData.length} bookings · CA total ${fmt(caTotal)}€</div></div>
+      <button class="btn btn-primary" onclick="openAddBooking()">+ Booking</button>
+    </div>
+    <div id="bk-stats"></div>
+    <div class="filters">
+      ${['upcoming','tous','2026','2025','2024','2023','2022','2021'].map(f => `<button class="fpill${f===bkFilter?' active':''}" onclick="setBkFilter('${f}')">${f==='upcoming'?'À venir':f==='tous'?'Tous':f}</button>`).join('')}
+      <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-box" id="bk-search" placeholder="Client, voiture..." oninput="bkSearch=this.value;bkPage=1;refreshBkList()"></div>
+      <select class="fi" style="width:auto;padding:0 10px;height:32px" onchange="fleetVehicleFilter=this.value;bkPage=1;refreshBkList()" id="bk-voi-select">
+        ${(['', ..._voitureNames.length?_voitureNames:voitures]).map(v => `<option value="${v}" ${fleetVehicleFilter===v?'selected':''}>${v||'Toutes voitures'}</option>`).join('')}
+      </select>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Cliquer sur une ligne pour modifier</div>
+    <div id="bk-table"></div>
+    <div id="bk-pag"></div>
+  `);
+  // Charger la liste dynamique des voitures si pas encore fait
+  loadVoitureNames().then(() => {
+    const sel = document.getElementById('bk-voi-select');
+    if (sel && _voitureNames.length) {
+      const cur = fleetVehicleFilter;
+      sel.innerHTML = ['', ..._voitureNames].map(v =>
+        `<option value="${v}" ${cur===v?'selected':''}>${v||'Toutes voitures'}</option>`
+      ).join('');
+    }
+  });
+  refreshBkList();
+}
+
+function setBkFilter(f) { bkFilter = f; bkPage = 1; refreshBkList(); }
+
+function refreshBkList() {
+  const list = getBkList();
+  const ca = list.reduce((s, b) => s + (b.prix || 0), 0);
+  const label = bkFilter === 'upcoming' ? 'À venir' : bkFilter === 'tous' ? 'Total' : bkFilter;
+  const nEnCours = list.filter(b => bkDynStatus(b).label === 'En cours').length;
+  const nAVenir = list.filter(b => bkDynStatus(b).label === 'À venir').length;
+  set('bk-stats', mkStats([
+    { l: `Bookings (${label})`, v: fmt(list.length) },
+    { l: `CA (${label})`, v: fmt(ca) + '€', c: 'var(--green)' },
+    { l: 'En cours', v: nEnCours, c: 'var(--green)' },
+    { l: 'À venir', v: nAVenir, c: 'var(--blue)' },
+    { l: 'CA total historique', v: fmt(bkData.reduce((s,b) => s+(b.prix||0), 0)) + '€' },
+  ]));
+  const start = (bkPage - 1) * BK_PER;
+  const page = list.slice(start, start + BK_PER);
+  const rows = page.map(b => {
+    const paidBadge = b.stripe_payment_id ? `<span title="Payé Stripe" style="background:#635BFF;color:#fff;font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;margin-left:3px">S✓</span>` : '';
+    return `<tr class="clickable" onclick="openEditBooking('${b.id}')">
+      <td><strong>${b.voiture||'—'}</strong></td>
+      <td>${b.client||'—'}${b.email?`<br><span style="font-size:11px;color:var(--text3)">${b.email}</span>`:''}</td>
+      <td style="white-space:nowrap">${fmtShort(b.debut)}</td>
+      <td style="white-space:nowrap">${fmtShort(b.fin)||'—'}</td>
+      <td style="white-space:nowrap"><span style="font-weight:600;color:var(--green)">${b.prix?fmt(b.prix)+'€':'—'}</span>${paidBadge}</td>
+      <td><span class="badge ${srcBadge(b.source)}">${b.source||'—'}</span></td>
+      <td><span class="badge ${bkDynStatus(b).badge}">${bkDynStatus(b).label}</span></td>
+      <td>${b.lien_contrat?`<a href="${b.lien_contrat}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue)">📄</a>`:'—'}</td>
+      <td style="font-size:12px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.commentaire||''}</td>
+    </tr>`;
+  });
+  set('bk-table', mkTable(['Voiture','Client','Début','Fin','Prix','Source','Statut','Contrat','Notes'], rows));
+  set('bk-pag', mkPag(list.length, BK_PER, bkPage, 'setBkPage'));
+}
+function setBkPage(p) { bkPage = p; refreshBkList(); }
+
+function bookingFormHTML(b, voitures) {
+  b = b || {};
+  voitures = voitures || _voitureNames.length ? _voitureNames : ['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayenne Hybrid','Cayenne Craie','Cayman GTS','Ferrari Portofino','Macan GTS','Macan S','Mercedes'];
+  return `<div class="f2">
+    <div class="fg"><label class="fl">Voiture</label><select class="fi" id="bf-v">${voitures.map(v => `<option ${(b.voiture||'')==v?'selected':''}>${v}</option>`).join('')}</select></div>
+    <div class="fg"><label class="fl">Client</label><input class="fi" id="bf-c" value="${esc(b.client||'')}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Email</label><input class="fi" id="bf-e" value="${esc(b.email||'')}"></div>
+    <div class="fg"><label class="fl">Téléphone</label><input class="fi" id="bf-t" value="${esc(b.tel||'')}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Début</label><input class="fi" type="date" id="bf-d" value="${b.debut||''}"></div>
+    <div class="fg"><label class="fl">Fin</label><input class="fi" type="date" id="bf-f" value="${b.fin||''}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Prix (€)</label><input class="fi" type="number" id="bf-p" value="${b.prix||''}"></div>
+    <div class="fg"><label class="fl">Source</label><select class="fi" id="bf-s">${['Direct','Roadstr','MRM'].map(s => `<option ${(b.source||'')==s?'selected':''}>${s}</option>`).join('')}</select></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Statut (calculé automatiquement)</label>
+      <div style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;font-size:13px;color:var(--text2)">
+        ${b.debut ? `<span class="badge ${bkDynStatus(b).badge}">${bkDynStatus(b).label}</span> · basé sur les dates` : 'Renseigner les dates'}
+      </div>
+      <input type="hidden" id="bf-st" value="${b.statut||'Fermé'}">
+    </div>
+    <div class="fg"><label class="fl">KM</label><input class="fi" type="number" id="bf-km" value="${b.km||''}"></div>
+  </div>
+  <div class="fg"><label class="fl">Lien contrat Google Doc</label><input class="fi" id="bf-ctr" placeholder="https://docs.google.com/..." value="${esc(b.lien_contrat||'')}"></div>
+  <div class="fg"><label class="fl">Commentaire</label><textarea class="fi" id="bf-cm" rows="2">${esc(b.commentaire||'')}</textarea></div>`;
+}
+function getBkForm() {
+  const debut = $('bf-d').value || null;
+  const fin = $('bf-f').value || null;
+  const ts = todayStr();
+  let statut = 'Fermé';
+  if (debut && fin) {
+    if (fin < ts) statut = 'Fermé';
+    else if (debut > ts) statut = 'À venir';
+    else statut = 'En cours';
+  } else if (debut && debut > ts) {
+    statut = 'À venir';
+  }
+  return { voiture: $('bf-v').value, client: $('bf-c').value, email: $('bf-e').value, tel: $('bf-t').value, debut, fin, prix: parseFloat($('bf-p').value) || 0, source: $('bf-s').value, statut, km: parseInt($('bf-km').value) || 0, lien_contrat: $('bf-ctr').value || null, commentaire: $('bf-cm').value, type_booking: 'ponctuel', prix_mensuel: 0 };
+}
+async function openAddBooking() {
+  const voitures = await loadVoitureNames();
+  openModal('Nouveau booking', bookingFormHTML({}, voitures), async () => {
+    const b = { id: 'fb' + Date.now(), ...getBkForm() };
+    if (!b.client) { alert('Client requis'); return; }
+    const { data } = await db.from('ferdinand_bookings').insert(b).select();
+    if (data) bkData.unshift(data[0]);
+    closeModal(); refreshBkList();
+  });
+}
+async function openEditBooking(id) {
+  const b = bkData.find(x => x.id === id); if (!b) return;
+  const voitures = await loadVoitureNames();
+  openModal('Modifier — ' + b.client, bookingFormHTML(b, voitures), async () => {
+    const u = getBkForm();
+    await db.from('ferdinand_bookings').update(u).eq('id', id);
+    Object.assign(b, u); closeModal(); refreshBkList();
+  }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteBooking('${id}')">Supprimer</button>`);
+}
+async function deleteBooking(id) {
+  if (!confirm('Supprimer ce booking ?')) return;
+  await db.from('ferdinand_bookings').delete().eq('id', id);
+  bkData = bkData.filter(x => x.id !== id); closeModal(); refreshBkList();
+}
+
+// ═══════════════════════════════════════════════════════
+// FERDINAND — PLANNING
+// ═══════════════════════════════════════════════════════
+let planYear = new Date().getFullYear(), planMonth = new Date().getMonth();
+
+async function renderPlanning() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  // Filtrer par plage ±1 an — requête simple sans .or() qui pose problème
+  const yearStart = (planYear - 1) + '-01-01';
+  const yearEnd   = (planYear + 1) + '-12-31';
+  const { data } = await db.from('ferdinand_bookings')
+    .select('id,voiture,client,debut,fin,prix,source,statut,type_booking,prix_mensuel')
+    .gte('debut', yearStart)
+    .lte('debut', yearEnd)
+    .order('debut')
+    .limit(2000);
+  // Abonnements longs commencés avant la fenêtre mais encore actifs
+  const { data: aboLongs } = await db.from('ferdinand_bookings')
+    .select('id,voiture,client,debut,fin,prix,source,statut,type_booking,prix_mensuel')
+    .eq('type_booking', 'abonnement')
+    .lt('debut', yearStart)
+    .gte('fin', yearStart)
+    .limit(100);
+  const bookings = [...(data||[]), ...(aboLongs||[])].filter(b => b.debut).map(b => ({
+    ...b, fin: b.fin || b.debut
+  }));
+  renderPlanningHTML(bookings);
+}
+
+function renderPlanningHTML(bookings) {
+  const ml = new Date(planYear, planMonth, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const firstStr = `${planYear}-${String(planMonth+1).padStart(2,'0')}-01`;
+  const lastStr = `${planYear}-${String(planMonth+1).padStart(2,'0')}-${String(new Date(planYear,planMonth+1,0).getDate()).padStart(2,'0')}`;
+  const bkMois = bookings.filter(b => {
+    const deb = b.debut ? b.debut.substring(0,10) : null;
+    const fin = b.fin ? b.fin.substring(0,10) : deb;
+    return deb && fin && deb <= lastStr && fin >= firstStr;
+  });
+  const voiColor = v => ({ '911 Carrera S': '#2563eb', '911 Targa 4 GTS': '#7c3aed', 'Boxster': '#059669', 'Boxster S': '#059669', 'Cayman GTS': '#db2777', 'Cayenne Hybrid': '#d97706', 'Cayenne Craie': '#d97706', 'Ferrari Portofino': '#dc2626', 'Macan GTS': '#65a30d', 'Macan S': '#65a30d', 'Mercedes': '#6b7280' }[v] || '#6b7280');
+  // Couleur par type — abonnements en violet
+  const bkColor = b => b.type_booking === 'abonnement' ? '#7c3aed' : voiColor(b.voiture);
+
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Ferdinand — Planning</div><div class="pg-sub">${bkMois.length} locations ce mois</div></div>
+      <button class="btn btn-primary" onclick="openAddBooking()">+ Booking</button>
+    </div>
+    ${mkStats([
+      { l: 'Ce mois', v: bkMois.length, c: 'var(--blue)' },
+      { l: 'CA ce mois', v: fmt(bkMois.reduce((s,b) => {
+    // Pour les abonnements : compter 1 mensualité, pas le total du contrat
+    if (b.type_booking === 'abonnement' || b.prix_mensuel > 0) return s + (b.prix_mensuel || 0);
+    return s + (b.prix || 0);
+  }, 0)) + '€', c: 'var(--green)' },
+      { l: 'Voitures actives', v: [...new Set(bkMois.map(b=>b.voiture))].length },
+    ])}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="btn btn-sm" onclick="planMonth--;if(planMonth<0){planMonth=11;planYear--;}renderPlanning()">←</button>
+      <span style="font-size:15px;font-weight:600;flex:1;text-align:center">${ml.charAt(0).toUpperCase()+ml.slice(1)}</span>
+      <button class="btn btn-sm" onclick="planMonth++;if(planMonth>11){planMonth=0;planYear++;}renderPlanning()">→</button>
+      <button class="btn btn-sm" onclick="planYear=new Date().getFullYear();planMonth=new Date().getMonth();renderPlanning()">Aujourd'hui</button>
+    </div>
+    <div class="card" style="padding:10px">
+      ${mkCalendar(planYear, planMonth, bkMois, b => b.type_booking==='abonnement'?'#7c3aed':voiColor(b.voiture), 'openEditBookingOrAbo')}
+    </div>
+    ${bkMois.length ? `<div style="margin-top:14px">
+      ${bkMois.sort((a,b)=>a.debut.localeCompare(b.debut)).map(b => {
+        const col = voiColor(b.voiture);
+        const nights = b.debut && b.fin ? Math.ceil((new Date(b.fin)-new Date(b.debut))/864e5) : 0;
+        return `<div onclick="openEditBooking('${b.id}')" style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:6px;padding:8px 12px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#fff">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
+              <span style="font-weight:600">${b.voiture||'—'}</span>
+              <span class="badge ${srcBadge(b.source)}">${b.source}</span>
+              ${(()=>{const s=bkDynStatus(b);return`<span class="badge ${s.badge}">${s.label}</span>`;})()}
+            </div>
+            <div style="font-size:13px">${b.client||'—'}</div>
+            <div style="font-size:12px;color:var(--text2)">${fmtShort(b.debut)} → ${fmtShort(b.fin)}${nights ? ` · ${nights} nuit${nights>1?'s':''}` : ''}</div>
+          </div>
+          ${b.prix ? `<div style="font-weight:700;font-size:14px;color:var(--green)">${fmt(b.prix)}€</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+  `);
+}
+
+// ═══════════════════════════════════════════════════════
+// FERDINAND — FINANCE STRIPE
+// ═══════════════════════════════════════════════════════
+async function renderFinance() {
+  set('app-page', `
+    <div class="pg-header"><div><div class="pg-title">Ferdinand — Finance Stripe</div><div class="pg-sub">Rapprochement paiements</div></div></div>
+    <div id="stripe-content"><div class="loading"><div class="spin"></div> Chargement Stripe...</div></div>
+  `);
+  try {
+    const [sRes, bRes] = await Promise.all([
+      fetch('/api/stripe?limit=100'),
+      db.from('ferdinand_bookings').select('id,client,voiture,debut,prix,stripe_payment_id')
+    ]);
+    if (!sRes.ok) throw new Error('Erreur API Stripe');
+    const sData = await sRes.json();
+    const charges = (sData.data || []).filter(c => c.captured !== false && (c.amount_captured || 0) > 0);
+    const cautions = (sData.data || []).filter(c => c.captured === false || (c.amount_captured || 0) === 0);
+    const bookings = bRes.data || [];
+    renderFinanceData(charges, cautions, bookings);
+  } catch(e) {
+    set('stripe-content', `<div class="alert a-red">Erreur : ${e.message}. Vérifiez que STRIPE_RESTRICTED_KEY est configurée dans Vercel.</div>`);
+  }
+}
+
+function strSim(a, b) {
+  if (!a || !b) return 0;
+  a = a.toLowerCase(); b = b.toLowerCase();
+  if (a === b) return 1;
+  if (a.includes(b) || b.includes(a)) return 0.8;
+  const wa = new Set(a.split(/\s+/)), wb = new Set(b.split(/\s+/));
+  const inter = [...wa].filter(w => wb.has(w)).length;
+  return inter / new Set([...wa,...wb]).size;
+}
+
+function renderFinanceData(charges, cautions, bookings) {
+  const total = charges.reduce((s,c) => s+(c.amount_captured||0), 0);
+  const linked = bookings.filter(b => b.stripe_payment_id).length;
+
+  // Reconciliation
+  const results = charges.map(c => {
+    const name = (c.billing_details?.name || c.description || '').toLowerCase();
+    const amount = (c.amount_captured || 0) / 100;
+    const date = new Date(c.created * 1000);
+    // Un paiement Stripe peut être un acompte (partiel) — on tolère un écart jusqu'à 80%
+    let best = null, bestScore = 0;
+    bookings.filter(b => !b.stripe_payment_id).forEach(b => {
+      let score = 0;
+      const sim = strSim(name, (b.client||'').toLowerCase());
+      if (sim > 0.7) score += 2; else if (sim > 0.4) score += 1;
+      // Tolérance élargie : un acompte peut être 30-70% du montant total
+      const diff = b.prix ? Math.abs(amount - b.prix) / b.prix : 1;
+      if (diff < 0.1) score += 2;
+      else if (diff < 0.4) score += 1;   // acompte probable
+      else if (diff < 0.75) score += 0;  // possible mais faible confiance
+      if (b.debut) { const days = Math.abs(date - new Date(b.debut)) / 864e5; if (days < 7) score += 2; else if (days < 30) score += 1; }
+      if (score > bestScore) { bestScore = score; best = b; }
+    });
+    return { c, match: best, score: bestScore, auto: bestScore >= 4, suggest: bestScore >= 2 && bestScore < 4 };
+  });
+
+  const auto = results.filter(r => r.auto);
+  const suggest = results.filter(r => r.suggest && !r.auto);
+  const unmatched = results.filter(r => !r.auto && !r.suggest);
+
+  let html = mkStats([
+    { l: 'Paiements encaissés', v: charges.length, c: 'var(--green)' },
+    { l: 'Total encaissé', v: fmt(total/100) + '€', c: 'var(--green)' },
+    { l: 'Cautions (non encaissées)', v: cautions.length, c: 'var(--amber)' },
+    { l: 'Locations liées', v: linked, c: 'var(--blue)' },
+    { l: 'Non pointées', v: unmatched.length },
+  ]);
+
+  if (auto.length) html += `<div class="card">
+    <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+      ✓ Rapprochements automatiques (${auto.length})
+      <button class="btn btn-sm btn-primary" onclick="confirmAllAuto()">Confirmer tous</button>
+    </div>
+    ${mkTable(['Client Stripe','Montant','Date','↔ Booking','Voiture','Action'],
+      auto.map(r => `<tr>
+        <td><strong>${r.c.billing_details?.name||r.c.description||'—'}</strong></td>
+        <td style="color:var(--green);font-weight:600">${fmt((r.c.amount_captured||0)/100)}€${r.match && r.match.prix && Math.abs((r.c.amount_captured||0)/100 - r.match.prix)/r.match.prix > 0.1 ? ' <span class="badge b-amber" title="Paiement partiel / acompte">Acompte</span>' : ''}</td>
+        <td>${new Date(r.c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}</td>
+        <td>${r.match?.client||'—'}</td>
+        <td>${r.match?.voiture||'—'}</td>
+        <td><button class="btn btn-sm" style="background:var(--green);color:#fff;border-color:var(--green)" onclick="confirmLink('${r.c.id}','${r.match?.id}',${(r.c.amount_captured||0)/100})">✓ Lier</button></td>
+      </tr>`)
+    )}
+  </div>`;
+
+  if (unmatched.length) html += `<div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px">Transactions non pointées (${unmatched.length})</div>
+    ${mkTable(['Client Stripe','Montant','Date','Statut','Action'],
+      unmatched.map(r => `<tr>
+        <td>${r.c.billing_details?.name||r.c.description||'—'}</td>
+        <td style="font-weight:600;color:var(--green)">${fmt((r.c.amount_captured||0)/100)}€</td>
+        <td>${new Date(r.c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}</td>
+        <td><span class="badge ${r.c.refunded?'b-amber':r.c.status==='succeeded'?'b-green':'b-red'}">${r.c.refunded?'Remboursé':r.c.status==='succeeded'?'Réussi':r.c.status}</span></td>
+        <td><button class="btn btn-sm" onclick="openManualLink('${r.c.id}')">Lier</button></td>
+      </tr>`)
+    )}
+  </div>`;
+
+  if (cautions.length) html += `<div class="card">
+    <div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:8px">Cautions / Autorisations (${cautions.length}) — non encaissées</div>
+    <div class="alert a-warn">Ces transactions sont des autorisations sur carte. L'argent n'a pas été prélevé.</div>
+    ${mkTable(['Client','Montant autorisé','Date'],
+      cautions.map(c => `<tr>
+        <td>${c.billing_details?.name||c.description||'—'}</td>
+        <td style="color:var(--amber);font-weight:600">${fmt((c.amount||0)/100)}€</td>
+        <td>${new Date(c.created*1000).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}</td>
+      </tr>`)
+    )}
+  </div>`;
+
+  set('stripe-content', html);
+  window._stripeCharges = charges;
+  window._stripeBk = bookings;
+}
+
+async function confirmLink(stripeId, bkId, amount) {
+  if (!bkId) return;
+  await db.from('ferdinand_bookings').update({ stripe_payment_id: stripeId, statut_paiement: 'Payé intégral', montant_recu: amount }).eq('id', bkId);
+  renderFinance();
+}
+async function confirmAllAuto() {
+  // Re-run reconciliation and confirm all autos
+  await renderFinance();
+}
+function openManualLink(stripeId) {
+  const c = (window._stripeCharges || []).find(x => x.id === stripeId);
+  const name = c?.billing_details?.name || c?.description || '';
+  const amount = fmt((c?.amount_captured || 0) / 100) + '€';
+  const bks = (window._stripeBk || []).filter(b => !b.stripe_payment_id).slice(0, 60);
+  openModal(`Lier — ${name} (${amount})`, `
+    <div class="fg"><label class="fl">Sélectionner le booking</label>
+    <select class="fi" id="manual-bk" size="8" style="height:180px">
+      ${bks.map(b => `<option value="${b.id}">${b.client} — ${b.voiture||'?'} — ${fmtShort(b.debut)} — ${b.prix?fmt(b.prix)+'€':''}</option>`).join('')}
+    </select></div>`,
+    async () => {
+      const bkId = $('manual-bk').value;
+      if (!bkId) return;
+      await confirmLink(stripeId, bkId, (c?.amount_captured||0)/100);
+      closeModal();
+    }
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════
+// FERDINAND — ABONNEMENTS (longue durée)
+// ═══════════════════════════════════════════════════════
+let aboData = [], aboFilter = 'actifs';
+
+async function renderAbonnements() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  // Charger les abonnements depuis ferdinand_bookings avec type_booking='abonnement'
+  let all = [];
+  let from = 0;
+  while(true) {
+    const { data: p } = await db.from('ferdinand_bookings')
+      .select('*')
+      .eq('type_booking', 'abonnement')
+      .order('debut', { ascending: false })
+      .range(from, from+999);
+    if(!p||!p.length) break;
+    all = all.concat(p);
+    if(p.length<1000) break;
+    from+=1000;
+  }
+  aboData = all;
+  renderAbonnementsHTML();
+}
+
+function getAboStatut(b) {
+  const ts = todayStr();
+  const fin = b.fin ? b.fin.substring(0,10) : null;
+  const deb = b.debut ? b.debut.substring(0,10) : null;
+  if (!deb) return { label: '—', badge: 'b-gray' };
+  if (fin && fin < ts) return { label: 'Terminé', badge: 'b-gray' };
+  if (deb > ts) return { label: 'À venir', badge: 'b-blue' };
+  return { label: 'Actif', badge: 'b-green' };
+}
+
+function getAboMensualites(b) {
+  if (!b.debut || !b.prix_mensuel) return 0;
+  const start = new Date(b.debut);
+  const ts = todayStr();
+  const end = b.fin ? new Date(b.fin) : new Date();
+  const endOrNow = b.fin && b.fin < ts ? new Date(b.fin) : new Date(ts);
+  return Math.max(0, Math.round((endOrNow - start) / (1000*60*60*24*30)));
+}
+
+function renderAbonnementsHTML() {
+  const ts = todayStr();
+  const actifs = aboData.filter(b => {
+    const fin = b.fin ? b.fin.substring(0,10) : null;
+    const deb = b.debut ? b.debut.substring(0,10) : null;
+    return deb && deb <= ts && (!fin || fin >= ts);
+  });
+  const termines = aboData.filter(b => b.fin && b.fin.substring(0,10) < ts);
+  const avenir = aboData.filter(b => b.debut && b.debut.substring(0,10) > ts);
+
+  const mrrTotal = actifs.reduce((s,b) => s + (b.prix_mensuel||0), 0);
+  // CA IFRS : séparer réalisé et prévisionnel
+  let caRealise = 0, caPrevisionnel = 0;
+  aboData.forEach(b => {
+    const { realise, previsionnel } = getAbonnementCA(b);
+    caRealise += realise;
+    caPrevisionnel += previsionnel;
+  });
+  const caTotal = caRealise + caPrevisionnel;
+
+  let list = aboFilter === 'actifs' ? actifs : aboFilter === 'termines' ? termines : aboFilter === 'avenir' ? avenir : aboData;
+
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Ferdinand — Abonnements</div>
+      <div class="pg-sub">Locations longue durée · ${aboData.length} contrats</div></div>
+      <button class="btn btn-primary" onclick="openAddAbonnement()">+ Abonnement</button>
+    </div>
+    ${mkStats([
+      { l: 'Actifs', v: actifs.length, c: 'var(--green)' },
+      { l: 'MRR actuel', v: fmt(mrrTotal) + '€/mois', c: 'var(--purple)' },
+      { l: 'CA réalisé', v: fmt(caRealise) + '€', c: 'var(--green)' },
+      { l: 'Prévisionnel', v: fmt(caPrevisionnel) + '€', c: 'var(--purple)' },
+      { l: 'Terminés', v: termines.length, c: 'var(--fg3)' },
+    ])}
+    <div class="filters">
+      ${[['actifs','Actifs'],['avenir','À venir'],['termines','Terminés'],['tous','Tous']].map(([f,l]) =>
+        `<button class="fpill${f===aboFilter?' active':''}" onclick="setAboFilter('${f}')">${l}</button>`
+      ).join('')}
+    </div>
+    ${list.length ? `<div>
+      ${list.map(b => {
+        const st = getAboStatut(b);
+        const moisEcoules = getAboMensualites(b);
+        const caGenere = (b.prix_mensuel||0) * moisEcoules;
+        const finDate = b.fin ? b.fin.substring(0,10) : null;
+        const dureeStr = b.debut && finDate ? `${b.debut.substring(0,7)} → ${finDate.substring(0,7)}` : b.debut ? `Depuis ${b.debut.substring(0,7)}` : '—';
+        return `<div class="exp-card">
+          <div class="exp-head" onclick="openEditAbonnement('${b.id}')" style="cursor:pointer">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;gap:5px;margin-bottom:4px;flex-wrap:wrap;align-items:center">
+                <span class="badge ${st.badge}">${st.label}</span>
+                ${b.prix_mensuel ? `<span class="badge b-purple">${fmt(b.prix_mensuel)}€/mois</span>` : ''}
+                <span class="badge b-gray">${b.voiture||'—'}</span>
+              </div>
+              <div style="font-weight:600;font-size:14px">${b.client||'—'}</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:1px">${dureeStr}</div>
+              <div style="font-size:11px;margin-top:2px">
+                <span style="color:var(--green);font-weight:600">${fmt(caGenere)}€ encaissé</span>
+                <span style="color:var(--text3)"> · ${moisEcoules} mois</span>
+                ${b.lien_contrat ? ` · <a href="${b.lien_contrat}" target="_blank" style="color:var(--blue)" onclick="event.stopPropagation()">📄 Contrat</a>` : ''}
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              ${b.prix_mensuel ? `<div style="font-size:16px;font-weight:700;color:var(--purple)">${fmt(b.prix_mensuel)}€</div><div style="font-size:11px;color:var(--text3)">par mois</div>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : `<div style="text-align:center;padding:40px;color:var(--text2)">
+      <div style="font-size:32px;margin-bottom:8px">📋</div>
+      <div style="font-weight:500">Aucun abonnement ${aboFilter === 'actifs' ? 'actif' : ''}</div>
+      <div style="font-size:12px;margin-top:4px">Les abonnements sont des locations longue durée.</div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="openAddAbonnement()">+ Créer un abonnement</button>
+    </div>`}
+  `);
+}
+
+function openEditBookingOrAbo(id) {
+  // Cherche d'abord dans les bookings, puis dans les abonnements
+  const inBk = bkData.find(x => x.id === id);
+  if (inBk) { openEditBooking(id); return; }
+  openEditAbonnement(id);
+}
+function setAboFilter(f) { aboFilter = f; renderAbonnementsHTML(); }
+
+function aboFormHTML(b, voitures) {
+  b = b || {};
+  voitures = voitures || (_voitureNames.length ? _voitureNames : ['911 Carrera S','911 Targa 4 GTS','Boxster','Boxster S','Cayenne Hybrid','Cayenne Craie','Cayman GTS','Ferrari Portofino','Macan GTS','Macan S','Mercedes']);
+  return `<div class="f2">
+    <div class="fg"><label class="fl">Voiture</label>
+      <select class="fi" id="af2-v">${voitures.map(v => `<option ${(b.voiture||'')==v?'selected':''}>${v}</option>`).join('')}</select>
+    </div>
+    <div class="fg"><label class="fl">Client</label><input class="fi" id="af2-c" value="${esc(b.client||'')}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Email</label><input class="fi" id="af2-e" value="${esc(b.email||'')}"></div>
+    <div class="fg"><label class="fl">Téléphone</label><input class="fi" id="af2-t" value="${esc(b.tel||'')}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Début</label><input class="fi" type="date" id="af2-d" value="${b.debut||''}"></div>
+    <div class="fg"><label class="fl">Fin (vide = en cours)</label><input class="fi" type="date" id="af2-f" value="${b.fin||''}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Prix mensuel (€/mois)</label><input class="fi" type="number" id="af2-pm" value="${b.prix_mensuel||''}"></div>
+    <div class="fg"><label class="fl">Jour de prélèvement</label><input class="fi" type="number" id="af2-jpay" placeholder="ex: 5" value="${b.jpay||''}"></div>
+  </div>
+  <div class="fg"><label class="fl">Lien contrat Google Doc</label><input class="fi" id="af2-ctr" placeholder="https://docs.google.com/..." value="${esc(b.lien_contrat||'')}"></div>
+  <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="af2-cm" rows="2">${esc(b.commentaire||'')}</textarea></div>`;
+}
+
+function getAboForm() {
+  const pm = parseFloat($('af2-pm').value) || 0;
+  const debut = $('af2-d').value || null;
+  const fin = $('af2-f').value || null;
+  // Prix total estimé = mensuel × durée en mois
+  const months = debut && fin ? Math.max(1, Math.round((new Date(fin)-new Date(debut))/(1000*60*60*24*30))) : 12;
+  return {
+    voiture: $('af2-v').value,
+    client: $('af2-c').value,
+    email: $('af2-e').value,
+    tel: $('af2-t').value,
+    debut, fin,
+    prix_mensuel: pm,
+    prix: pm * months, // total estimé
+    jpay: parseInt($('af2-jpay').value) || null,
+    source: 'Direct',
+    statut: 'En cours',
+    type_booking: 'abonnement',
+    lien_contrat: $('af2-ctr').value || null,
+    commentaire: $('af2-cm').value,
+  };
+}
+
+async function openAddAbonnement() {
+  const voitures = await loadVoitureNames();
+  openModal('Nouvel abonnement', aboFormHTML({}, voitures), async () => {
+    const b = { id: 'abo' + Date.now(), ...getAboForm() };
+    if (!b.client) { alert('Client requis'); return; }
+    const { data } = await db.from('ferdinand_bookings').insert(b).select();
+    if (data) aboData.unshift(data[0]);
+    closeModal(); renderAbonnementsHTML();
+  });
+}
+
+async function openEditAbonnement(id) {
+  const b = aboData.find(x => x.id === id); if (!b) return;
+  const voitures = await loadVoitureNames();
+  openModal(`Modifier — ${b.client}`, aboFormHTML(b, voitures), async () => {
+    const u = getAboForm();
+    await db.from('ferdinand_bookings').update(u).eq('id', id);
+    Object.assign(b, u); closeModal(); renderAbonnementsHTML();
+  }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteAbonnement('${id}')">Supprimer</button>`);
+}
+
+async function deleteAbonnement(id) {
+  if (!confirm('Supprimer cet abonnement ?')) return;
+  await db.from('ferdinand_bookings').delete().eq('id', id);
+  aboData = aboData.filter(x => x.id !== id); closeModal(); renderAbonnementsHTML();
+}
+
+
+// ═══════════════════════════════════════════════════════
+// FERDINAND — ENTRETIENS
+// ═══════════════════════════════════════════════════════
+let entData = [], entFilter = 'tous';
+
+const ENT_TYPES = ['Révision', 'Pneus', 'Carrosserie', 'Moteur', 'Contrôle technique', 'Climatisation', 'Freins', 'Autre'];
+const ENT_COLORS = {'Révision':'b-blue','Pneus':'b-amber','Carrosserie':'b-pink','Moteur':'b-red','Contrôle technique':'b-green','Climatisation':'b-gray','Freins':'b-red','Autre':'b-gray'};
+
+async function renderEntretiens() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  const { data } = await db.from('entretiens').select('*').order('date_entretien', { ascending: false }).limit(500);
+  entData = data || [];
+  renderEntretiensHTML();
+}
+
+function renderEntretiensHTML() {
+  const ts = todayStr();
+  const faits = entData.filter(e => e.statut === 'Fait');
+  const planifies = entData.filter(e => e.statut === 'Planifié');
+  const alertes = planifies.filter(e => e.date_entretien && e.date_entretien <= new Date(Date.now()+30*864e5).toISOString().split('T')[0]);
+
+  let list = entFilter === 'planifies' ? planifies : entFilter === 'faits' ? faits : entData;
+
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Entretiens & Maintenance</div>
+      <div class="pg-sub">${entData.length} entrées · ${planifies.length} planifiés</div></div>
+      <button class="btn btn-primary" onclick="openAddEntretien()">+ Entretien</button>
+    </div>
+    ${mkStats([
+      { l: 'Total', v: entData.length },
+      { l: 'Planifiés', v: planifies.length, c: 'var(--blue)' },
+      { l: 'Alertes 30j', v: alertes.length, c: alertes.length > 0 ? 'var(--red)' : 'var(--green)' },
+      { l: 'Coût total', v: fmt(entData.reduce((s,e)=>s+(e.montant||0),0)) + '€', c: 'var(--text2)' },
+    ])}
+    ${alertes.length ? `<div class="alert a-warn">⚠ ${alertes.length} entretien${alertes.length>1?'s':''} planifié${alertes.length>1?'s':''} dans les 30 prochains jours — ${alertes.map(e=>e.voiture+' ('+fmtDate(e.date_entretien)+')').join(', ')}</div>` : ''}
+    <div class="filters">
+      ${[['tous','Tous'],['planifies','Planifiés'],['faits','Faits']].map(([f,l])=>`<button class="fpill${f===entFilter?' active':''}" onclick="setEntFilter('${f}')">${l}</button>`).join('')}
+    </div>
+    ${mkTable(
+      ['Voiture','Date','Type','Garage','Montant','Statut','Contrat','Notes'],
+      list.map(e => `<tr class="clickable" onclick="openEditEntretien('${e.id}')">
+        <td><strong>${e.voiture||'—'}</strong></td>
+        <td style="white-space:nowrap">${fmtDate(e.date_entretien)}</td>
+        <td><span class="badge ${ENT_COLORS[e.type]||'b-gray'}">${e.type||'—'}</span></td>
+        <td>${e.garage||'—'}</td>
+        <td>${e.montant?fmt(e.montant)+'€':'—'}</td>
+        <td><span class="badge ${e.statut==='Planifié'?'b-blue':'b-gray'}">${e.statut||'Fait'}</span></td>
+        <td>${e.facture_url?`<a href="${e.facture_url}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue)">📄</a>`:'—'}</td>
+        <td style="font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.description||''}</td>
+      </tr>`)
+    , 'Aucun entretien enregistré')}
+  `);
+}
+
+function setEntFilter(f) { entFilter = f; renderEntretiensHTML(); }
+
+function entFormHTML(e) {
+  e = e || {};
+  const voitures = _voitureNames.length ? _voitureNames : [];
+  return `<div class="f2">
+    <div class="fg"><label class="fl">Voiture</label>
+      <select class="fi" id="ef-v"><option value="">— Sélectionner —</option>${voitures.map(v=>`<option ${(e.voiture||'')==v?'selected':''}>${v}</option>`).join('')}</select>
+    </div>
+    <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="ef-d" value="${e.date_entretien||''}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Type</label>
+      <select class="fi" id="ef-t">${ENT_TYPES.map(t=>`<option ${(e.type||'Révision')==t?'selected':''}>${t}</option>`).join('')}</select>
+    </div>
+    <div class="fg"><label class="fl">Statut</label>
+      <select class="fi" id="ef-st">
+        <option ${(e.statut||'Fait')==='Fait'?'selected':''}>Fait</option>
+        <option ${e.statut==='Planifié'?'selected':''}>Planifié</option>
+      </select>
+    </div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Garage</label><input class="fi" id="ef-g" value="${esc(e.garage||'')}"></div>
+    <div class="fg"><label class="fl">Montant (€)</label><input class="fi" type="number" id="ef-m" value="${e.montant||''}"></div>
+  </div>
+  <div class="fg"><label class="fl">Lien facture / document</label><input class="fi" id="ef-f" placeholder="https://drive.google.com/..." value="${esc(e.facture_url||'')}"></div>
+  <div class="fg"><label class="fl">Description / notes</label><textarea class="fi" id="ef-n" rows="2">${esc(e.description||'')}</textarea></div>`;
+}
+
+function getEntForm() {
+  return {
+    voiture: $('ef-v').value,
+    date_entretien: $('ef-d').value || null,
+    type: $('ef-t').value,
+    statut: $('ef-st').value,
+    garage: $('ef-g').value,
+    montant: parseFloat($('ef-m').value) || 0,
+    facture_url: $('ef-f').value || null,
+    description: $('ef-n').value,
+  };
+}
+
+async function openAddEntretien(voiturePrefill) {
+  const voitures = await loadVoitureNames();
+  const e = voiturePrefill ? { voiture: voiturePrefill } : {};
+  openModal('Nouvel entretien', entFormHTML(e), async () => {
+    const data = getEntForm();
+    if (!data.voiture || !data.date_entretien) { alert('Voiture et date requises'); return; }
+    const { data: row } = await db.from('entretiens').insert({ id: 'ent' + Date.now(), ...data }).select();
+    if (row) entData.unshift(row[0]);
+    closeModal(); renderEntretiensHTML();
+  });
+  // Set voiture prefill after modal opens
+  if (voiturePrefill && $('ef-v')) $('ef-v').value = voiturePrefill;
+}
+
+async function openEditEntretien(id) {
+  const e = entData.find(x => x.id === id); if (!e) return;
+  await loadVoitureNames();
+  openModal('Modifier entretien — ' + e.voiture, entFormHTML(e), async () => {
+    const u = getEntForm();
+    await db.from('entretiens').update(u).eq('id', id);
+    Object.assign(e, u); closeModal(); renderEntretiensHTML();
+  }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteEntretien('${id}')">Supprimer</button>`);
+}
+
+async function deleteEntretien(id) {
+  if (!confirm('Supprimer cet entretien ?')) return;
+  await db.from('entretiens').delete().eq('id', id);
+  entData = entData.filter(x => x.id !== id); closeModal(); renderEntretiensHTML();
+}
+
+// ═══════════════════════════════════════════════════════
+// FERDINAND — TÂCHES FLOTTE
+// ═══════════════════════════════════════════════════════
+let ftData = [], ftFilter = 'open';
+
+async function renderFleetTasks() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  const { data } = await db.from('fleet_tasks').select('*').order('echeance', { ascending: true, nullsFirst: false }).limit(500);
+  ftData = data || [];
+  renderFleetTasksHTML();
+}
+
+function renderFleetTasksHTML() {
+  const open = ftData.filter(t => !t.done);
+  const done = ftData.filter(t => t.done);
+  const urgentes = open.filter(t => t.priorite === 'urgente');
+  const ts = todayStr();
+  const enRetard = open.filter(t => t.echeance && t.echeance < ts);
+
+  let list = ftFilter === 'open' ? open : ftFilter === 'done' ? done : ftData;
+
+  const PRIO_BADGE = { urgente: 'b-red', normale: 'b-blue', basse: 'b-gray' };
+
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Tâches Flotte</div>
+      <div class="pg-sub">${open.length} tâches ouvertes</div></div>
+      <button class="btn btn-primary" onclick="openAddFleetTask()">+ Tâche</button>
+    </div>
+    ${mkStats([
+      { l: 'Ouvertes', v: open.length, c: 'var(--blue)' },
+      { l: 'Urgentes', v: urgentes.length, c: urgentes.length>0?'var(--red)':'var(--green)' },
+      { l: 'En retard', v: enRetard.length, c: enRetard.length>0?'var(--red)':'var(--green)' },
+      { l: 'Terminées', v: done.length, c: 'var(--text3)' },
+    ])}
+    ${urgentes.length ? `<div class="alert a-red">🚨 ${urgentes.length} tâche${urgentes.length>1?'s':''} urgente${urgentes.length>1?'s':''} — ${urgentes.map(t=>t.titre).join(', ')}</div>` : ''}
+    <div class="filters">
+      ${[['open','Ouvertes'],['done','Terminées'],['tous','Toutes']].map(([f,l])=>`<button class="fpill${f===ftFilter?' active':''}" onclick="setFtFilter('${f}')">${l}</button>`).join('')}
+    </div>
+    <div>
+      ${list.map(t => {
+        const isRetard = !t.done && t.echeance && t.echeance < ts;
+        return `<div class="exp-card" style="border-left:3px solid ${t.priorite==='urgente'?'var(--red)':t.priorite==='basse'?'var(--border)':'var(--blue)'}">
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px">
+            <button onclick="toggleFtDone('${t.id}')" style="margin-top:2px;width:18px;height:18px;border-radius:4px;border:2px solid ${t.done?'var(--green)':'var(--border2)'};background:${t.done?'var(--green)':'#fff'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px">${t.done?'✓':''}</button>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:3px">
+                <span style="font-weight:${t.done?'400':'600'};text-decoration:${t.done?'line-through':'none'};color:${t.done?'var(--text3)':'var(--text)'}">${t.titre}</span>
+                <span class="badge ${PRIO_BADGE[t.priorite]||'b-gray'}">${t.priorite||'normale'}</span>
+                ${t.voiture?`<span class="badge b-gray">${t.voiture}</span>`:''}
+              </div>
+              ${t.notes?`<div style="font-size:12px;color:var(--text2)">${t.notes}</div>`:''}
+              ${t.echeance?`<div style="font-size:12px;color:${isRetard?'var(--red)':'var(--text3)'}">📅 ${isRetard?'En retard · ':''}${fmtDate(t.echeance)}</div>`:''}
+            </div>
+            <button onclick="openEditFleetTask('${t.id}')" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px 6px">✏</button>
+          </div>
+        </div>`;
+      }).join('') || `<div style="text-align:center;padding:40px;color:var(--text2)">
+        <div style="font-size:32px;margin-bottom:8px">✅</div>
+        <div style="font-weight:500">Aucune tâche ${ftFilter==='open'?'ouverte':''}</div>
+        <button class="btn btn-primary" style="margin-top:12px" onclick="openAddFleetTask()">+ Créer une tâche</button>
+      </div>`}
+    </div>
+  `);
+}
+
+function setFtFilter(f) { ftFilter = f; renderFleetTasksHTML(); }
+
+async function toggleFtDone(id) {
+  const t = ftData.find(x => x.id === id); if (!t) return;
+  t.done = !t.done;
+  await db.from('fleet_tasks').update({ done: t.done }).eq('id', id);
+  renderFleetTasksHTML();
+}
+
+function ftFormHTML(t) {
+  t = t || {};
+  const voitures = _voitureNames.length ? _voitureNames : [];
+  return `<div class="fg"><label class="fl">Titre de la tâche</label><input class="fi" id="ft-titre" value="${esc(t.titre||'')}" placeholder="ex: Renouveler assurance Boxster"></div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Priorité</label>
+      <select class="fi" id="ft-prio">
+        <option value="urgente" ${(t.priorite||'')==='urgente'?'selected':''}>🚨 Urgente</option>
+        <option value="normale" ${(t.priorite||'normale')==='normale'?'selected':''}>Normale</option>
+        <option value="basse" ${(t.priorite||'')==='basse'?'selected':''}>Basse</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Voiture concernée</label>
+      <select class="fi" id="ft-v"><option value="">— Générale —</option>${voitures.map(v=>`<option ${(t.voiture||'')==v?'selected':''}>${v}</option>`).join('')}</select>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">Échéance</label><input class="fi" type="date" id="ft-ech" value="${t.echeance||''}"></div>
+  <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="ft-notes" rows="2">${esc(t.notes||'')}</textarea></div>`;
+}
+
+function getFtForm() {
+  return {
+    titre: $('ft-titre').value,
+    priorite: $('ft-prio').value,
+    voiture: $('ft-v').value || null,
+    echeance: $('ft-ech').value || null,
+    notes: $('ft-notes').value,
+    done: false,
+  };
+}
+
+async function openAddFleetTaskForVehicle(nomVoiture) {
+  await loadVoitureNames();
+  openModal('Nouvelle tâche — ' + nomVoiture, ftFormHTML({ voiture: nomVoiture }), async () => {
+    const t = getFtForm();
+    if (!t.titre) { alert('Titre requis'); return; }
+    const { data } = await db.from('fleet_tasks').insert({ id: 'ft' + Date.now(), ...t }).select();
+    if (data) { ftData.unshift(data[0]); }
+    closeModal(); renderFlotteHTML();
+  });
+}
+async function openAddFleetTask() {
+  await loadVoitureNames();
+  openModal('Nouvelle tâche', ftFormHTML(), async () => {
+    const t = getFtForm();
+    if (!t.titre) { alert('Titre requis'); return; }
+    const { data } = await db.from('fleet_tasks').insert({ id: 'ft' + Date.now(), ...t }).select();
+    if (data) ftData.unshift(data[0]);
+    closeModal(); renderFleetTasksHTML();
+  });
+}
+
+async function openEditFleetTask(id) {
+  const t = ftData.find(x => x.id === id); if (!t) return;
+  await loadVoitureNames();
+  openModal('Modifier tâche', ftFormHTML(t), async () => {
+    const u = getFtForm();
+    await db.from('fleet_tasks').update(u).eq('id', id);
+    Object.assign(t, u); closeModal(); renderFleetTasksHTML();
+  }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteFt('${id}')">Supprimer</button>`);
+}
+
+async function deleteFt(id) {
+  if (!confirm('Supprimer cette tâche ?')) return;
+  await db.from('fleet_tasks').delete().eq('id', id);
+  ftData = ftData.filter(x => x.id !== id); closeModal(); renderFleetTasksHTML();
+}
+
+// ═══════════════════════════════════════════════════════
+// AIRBNB
+// ═══════════════════════════════════════════════════════
+let abData = [], abPage = 1, abFilter = 'upcoming', abSearch = '', abBienFilter = '';
+let abPlanYear = new Date().getFullYear(), abPlanMonth = new Date().getMonth();
+
+const AB_BIENS = [
+  { id: 'touquet', nom: 'Villa Le Touquet', nomLong: 'Luxury Forest Retreat Designer Villa in Le Touquet', loc: 'Le Touquet-Paris-Plage', color: '#7c3aed' },
+  { id: 'paris', nom: 'Appartement Paris', nomLong: 'Appartement de Luxe & Végétal au Trocadéro', loc: 'Paris 16e', color: '#2563eb' },
+];
+
+async function loadAbData() {
+  const { data } = await db.from('bookings_touquet').select('*').order('arrive', { ascending: false });
+  abData = data || [];
+}
+
+function renderABiens() {
+  let html = `<div class="pg-header"><div><div class="pg-title">AirBnB — Biens</div><div class="pg-sub">2 biens · location court terme</div></div><button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button></div>`;
+  AB_BIENS.forEach(b => {
+    html += `<div class="exp-card">
+      <div class="exp-head" style="cursor:default">
+        <div style="flex:1">
+          <div style="display:flex;gap:5px;margin-bottom:4px"><span class="badge b-airbnb">AirBnB</span><span class="badge b-direct">Direct</span></div>
+          <div style="font-weight:600;font-size:14px">${b.nom}</div>
+          <div style="font-size:12px;color:var(--text2)">${b.loc} · ${b.nomLong}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="abBienFilter='${b.id}';renderAReservations()">Réservations ↗</button>
+          <button class="btn btn-sm" onclick="abBienFilter='${b.id}';renderAPlanning()">Planning ↗</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  set('app-page', html);
+}
+
+async function renderAReservations() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  await loadAbData();
+  renderAResaHTML();
+}
+
+function getAbList() {
+  let list = [...abData];
+  const ts = todayStr();
+  if (abFilter === 'upcoming') list = list.filter(b => b.arrive && b.arrive >= ts && !b.annule);
+  else if (abFilter !== 'tous') list = list.filter(b => b.arrive && b.arrive.startsWith(abFilter));
+  if (abSearch) { const q = abSearch.toLowerCase(); list = list.filter(b => (b.client||'').toLowerCase().includes(q)); }
+  if (abBienFilter) list = list.filter(b => b.bien === abBienFilter);
+  return list.sort((a, b) => b.arrive.localeCompare(a.arrive));
+}
+const getAbRev = b => (b.airbnb||0) + (b.direct||0) + (b.montant||0);
+
+function renderAResaHTML() {
+  const all = abData.filter(b => !b.annule);
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">AirBnB — Réservations</div><div class="pg-sub">Paris + Le Touquet</div></div>
+      <button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button>
+    </div>
+    <div id="ab-stats"></div>
+    <div class="filters">
+      ${['upcoming','tous','2026','2025','2024','2023'].map(f => `<button class="fpill${f===abFilter?' active':''}" onclick="setAbFilter('${f}')">${f==='upcoming'?'À venir':f==='tous'?'Tous':f}</button>`).join('')}
+      <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-box" placeholder="Client..." oninput="abSearch=this.value;abPage=1;refreshAbList()"></div>
+      <select class="fi" style="width:auto;padding:6px 10px" onchange="abBienFilter=this.value;abPage=1;refreshAbList()">
+        <option value="">Tous les biens</option>
+        <option value="touquet" ${abBienFilter==='touquet'?'selected':''}>Le Touquet</option>
+        <option value="paris" ${abBienFilter==='paris'?'selected':''}>Paris</option>
+      </select>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Cliquer pour modifier</div>
+    <div id="ab-table"></div><div id="ab-pag"></div>
+  `);
+  refreshAbList();
+}
+
+function setAbFilter(f) { abFilter = f; abPage = 1; refreshAbList(); }
+function refreshAbList() {
+  const list = getAbList();
+  const ca = list.reduce((s,b) => s + getAbRev(b), 0);
+  const label = abFilter === 'upcoming' ? 'À venir' : abFilter === 'tous' ? 'Total' : abFilter;
+  set('ab-stats', mkStats([
+    { l: `Résa (${label})`, v: fmt(list.length) },
+    { l: `CA (${label})`, v: fmt(ca) + '€', c: 'var(--green)' },
+    { l: 'Total AirBnB net', v: '159 482€' },
+  ]));
+  const start = (abPage - 1) * BK_PER;
+  const page = list.slice(start, start + BK_PER);
+  const rows = page.map(b => {
+    const nights = b.arrive && b.depart ? Math.ceil((new Date(b.depart)-new Date(b.arrive))/864e5) : null;
+    const bienColor = b.bien === 'paris' ? '#2563eb' : '#7c3aed';
+    return `<tr class="clickable" onclick="openEditABK('${b.id}')">
+      <td><span class="badge" style="background:${bienColor}22;color:${bienColor}">${b.bien==='paris'?'Paris':'Touquet'}</span></td>
+      <td>${b.client||'—'}</td>
+      <td><span class="badge ${srcBadge(b.source)}">${b.source||'—'}</span></td>
+      <td style="white-space:nowrap">${fmtShort(b.arrive)}</td>
+      <td style="white-space:nowrap">${fmtShort(b.depart)||'—'}</td>
+      <td>${nights ? nights + ' nuits' : '—'}</td>
+      <td style="font-weight:600;color:var(--green)">${getAbRev(b)?fmt(getAbRev(b))+'€':'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${b.notes||''}</td>
+    </tr>`;
+  });
+  set('ab-table', mkTable(['Bien','Client','Source','Arrivée','Départ','Durée','Montant','Notes'], rows));
+  set('ab-pag', mkPag(list.length, BK_PER, abPage, 'setAbPage'));
+}
+function setAbPage(p) { abPage = p; refreshAbList(); }
+
+async function renderAPlanning() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  if (!abData.length) await loadAbData();
+  const bookings = abData.filter(b => b.arrive && b.depart && !b.annule).map(b => ({ ...b, debut: b.arrive, fin: b.depart, voiture: b.bien === 'paris' ? 'Paris' : 'Touquet' }));
+  const ml = new Date(abPlanYear, abPlanMonth, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const firstStr = `${abPlanYear}-${String(abPlanMonth+1).padStart(2,'0')}-01`;
+  const lastStr = `${abPlanYear}-${String(abPlanMonth+1).padStart(2,'0')}-${String(new Date(abPlanYear,abPlanMonth+1,0).getDate()).padStart(2,'0')}`;
+  const bkMois = bookings.filter(b => {
+    const deb = b.debut ? b.debut.substring(0,10) : null;
+    const fin = b.fin ? b.fin.substring(0,10) : deb;
+    return deb && fin && deb <= lastStr && fin >= firstStr;
+  });
+  const bienColor = b => b.voiture === 'Paris' ? '#2563eb' : '#7c3aed';
+  set('app-page', `
+    <div class="pg-header"><div><div class="pg-title">AirBnB — Planning</div><div class="pg-sub">Paris + Le Touquet</div></div><button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button></div>
+    ${mkStats([{ l: 'Ce mois', v: bkMois.length, c: 'var(--blue)' }, { l: 'CA', v: fmt(bkMois.reduce((s,b)=>s+getAbRev(b),0))+'€', c: 'var(--green)' }])}
+    <div style="display:flex;gap:8px;margin-bottom:12px;font-size:12px">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#7c3aed;display:inline-block"></span>Le Touquet</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;display:inline-block"></span>Paris</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="btn btn-sm" onclick="abPlanMonth--;if(abPlanMonth<0){abPlanMonth=11;abPlanYear--;}renderAPlanning()">←</button>
+      <span style="font-size:15px;font-weight:600;flex:1;text-align:center">${ml.charAt(0).toUpperCase()+ml.slice(1)}</span>
+      <button class="btn btn-sm" onclick="abPlanMonth++;if(abPlanMonth>11){abPlanMonth=0;abPlanYear++;}renderAPlanning()">→</button>
+      <button class="btn btn-sm" onclick="abPlanYear=new Date().getFullYear();abPlanMonth=new Date().getMonth();renderAPlanning()">Aujourd'hui</button>
+    </div>
+    <div class="card" style="padding:10px">${mkCalendar(abPlanYear, abPlanMonth, bkMois, bienColor, 'openEditABK')}</div>
+    ${bkMois.length ? `<div style="margin-top:14px">${bkMois.sort((a,b)=>a.debut.localeCompare(b.debut)).map(b => {
+      const col = bienColor(b);
+      const nights = Math.ceil((new Date(b.fin)-new Date(b.debut))/864e5);
+      return `<div onclick="openEditABK('${b.id}')" style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:6px;padding:8px 12px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#fff">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><span style="font-weight:600">${b.voiture}</span><span class="badge ${srcBadge(b.source)}">${b.source}</span></div>
+          <div>${b.client||'—'}</div>
+          <div style="font-size:12px;color:var(--text2)">${fmtShort(b.arrive)} → ${fmtShort(b.depart)} · ${nights} nuit${nights>1?'s':''}</div>
+        </div>
+        ${getAbRev(b) ? `<div style="font-weight:700;color:var(--green)">${fmt(getAbRev(b))}€</div>` : ''}
+      </div>`;
+    }).join('')}</div>` : ''}
+  `);
+}
+
+function renderAFinance() {
+  set('app-page', `
+    <div class="pg-header"><div><div class="pg-title">AirBnB — Finance</div><div class="pg-sub">Rapport officiel AirBnB · fév 2023 → avr 2026</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="card" style="border-left:3px solid #7c3aed">
+        <div style="font-weight:600;margin-bottom:10px">Le Touquet</div>
+        ${[['Revenus bruts','125 344€'],['Frais AirBnB','-4 512€'],['Net versé','120 832€','var(--green)']].map(r=>`<div class="prow"><span style="color:var(--text2)">${r[0]}</span><strong style="color:${r[2]||'inherit'}">${r[1]}</strong></div>`).join('')}
+      </div>
+      <div class="card" style="border-left:3px solid #2563eb">
+        <div style="font-weight:600;margin-bottom:10px">Paris Trocadéro</div>
+        ${[['Revenus bruts','42 608€'],['Frais AirBnB','-1 453€'],['Net versé','38 650€','var(--green)']].map(r=>`<div class="prow"><span style="color:var(--text2)">${r[0]}</span><strong style="color:${r[2]||'inherit'}">${r[1]}</strong></div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:10px">Total net versé</div>
+      <div style="font-size:28px;font-weight:700;color:var(--green)">159 482€</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">Olivier Billon · IBAN 6997</div>
+    </div>
+  `);
+}
+
+function abkFormHTML(b) {
+  b = b || {};
+  return `<div class="f2">
+    <div class="fg"><label class="fl">Bien</label><select class="fi" id="af-bien"><option value="touquet" ${(b.bien||'touquet')==='touquet'?'selected':''}>Le Touquet</option><option value="paris" ${b.bien==='paris'?'selected':''}>Paris</option></select></div>
+    <div class="fg"><label class="fl">Source</label><select class="fi" id="af-src">${['AirBNB','Direct','Gens de Confiance'].map(s=>`<option ${(b.source||'')==s?'selected':''}>${s}</option>`).join('')}</select></div>
+  </div>
+  <div class="fg"><label class="fl">Client</label><input class="fi" id="af-c" value="${esc(b.client||'')}"></div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Arrivée</label><input class="fi" type="date" id="af-a" value="${b.arrive||''}"></div>
+    <div class="fg"><label class="fl">Départ</label><input class="fi" type="date" id="af-d" value="${b.depart||''}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Montant AirBnB (€)</label><input class="fi" type="number" id="af-ab" value="${b.airbnb||''}"></div>
+    <div class="fg"><label class="fl">Montant Direct (€)</label><input class="fi" type="number" id="af-di" value="${b.direct||''}"></div>
+  </div>
+  <div class="f2">
+    <div class="fg"><label class="fl">Personnes</label><input class="fi" type="number" id="af-px" value="${b.pax||''}"></div>
+    <div class="fg"></div>
+  </div>
+  <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="af-n" rows="2">${esc(b.notes||'')}</textarea></div>`;
+}
+function getAbkForm() { return { bien: $('af-bien').value, client: $('af-c').value, source: $('af-src').value, arrive: $('af-a').value||null, depart: $('af-d').value||null, airbnb: parseFloat($('af-ab').value)||0, direct: parseFloat($('af-di').value)||0, pax: parseInt($('af-px').value)||null, notes: $('af-n').value, annule: false }; }
+function openAddABK() {
+  openModal('Nouvelle réservation AirBnB', abkFormHTML(), async () => {
+    const b = { id: 'ab' + Date.now(), ...getAbkForm() };
+    if (!b.client) { alert('Client requis'); return; }
+    const { data } = await db.from('bookings_touquet').insert(b).select();
+    if (data) abData.unshift(data[0]);
+    closeModal(); renderAResaHTML();
+  });
+}
+function openEditABK(id) {
+  const b = abData.find(x => x.id === id); if (!b) return;
+  openModal('Modifier — ' + b.client, abkFormHTML(b), async () => {
+    const u = getAbkForm();
+    await db.from('bookings_touquet').update(u).eq('id', id);
+    Object.assign(b, u); closeModal(); refreshAbList();
+  }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteABK('${id}')">Supprimer</button>`);
+}
+async function deleteABK(id) {
+  if (!confirm('Supprimer ?')) return;
+  await db.from('bookings_touquet').delete().eq('id', id);
+  abData = abData.filter(x => x.id !== id); closeModal(); refreshAbList();
+}
+
+// ═══════════════════════════════════════════════════════
+// LOCATIF
+// ═══════════════════════════════════════════════════════
+const LOCATIF = [
+  { id: 'versailles', nom: 'Versailles', loc: 'Versailles (78)', locataire: 'M. et Mme Martin', agence: 'Cabinet Dupré', loyer: 1850, fin_bail: '2025-08-31', statut: 'actif', notes: 'Renouvellement à surveiller' },
+  { id: 'brignoles', nom: 'Brignoles', loc: 'Brignoles (83)', locataire: 'Mme Petit', agence: 'Immobilière Var Sud', loyer: 950, fin_bail: '2026-02-28', statut: 'retard', notes: 'Loyer en retard — contacter agence' },
+  { id: 'siemreap', nom: 'Siem Reap', loc: 'Cambodge', locataire: 'M. Chen', agence: 'Angkor Realty', loyer: 850, fin_bail: '2025-12-31', statut: 'actif', notes: 'USD · renouvellement à prévoir' },
+];
+
+function renderLBiens() {
+  const total = LOCATIF.reduce((s,b) => s+b.loyer, 0);
+  let html = `<div class="pg-header"><div><div class="pg-title">Locatif — Biens</div><div class="pg-sub">3 biens · ${fmt(total)}€/mois</div></div></div>
+  ${mkStats([{l:'Biens',v:3},{l:'Loyers/mois',v:fmt(total)+'€',c:'var(--green)'},{l:'Retards',v:1,c:'var(--red)'}])}
+  <div class="alert a-red">⚠ Brignoles — loyer en retard. Contacter Immobilière Var Sud.</div>
+  <div class="alert a-warn">⚠ Versailles — bail expire août 2025.</div>`;
+  LOCATIF.forEach(b => {
+    html += `<div class="exp-card"><div class="exp-head" style="cursor:default">
+      <div style="flex:1">
+        <div style="display:flex;gap:5px;margin-bottom:4px"><span class="badge b-blue">Longue durée</span><span class="badge ${b.statut==='actif'?'b-green':'b-red'}">${b.statut==='actif'?'À jour':'Retard'}</span></div>
+        <div style="font-weight:600;font-size:14px">${b.nom}</div>
+        <div style="font-size:12px;color:var(--text2)">${b.loc} · ${b.locataire}</div>
+        <div style="font-size:12px;color:var(--text3);font-style:italic">${b.notes}</div>
+      </div>
+      <div style="text-align:right"><div style="font-weight:700;font-size:15px;color:var(--green)">${fmt(b.loyer)}€/mois</div><div style="font-size:11px;color:var(--text3)">Bail → ${fmtDate(b.fin_bail)}</div></div>
+    </div></div>`;
+  });
+  set('app-page', html);
+}
+
+function renderLBaux() {
+  const total = LOCATIF.reduce((s,b) => s+b.loyer, 0);
+  set('app-page', `
+    <div class="pg-header"><div><div class="pg-title">Locatif — Baux & Loyers</div><div class="pg-sub">Suivi des baux en cours</div></div></div>
+    <div class="alert a-red">⚠ Brignoles — loyer en retard</div>
+    <div class="alert a-warn">⚠ Versailles — bail expire août 2025</div>
+    ${mkTable(['Bien','Locataire','Loyer','Fin bail','Statut','Agence'],
+      LOCATIF.map(b => `<tr>
+        <td><strong>${b.nom}</strong><br><span style="font-size:11px;color:var(--text2)">${b.loc}</span></td>
+        <td>${b.locataire}</td>
+        <td style="font-weight:600;color:var(--green)">${fmt(b.loyer)}€</td>
+        <td style="color:${b.fin_bail<todayStr()?'var(--red)':'inherit'}">${fmtDate(b.fin_bail)}</td>
+        <td><span class="badge ${b.statut==='actif'?'b-green':'b-red'}">${b.statut==='actif'?'À jour':'Retard'}</span></td>
+        <td style="font-size:12px;color:var(--text2)">${b.agence}</td>
+      </tr>`)
+    )}
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;display:flex;justify-content:space-between;font-weight:600">
+      <span>Total mensuel</span><span style="color:var(--green)">${fmt(total)}€</span>
+    </div>
+  `);
+}
+
+// ═══════════════════════════════════════════════════════
+// ELISA
+// ═══════════════════════════════════════════════════════
+let elisaView = 'agenda', elisaTasks = [];
+let elCalYear = new Date().getFullYear(), elCalMonth = new Date().getMonth();
+const VACANCES = [
+  {label:'Printemps 2025',start:'2025-04-19',end:'2025-05-04'},
+  {label:'Été 2025',start:'2025-07-05',end:'2025-08-31'},
+  {label:'Toussaint 2025',start:'2025-10-18',end:'2025-11-02'},
+  {label:'Noël 2025',start:'2025-12-20',end:'2026-01-04'},
+  {label:'Hiver 2026',start:'2026-02-14',end:'2026-03-01'},
+  {label:'Printemps 2026',start:'2026-04-11',end:'2026-04-26'},
+];
+const REF_PAPA = new Date(2025,3,2);
+
+function getPeriod(date) {
+  for (const v of VACANCES) { const s=new Date(v.start),e=new Date(v.end); e.setHours(23,59,59); if(date>=s&&date<=e) return {type:'vac',label:v.label}; }
+  const d=new Date(date); d.setHours(12); const ref=new Date(REF_PAPA); ref.setHours(12);
+  const diff=Math.floor((d-ref)/864e5); const cycle=((diff%14)+14)%14;
+  return {type:cycle<=5?'papa':'maman'};
+}
+function isVac(date) { for(const v of VACANCES){const s=new Date(v.start),e=new Date(v.end);e.setHours(23,59,59);if(date>=s&&date<=e)return true;}return false; }
+function isTrans(date) { const d=new Date(date);d.setHours(12);const ref=new Date(REF_PAPA);ref.setHours(12);const diff=Math.floor((d-ref)/864e5);const cycle=((diff%14)+14)%14;return cycle===0||cycle===5; }
+
+async function renderElisa() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  const { data } = await db.from('elisa_tasks').select('*').order('date');
+  elisaTasks = data || [];
+  renderElisaHTML();
+}
+
+function renderElisaHTML() {
+  const p = getPeriod(today()), isPapa = p.type === 'papa';
+  let nT = new Date(today());
+  for (let i=1;i<=14;i++) { const d=new Date(today()); d.setDate(d.getDate()+i); if(isTrans(d)){nT=d;break;} }
+  const nV = VACANCES.find(v => new Date(v.start) > today());
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Elisa</div><div class="pg-sub">Garde alternée · École Saint François d'Assise · Boulogne-Billancourt</div></div>
+      <button class="btn btn-primary" onclick="openAddElisaTask()">+ Tâche</button>
+    </div>
+    ${mkStats([
+      {l:'Cette semaine',v:isPapa?'Papa ♥':'Maman',c:isPapa?'var(--green)':'var(--pink)'},
+      {l:'Prochaine transition',v:nT.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'numeric'})},
+      {l:'Prochaines vacances',v:nV?nV.label:'—'},
+      {l:'Tâches',v:elisaTasks.filter(t=>!t.done).length},
+    ])}
+    <div class="tabs">
+      ${['agenda','semaine','taches','infos'].map(v=>`<button class="tab${elisaView===v?' active':''}" onclick="setElisaView('${v}')">${{agenda:'Agenda',semaine:'Cette semaine',taches:'Tâches',infos:'Infos école'}[v]}</button>`).join('')}
+    </div>
+    <div id="elisa-view"></div>
+  `);
+  renderElisaView();
+}
+
+function setElisaView(v) { elisaView = v; renderElisaView(); }
+function renderElisaView() {
+  if (elisaView==='agenda') renderElisaAgenda();
+  else if (elisaView==='semaine') renderElisaSemaine();
+  else if (elisaView==='taches') renderElisaTaches();
+  else renderElisaInfos();
+}
+
+function renderElisaAgenda() {
+  const first=new Date(elCalYear,elCalMonth,1), last=new Date(elCalYear,elCalMonth+1,0);
+  const startDow=(first.getDay()+6)%7;
+  const ml=first.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const ts=todayStr();
+  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+    <button class="btn btn-sm" onclick="elCalMonth--;if(elCalMonth<0){elCalMonth=11;elCalYear--;}renderElisaAgenda()">←</button>
+    <span style="font-size:15px;font-weight:600;flex:1;text-align:center">${ml.charAt(0).toUpperCase()+ml.slice(1)}</span>
+    <button class="btn btn-sm" onclick="elCalMonth++;if(elCalMonth>11){elCalMonth=0;elCalYear++;}renderElisaAgenda()">→</button>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:8px;font-size:12px;flex-wrap:wrap">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#ecfdf5;border:1px solid #6ee7b7;display:inline-block"></span>Papa</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#fdf2f8;border:1px solid #fbcfe8;display:inline-block"></span>Maman</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#bbf7d0;display:inline-block"></span>Vac. papa</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#fbcfe8;display:inline-block"></span>Vac. maman</span>
+  </div>
+  <div class="cal-grid">
+    ${['Lu','Ma','Me','Je','Ve','Sa','Di'].map(d=>`<div class="cal-hd">${d}</div>`).join('')}
+    ${Array(startDow).fill('<div class="cal-day we"></div>').join('')}`;
+  for (let d=1;d<=last.getDate();d++) {
+    const date=new Date(elCalYear,elCalMonth,d);
+    const p=getPeriod(date); const vac=isVac(date); const trans=isTrans(date);
+    const dow=date.getDay();
+    const ds=`${elCalYear}-${String(elCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=ds===ts;
+    let bg, border;
+    if(vac){bg=p.type==='papa'?'#bbf7d0':'#fbcfe8';border=p.type==='papa'?'#6ee7b7':'#fbcfe8';}
+    else{bg=p.type==='papa'?'#ecfdf5':'#fdf2f8';border=p.type==='papa'?'#6ee7b7':'#fbcfe8';}
+    let pills='';
+    if(!vac&&p.type==='papa'&&dow!==0&&dow!==6&&dow!==3)pills+=`<div style="background:#bfdbfe;color:#1e40af;font-size:9px;border-radius:3px;padding:1px 3px;margin-bottom:1px">Dépôt</div>`;
+    if(dow===3&&p.type==='papa'&&!vac)pills+=`<div style="background:#ddd6fe;color:#5b21b6;font-size:9px;border-radius:3px;padding:1px 3px;margin-bottom:1px">Danse</div>`;
+    if(trans)pills+=`<div style="background:#fde68a;color:#78350f;font-size:9px;border-radius:3px;padding:1px 3px;margin-bottom:1px">${dow===3?'→Papa':'→Maman'}</div>`;
+    html+=`<div style="min-height:70px;padding:3px 4px;background:${bg};border:1px solid ${border};${isToday?'outline:2px solid #2563eb;outline-offset:-2px':''}">
+      <div style="font-size:11px;font-weight:600;color:${isToday?'#2563eb':'#374151'};margin-bottom:2px">${d}</div>${pills}
+    </div>`;
+  }
+  set('elisa-view', html+'</div>');
+}
+
+function renderElisaSemaine() {
+  const now=today(); const dow=(now.getDay()+6)%7;
+  const mon=new Date(now); mon.setDate(mon.getDate()-dow);
+  const days=Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(d.getDate()+i);return d;});
+  const dn=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  let html='';
+  days.forEach((date,i)=>{
+    const p=getPeriod(date); const vac=isVac(date); const dow2=date.getDay();
+    const isPapa=p.type==='papa'; const trans=isTrans(date); const isToday=date.getTime()===now.getTime();
+    const evts=[];
+    if(!vac&&isPapa&&dow2!==0&&dow2!==6&&dow2!==3)evts.push({t:'Dépôt école',s:'8h15–8h20 · Florian',c:'#bfdbfe',tc:'#1e40af'});
+    if(!vac&&isPapa&&(dow2===4||dow2===5))evts.push({t:'Récupération',s:'16h30 ou 17h45',c:'#bbf7d0',tc:'#065f46'});
+    if(dow2===3&&isPapa&&!vac)evts.push({t:'Danse',s:'15h30–16h30',c:'#ddd6fe',tc:'#5b21b6'});
+    if(trans)evts.push({t:dow2===3?'Début semaine papa':'→ Maman',s:dow2===3?'Mercredi après-midi':'Dépôt école puis Magali',c:'#fde68a',tc:'#78350f'});
+    html+=`<div style="background:${isPapa?'#ecfdf5':'#fdf2f8'};border:1px solid ${isPapa?'#6ee7b7':'#fbcfe8'};border-radius:8px;padding:10px 12px;margin-bottom:6px;${isToday?'outline:2px solid #2563eb;outline-offset:-2px':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-weight:700;font-size:13px;color:${isPapa?'#065f46':'#9d174d'}">${dn[i]} ${date.getDate()} ${date.toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}</span>
+        <span class="badge ${isPapa?'b-green':'b-pink'}">${isPapa?'Papa':'Maman'}</span>
+      </div>
+      ${evts.map(e=>`<div style="background:${e.c};border-radius:4px;padding:3px 7px;margin-bottom:3px"><div style="font-size:12px;font-weight:600;color:${e.tc}">${e.t}</div><div style="font-size:11px;color:${e.tc};opacity:.8">${e.s}</div></div>`).join('')||'<div style="font-size:12px;color:#9ca3af">Jour libre</div>'}
+    </div>`;
+  });
+  set('elisa-view', html);
+}
+
+function renderElisaTaches() {
+  const open=elisaTasks.filter(t=>!t.done).sort((a,b)=>new Date(a.date||0)-new Date(b.date||0));
+  const done=elisaTasks.filter(t=>t.done);
+  const PRIO={high:'var(--red)',med:'var(--amber)',low:'var(--green)'};
+  const ASSIGN={florian:'Florian',papa:'Moi',magali:'Magali'};
+  set('elisa-view', `
+    <div class="card">
+      ${open.length?open.map(t=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)" data-assign="${t.assign}">
+        <span style="width:8px;height:8px;border-radius:50%;background:${PRIO[t.priority]||PRIO.med};flex-shrink:0;margin-top:4px"></span>
+        <div style="flex:1"><div>${t.description}</div><div style="font-size:12px;color:var(--text2)">${ASSIGN[t.assign]||t.assign}${t.date?' · '+fmtDate(t.date):''}</div></div>
+        <div style="display:flex;gap:2px">
+          <button onclick="doneET('${t.id}')" style="border:none;background:none;cursor:pointer;color:var(--green);font-size:14px">✓</button>
+          <button onclick="delET('${t.id}')" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:14px">×</button>
+        </div>
+      </div>`).join(''):'<div style="color:var(--text2);padding:8px 0">Aucune tâche.</div>'}
+      ${done.length?`<div style="margin-top:10px;font-size:12px;color:var(--text3);margin-bottom:4px">Terminées (${done.length})</div>${done.slice(0,3).map(t=>`<div style="opacity:.5;text-decoration:line-through;font-size:13px;padding:3px 0">${t.description}</div>`).join('')}`:''}
+    </div>
+  `);
+}
+
+function renderElisaInfos() {
+  set('elisa-view', `
+    <div class="card"><div style="font-weight:700;font-size:14px;margin-bottom:6px">École Privée Saint François d'Assise</div>
+    <div style="color:var(--text2)">54 Rue de l'Ancienne Mairie, 92100 Boulogne-Billancourt</div>
+    <a href="https://maps.google.com/?q=54+Rue+Ancienne+Mairie+92100+Boulogne" target="_blank" style="color:var(--blue);font-size:12px;display:block;margin-top:6px">Voir sur Maps ↗</a></div>
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px">Horaires</div>
+      ${[['Dépôt','8h15 – 8h25'],['Sortie','16h30'],['Avec étude','17h45'],['Mercredi','Pas école'],['Danse','Mercredi 15h30–16h30']].map(r=>`<div class="prow"><span style="color:var(--text2)">${r[0]}</span><strong>${r[1]}</strong></div>`).join('')}
+    </div>
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px">Contacts</div>
+      <div class="prow"><span style="color:var(--text2)">Florian de Mazière</span><a href="mailto:florian@ferdinandparis.com" style="color:var(--blue)">florian@ferdinandparis.com</a></div>
+      <div class="prow"><span style="color:var(--text2)">Magali Brunel</span><a href="mailto:magali.anne.brunel@gmail.com" style="color:var(--blue)">magali.anne.brunel@gmail.com</a></div>
+    </div>
+  `);
+}
+
+function openAddElisaTask() {
+  openModal('Nouvelle tâche', `
+    <div class="fg"><label class="fl">Description</label><input class="fi" id="et-d" placeholder="ex: Récupérer Elisa vendredi"></div>
+    <div class="f2">
+      <div class="fg"><label class="fl">Assigné à</label><select class="fi" id="et-a"><option value="florian">Florian</option><option value="papa">Moi</option><option value="magali">Magali</option></select></div>
+      <div class="fg"><label class="fl">Priorité</label><select class="fi" id="et-p"><option value="high">Urgente</option><option value="med" selected>Normale</option><option value="low">Basse</option></select></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="et-dt"></div>
+      <div class="fg"><label class="fl">Notes</label><input class="fi" id="et-n"></div>
+    </div>`,
+    async () => {
+      const t = { id: 'et'+Date.now(), description: $('et-d').value, assign: $('et-a').value, priority: $('et-p').value, date: $('et-dt').value||null, notes: $('et-n').value, done: false };
+      if (!t.description) { alert('Description requise'); return; }
+      const { data } = await db.from('elisa_tasks').insert(t).select();
+      if (data) elisaTasks.push(data[0]);
+      closeModal(); renderElisaTaches();
+    }
+  );
+}
+async function doneET(id) { await db.from('elisa_tasks').update({done:true}).eq('id',id); elisaTasks.find(x=>x.id===id).done=true; renderElisaTaches(); }
+async function delET(id) { await db.from('elisa_tasks').delete().eq('id',id); elisaTasks=elisaTasks.filter(x=>x.id!==id); renderElisaTaches(); }
+
+// ═══════════════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════════════
+async function renderAdmin() {
+  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  const { data } = await db.from('user_profiles').select('*').order('created_at');
+  const users = data || [];
+  const ROLES = { admin: 'Administrateur', assistant: 'Assistant', coparent: 'Co-parent', viewer: 'Lecteur' };
+  const ROLE_ACCESS = { admin: 'Accès complet', assistant: 'Ferdinand + Elisa', coparent: 'Elisa uniquement', viewer: 'Dashboard' };
+  set('app-page', `
+    <div class="pg-header"><div><div class="pg-title">Utilisateurs & Accès</div><div class="pg-sub">Connexion Google · rôles par utilisateur</div></div></div>
+    <div class="alert a-blue">Les utilisateurs apparaissent ici après leur première connexion Google sur l'app.</div>
+    ${mkStats([{l:'Utilisateurs',v:users.length},{l:'Admins',v:users.filter(u=>u.role==='admin').length,c:'var(--red)'}])}
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:10px">Utilisateurs</div>
+      ${users.length ? mkTable(['Nom','Email','Rôle','Accès','Action'],
+        users.map(u=>`<tr>
+          <td style="font-weight:500">${u.nom||'—'}</td>
+          <td style="font-size:12px;color:var(--text2)">${u.email||'—'}</td>
+          <td><span class="badge b-${u.role==='admin'?'red':u.role==='assistant'?'green':u.role==='coparent'?'pink':'gray'}">${ROLES[u.role]||u.role}</span></td>
+          <td style="font-size:12px;color:var(--text2)">${ROLE_ACCESS[u.role]||'—'}</td>
+          <td><button class="btn btn-sm" onclick="openEditUser('${u.id}','${u.role}')">Modifier</button></td>
+        </tr>`)
+      ) : '<div style="color:var(--text2);padding:12px 0">Aucun utilisateur connecté.</div>'}
+    </div>
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:10px">Accès à inviter</div>
+      ${mkTable(['Nom','Email','Rôle prévu'],[
+        `<tr><td>Florian de Mazière</td><td><a href="mailto:florian@ferdinandparis.com" style="color:var(--blue)">florian@ferdinandparis.com</a></td><td><span class="badge b-green">Assistant</span></td></tr>`,
+        `<tr><td>Magali Brunel</td><td><a href="mailto:magali.anne.brunel@gmail.com" style="color:var(--blue)">magali.anne.brunel@gmail.com</a></td><td><span class="badge b-pink">Co-parent</span></td></tr>`,
+      ])}
+    </div>
+  `);
+}
+
+function openEditUser(id, role) {
+  const ROLES = { admin: 'Administrateur', assistant: 'Assistant', coparent: 'Co-parent', viewer: 'Lecteur' };
+  openModal('Modifier le rôle', `
+    <div class="fg"><label class="fl">Rôle</label><select class="fi" id="ur-role">
+      ${Object.entries(ROLES).map(([r,l]) => `<option value="${r}" ${r===role?'selected':''}>${l}</option>`).join('')}
+    </select></div>`,
+    async () => {
+      const newRole = $('ur-role').value;
+      await db.from('user_profiles').update({ role: newRole }).eq('id', id);
+      closeModal(); renderAdmin();
+    }
+  );
+}
+</script>
+</body>
+</html>
