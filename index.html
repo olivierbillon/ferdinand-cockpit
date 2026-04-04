@@ -2660,6 +2660,7 @@ async function renderAnalytics() {
 }
 
 function renderAnalyticsHTML(months, monthlyData, voitures, voiColor, stats) {
+  const { totalCA, bestMonth, last12, avgMonth, bySource } = stats;
   // Max height for scale
   const monthTotals = months.map(m => Object.values(monthlyData[m]).reduce((s, v) => s + v, 0));
   const maxVal = Math.max(...monthTotals, 1);
@@ -2761,7 +2762,7 @@ function renderAnalyticsHTML(months, monthlyData, voitures, voiColor, stats) {
 
     ${mkStats([
       { l: 'CA Total réalisé', v: Math.round(totalCA/1000) + 'k€', c: 'var(--green)' },
-      { l: '12 derniers mois', v: Math.round(last6.reduce((s,m)=>s+monthTotals[months.indexOf(m)],0)/1000) + 'k€', c: 'var(--blue)' },
+      { l: '12 derniers mois', v: Math.round(last12/1000) + 'k€', c: 'var(--blue)' },
       { l: 'Moyenne mensuelle', v: Math.round(stats.avgMonth/1000) + 'k€' },
       { l: 'Meilleur mois', v: stats.bestMonth ? stats.bestMonth.m.replace('-','/') : '—', c: 'var(--amber)' },
       { l: 'Meilleur CA mois', v: stats.bestMonth ? Math.round(stats.bestMonth.total/1000) + 'k€' : '—', c: 'var(--amber)' },
