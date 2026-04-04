@@ -615,7 +615,7 @@ async function renderFlotte() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
   const [vRes, bkRes] = await Promise.all([
     db.from('vehicles').select('*').order('nom'),
-    db.from('ferdinand_bookings').select('voiture,prix,debut,fin,statut,type_booking,prix_mensuel').not('voiture', 'is', null)
+    db.from('ferdinand_bookings').select('voiture,prix,debut,fin,statut,type_booking,prix_mensuel').not('voiture', 'is', null).limit(5000)
   ]);
   fleetData = vRes.data || [];
   const bookings = bkRes.data || [];
@@ -852,7 +852,7 @@ const BK_PER = 50;
 
 async function renderLocations() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
-  const { data } = await db.from('ferdinand_bookings').select('*').order('debut', { ascending: false });
+  const { data } = await db.from('ferdinand_bookings').select('*').order('debut', { ascending: false }).limit(5000);
   bkData = data || [];
   renderLocationsHTML();
 }
