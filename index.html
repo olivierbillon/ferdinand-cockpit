@@ -26,12 +26,12 @@
   --border:     #eaeaea;
   --border2:    #d4d4d4;
 
-  /* Sidebar (always dark) */
-  --sb-bg:      #000000;
-  --sb-border:  #1a1a1a;
-  --sb-text:    rgba(255,255,255,0.45);
-  --sb-active:  #ffffff;
-  --sb-hover:   rgba(255,255,255,0.08);
+  /* Sidebar (light) */
+  --sb-bg:      #ffffff;
+  --sb-border:  #eaeaea;
+  --sb-text:    #666666;
+  --sb-active:  #000000;
+  --sb-hover:   #f5f5f5;
 
   /* Accents */
   --blue:       #0070f3;
@@ -86,18 +86,18 @@ body {
 }
 .sb-logo-mark {
   width: 22px; height: 22px;
-  background: #fff;
+  background: #000;
   border-radius: 4px;
   display: flex; align-items: center; justify-content: center;
-  color: #000; font-size: 11px; font-weight: 700; flex-shrink: 0;
+  color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0;
 }
-.sb-logo h1 { font-size: 13px; font-weight: 500; color: #fff; letter-spacing: -.01em; }
+.sb-logo h1 { font-size: 13px; font-weight: 500; color: #000; letter-spacing: -.01em; }
 .sb-logo p  { font-size: 11px; color: var(--sb-text); margin-top: 0; }
 .sb-section {
   padding: 16px 14px 4px;
   font-size: 10.5px;
   font-weight: 500;
-  color: rgba(255,255,255,.25);
+  color: var(--fg3);
   text-transform: uppercase;
   letter-spacing: .08em;
 }
@@ -140,10 +140,10 @@ body {
 .sb-avatar {
   width: 22px; height: 22px;
   border-radius: 50%;
-  background: rgba(255,255,255,.15);
-  border: 1px solid rgba(255,255,255,.15);
+  background: var(--bg2);
+  border: 1px solid var(--border);
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 600; color: #fff; flex-shrink: 0;
+  font-size: 10px; font-weight: 600; color: var(--fg); flex-shrink: 0;
 }
 
 /* ── MAIN ── */
@@ -707,8 +707,8 @@ textarea.fi { height: auto; padding: 8px 10px; }
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: var(--sb-bg);
-  border-bottom: 1px solid var(--sb-border);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 50;
 }
 @media (max-width: 768px) { .mob-bar { display: flex; } }
@@ -744,8 +744,8 @@ textarea.fi { height: auto; padding: 8px 10px; }
       <div class="sb-user">
         <div class="sb-avatar" id="sb-av">?</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="sb-name">—</div>
-          <div style="font-size:11px;color:var(--text3)" id="sb-role">—</div>
+          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg)" id="sb-name">—</div>
+          <div style="font-size:11px;color:var(--fg3)" id="sb-role">—</div>
         </div>
         <button onclick="logout()" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:11px;">Déco</button>
       </div>
