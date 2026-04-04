@@ -1720,7 +1720,11 @@ function renderPlanningHTML(bookings) {
     </div>
     ${mkStats([
       { l: 'Ce mois', v: bkMois.length, c: 'var(--blue)' },
-      { l: 'CA ce mois', v: fmt(bkMois.reduce((s,b) => s+(b.prix||0),0)) + '€', c: 'var(--green)' },
+      { l: 'CA ce mois', v: fmt(bkMois.reduce((s,b) => {
+    // Pour les abonnements : compter 1 mensualité, pas le total du contrat
+    if (b.type_booking === 'abonnement' || b.prix_mensuel > 0) return s + (b.prix_mensuel || 0);
+    return s + (b.prix || 0);
+  }, 0)) + '€', c: 'var(--green)' },
       { l: 'Voitures actives', v: [...new Set(bkMois.map(b=>b.voiture))].length },
     ])}
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
