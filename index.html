@@ -486,25 +486,40 @@ async function startApp(user) {
   }
 }
 
-// Init simple et robuste
-async function init() {
+// Init robuste avec fallback OAuth
+let _started = false;
+
+async function startAppOnce(user) {
+  if (_started) return;
+  _started = true;
+  await startApp(user);
+}
+
+// Écoute les changements d'auth (nécessaire pour le redirect OAuth Google)
+db.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    await startAppOnce(session.user);
+  }
+  if (event === 'SIGNED_OUT') { _started = false; location.reload(); }
+});
+
+// Vérifie immédiatement s'il y a déjà une session
+(async () => {
   try {
     const { data: { session } } = await db.auth.getSession();
     if (session) {
-      await startApp(session.user);
+      await startAppOnce(session.user);
     } else {
-      $('login-screen').style.display = 'flex';
+      // Attend 1.5s pour laisser le temps au redirect OAuth de se traiter
+      await new Promise(r => setTimeout(r, 1500));
+      if (!_started) {
+        $('login-screen').style.display = 'flex';
+      }
     }
   } catch(e) {
     $('login-screen').style.display = 'flex';
   }
-}
-
-db.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT') location.reload();
-});
-
-init();
+})();
 
 // ═══════════════════════════════════════════════════════
 // DASHBOARD
@@ -574,6 +589,28 @@ let openV = {}, openVTab = {}, fleetFilter = 'tous';
 const ST_LBL = { standby: 'Disponible', court: 'En location', long: 'Location longue', repare: 'En réparation', perso: 'Usage perso', leasing: 'Leasing' };
 const ST_BADGE = { standby: 'b-green', court: 'b-blue', long: 'b-amber', repare: 'b-red', perso: 'b-blue', leasing: 'b-gray' };
 
+// Statut dynamique d'un booking selon les dates
+function bkDynStatus(b) {
+  if (!b || !b.debut) return { label: '—', badge: 'b-gray' };
+  const ts = todayStr();
+  const debut = b.debut.substring(0, 10);
+  const fin = b.fin ? b.fin.substring(0, 10) : debut;
+  if (fin < ts) return { label: 'Fermé', badge: 'b-gray' };
+  if (debut > ts) return { label: 'À venir', badge: 'b-blue' };
+  return { label: 'En cours', badge: 'b-green' };
+}
+
+// Calcule le statut dynamique d'un booking selon les dates
+function bkDynStatus(b) {
+  if (!b || !b.debut) return { label: '—', badge: 'b-gray' };
+  const ts = todayStr();
+  const debut = b.debut.substring(0, 10);
+  const fin = b.fin ? b.fin.substring(0, 10) : debut;
+  if (fin < ts) return { label: 'Fermé', badge: 'b-gray' };
+  if (debut > ts) return { label: 'À venir', badge: 'b-blue' };
+  return { label: 'En cours', badge: 'b-green' };
+}
+
 async function renderFlotte() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
   const [vRes, bkRes] = await Promise.all([
@@ -607,9 +644,8 @@ async function renderFlotte() {
 }
 
 function getCA(nom) {
-  if (fleetCA[nom]) return fleetCA[nom];
-  const k = Object.keys(fleetCA).find(n => n.toLowerCase().includes(nom.toLowerCase().split(' ').pop()) || nom.toLowerCase().includes(n.toLowerCase().split(' ').pop()));
-  return k ? fleetCA[k] : null;
+  // Match exact uniquement — évite Boxster vs Boxster S
+  return fleetCA[nom] || null;
 }
 
 function renderFlotteHTML() {
@@ -824,10 +860,13 @@ async function renderLocations() {
 function getBkList() {
   let list = [...bkData];
   const ts = todayStr();
-  if (bkFilter === 'upcoming') list = list.filter(b => b.fin && b.fin >= ts || (!b.fin && b.debut && b.debut >= ts));
+  if (bkFilter === 'upcoming') list = list.filter(b => {
+    const fin = b.fin ? b.fin.substring(0,10) : (b.debut ? b.debut.substring(0,10) : '');
+    return fin >= ts;
+  });
   else if (bkFilter !== 'tous') list = list.filter(b => b.debut && b.debut.startsWith(bkFilter));
   if (bkSearch) { const q = bkSearch.toLowerCase(); list = list.filter(b => (b.client||'').toLowerCase().includes(q) || (b.voiture||'').toLowerCase().includes(q)); }
-  if (fleetVehicleFilter) list = list.filter(b => (b.voiture||'').toLowerCase().includes(fleetVehicleFilter.toLowerCase()));
+  if (fleetVehicleFilter) list = list.filter(b => (b.voiture||'') === fleetVehicleFilter);
   return list;
 }
 
@@ -860,9 +899,13 @@ function refreshBkList() {
   const list = getBkList();
   const ca = list.reduce((s, b) => s + (b.prix || 0), 0);
   const label = bkFilter === 'upcoming' ? 'À venir' : bkFilter === 'tous' ? 'Total' : bkFilter;
+  const nEnCours = list.filter(b => bkDynStatus(b).label === 'En cours').length;
+  const nAVenir = list.filter(b => bkDynStatus(b).label === 'À venir').length;
   set('bk-stats', mkStats([
     { l: `Bookings (${label})`, v: fmt(list.length) },
     { l: `CA (${label})`, v: fmt(ca) + '€', c: 'var(--green)' },
+    { l: 'En cours', v: nEnCours, c: 'var(--green)' },
+    { l: 'À venir', v: nAVenir, c: 'var(--blue)' },
     { l: 'CA total historique', v: fmt(bkData.reduce((s,b) => s+(b.prix||0), 0)) + '€' },
   ]));
   const start = (bkPage - 1) * BK_PER;
@@ -876,7 +919,7 @@ function refreshBkList() {
       <td style="white-space:nowrap">${fmtShort(b.fin)||'—'}</td>
       <td style="white-space:nowrap"><span style="font-weight:600;color:var(--green)">${b.prix?fmt(b.prix)+'€':'—'}</span>${paidBadge}</td>
       <td><span class="badge ${srcBadge(b.source)}">${b.source||'—'}</span></td>
-      <td><span class="badge ${b.statut==='Fermé'?'b-gray':b.statut==='En cours'?'b-blue':'b-amber'}">${b.statut||'—'}</span></td>
+      <td><span class="badge ${bkDynStatus(b).badge}">${bkDynStatus(b).label}</span></td>
       <td>${b.lien_contrat?`<a href="${b.lien_contrat}" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue)">📄</a>`:'—'}</td>
       <td style="font-size:12px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.commentaire||''}</td>
     </tr>`;
@@ -906,14 +949,30 @@ function bookingFormHTML(b) {
     <div class="fg"><label class="fl">Source</label><select class="fi" id="bf-s">${['Direct','Roadstr','MRM'].map(s => `<option ${(b.source||'')==s?'selected':''}>${s}</option>`).join('')}</select></div>
   </div>
   <div class="f2">
-    <div class="fg"><label class="fl">Statut</label><select class="fi" id="bf-st">${['Fermé','En cours','Accident'].map(s => `<option ${(b.statut||'')==s?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="fg"><label class="fl">Statut (calculé automatiquement)</label>
+      <div style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;font-size:13px;color:var(--text2)">
+        ${b.debut ? `<span class="badge ${bkDynStatus(b).badge}">${bkDynStatus(b).label}</span> · basé sur les dates` : 'Renseigner les dates'}
+      </div>
+      <input type="hidden" id="bf-st" value="${b.statut||'Fermé'}">
+    </div>
     <div class="fg"><label class="fl">KM</label><input class="fi" type="number" id="bf-km" value="${b.km||''}"></div>
   </div>
   <div class="fg"><label class="fl">Lien contrat Google Doc</label><input class="fi" id="bf-ctr" placeholder="https://docs.google.com/..." value="${esc(b.lien_contrat||'')}"></div>
   <div class="fg"><label class="fl">Commentaire</label><textarea class="fi" id="bf-cm" rows="2">${esc(b.commentaire||'')}</textarea></div>`;
 }
 function getBkForm() {
-  return { voiture: $('bf-v').value, client: $('bf-c').value, email: $('bf-e').value, tel: $('bf-t').value, debut: $('bf-d').value || null, fin: $('bf-f').value || null, prix: parseFloat($('bf-p').value) || 0, source: $('bf-s').value, statut: $('bf-st').value, km: parseInt($('bf-km').value) || 0, lien_contrat: $('bf-ctr').value || null, commentaire: $('bf-cm').value, type_booking: 'ponctuel', prix_mensuel: 0 };
+  const debut = $('bf-d').value || null;
+  const fin = $('bf-f').value || null;
+  const ts = todayStr();
+  let statut = 'Fermé';
+  if (debut && fin) {
+    if (fin < ts) statut = 'Fermé';
+    else if (debut > ts) statut = 'À venir';
+    else statut = 'En cours';
+  } else if (debut && debut > ts) {
+    statut = 'À venir';
+  }
+  return { voiture: $('bf-v').value, client: $('bf-c').value, email: $('bf-e').value, tel: $('bf-t').value, debut, fin, prix: parseFloat($('bf-p').value) || 0, source: $('bf-s').value, statut, km: parseInt($('bf-km').value) || 0, lien_contrat: $('bf-ctr').value || null, commentaire: $('bf-cm').value, type_booking: 'ponctuel', prix_mensuel: 0 };
 }
 function openAddBooking() {
   openModal('Nouveau booking', bookingFormHTML(), async () => {
@@ -945,8 +1004,12 @@ let planYear = new Date().getFullYear(), planMonth = new Date().getMonth();
 
 async function renderPlanning() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
-  const { data } = await db.from('ferdinand_bookings').select('id,voiture,client,debut,fin,prix,source').order('debut');
-  const bookings = (data || []).filter(b => b.debut && b.fin);
+  const { data } = await db.from('ferdinand_bookings').select('id,voiture,client,debut,fin,prix,source,statut').order('debut');
+  // Garder tous les bookings avec debut (fin optionnelle)
+  // Tous les bookings passés + futurs, avec fallback fin = debut si pas de fin
+  const bookings = (data || []).filter(b => b.debut).map(b => ({
+    ...b, fin: b.fin || b.debut
+  }));
   renderPlanningHTML(bookings);
 }
 
@@ -954,7 +1017,11 @@ function renderPlanningHTML(bookings) {
   const ml = new Date(planYear, planMonth, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const firstStr = `${planYear}-${String(planMonth+1).padStart(2,'0')}-01`;
   const lastStr = `${planYear}-${String(planMonth+1).padStart(2,'0')}-${String(new Date(planYear,planMonth+1,0).getDate()).padStart(2,'0')}`;
-  const bkMois = bookings.filter(b => b.debut.substring(0,10) <= lastStr && b.fin.substring(0,10) >= firstStr);
+  const bkMois = bookings.filter(b => {
+    const deb = b.debut ? b.debut.substring(0,10) : null;
+    const fin = b.fin ? b.fin.substring(0,10) : deb;
+    return deb && fin && deb <= lastStr && fin >= firstStr;
+  });
   const voiColor = v => ({ '911 Carrera S': '#2563eb', '911 Targa 4 GTS': '#7c3aed', 'Boxster': '#059669', 'Boxster S': '#059669', 'Cayman GTS': '#db2777', 'Cayenne Hybrid': '#d97706', 'Cayenne Craie': '#d97706', 'Ferrari Portofino': '#dc2626', 'Macan GTS': '#65a30d', 'Macan S': '#65a30d', 'Mercedes': '#6b7280' }[v] || '#6b7280');
 
   set('app-page', `
@@ -986,6 +1053,7 @@ function renderPlanningHTML(bookings) {
               <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
               <span style="font-weight:600">${b.voiture||'—'}</span>
               <span class="badge ${srcBadge(b.source)}">${b.source}</span>
+              ${(()=>{const s=bkDynStatus(b);return`<span class="badge ${s.badge}">${s.label}</span>`;})()}
             </div>
             <div style="font-size:13px">${b.client||'—'}</div>
             <div style="font-size:12px;color:var(--text2)">${fmtShort(b.debut)} → ${fmtShort(b.fin)}${nights ? ` · ${nights} nuit${nights>1?'s':''}` : ''}</div>
@@ -1254,7 +1322,11 @@ async function renderAPlanning() {
   const ml = new Date(abPlanYear, abPlanMonth, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const firstStr = `${abPlanYear}-${String(abPlanMonth+1).padStart(2,'0')}-01`;
   const lastStr = `${abPlanYear}-${String(abPlanMonth+1).padStart(2,'0')}-${String(new Date(abPlanYear,abPlanMonth+1,0).getDate()).padStart(2,'0')}`;
-  const bkMois = bookings.filter(b => b.debut.substring(0,10) <= lastStr && b.fin.substring(0,10) >= firstStr);
+  const bkMois = bookings.filter(b => {
+    const deb = b.debut ? b.debut.substring(0,10) : null;
+    const fin = b.fin ? b.fin.substring(0,10) : deb;
+    return deb && fin && deb <= lastStr && fin >= firstStr;
+  });
   const bienColor = b => b.voiture === 'Paris' ? '#2563eb' : '#7c3aed';
   set('app-page', `
     <div class="pg-header"><div><div class="pg-title">AirBnB — Planning</div><div class="pg-sub">Paris + Le Touquet</div></div><button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button></div>
