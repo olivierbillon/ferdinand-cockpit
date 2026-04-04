@@ -615,7 +615,21 @@ async function renderFlotte() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
   const [vRes, bkRes] = await Promise.all([
     db.from('vehicles').select('*').order('nom'),
-    db.from('ferdinand_bookings').select('voiture,prix,debut,fin,statut,type_booking,prix_mensuel').not('voiture', 'is', null).limit(5000)
+    (async () => {
+      let all = [];
+      let from = 0;
+      while(true) {
+        const { data: p } = await db.from('ferdinand_bookings')
+          .select('voiture,prix,debut,fin,statut,type_booking,prix_mensuel')
+          .not('voiture','is',null)
+          .range(from, from+999);
+        if(!p||!p.length) break;
+        all=all.concat(p);
+        if(p.length<1000) break;
+        from+=1000;
+      }
+      return { data: all };
+    })()
   ]);
   fleetData = vRes.data || [];
   const bookings = bkRes.data || [];
@@ -852,7 +866,21 @@ const BK_PER = 50;
 
 async function renderLocations() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
-  const { data } = await db.from('ferdinand_bookings').select('*').order('debut', { ascending: false }).limit(5000);
+  // Charger tous les bookings en plusieurs pages si nécessaire
+  let allData = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data: page } = await db.from('ferdinand_bookings')
+      .select('*')
+      .order('debut', { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (!page || page.length === 0) break;
+    allData = allData.concat(page);
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
+  const data = allData;
   bkData = data || [];
   renderLocationsHTML();
 }
@@ -1004,9 +1032,15 @@ let planYear = new Date().getFullYear(), planMonth = new Date().getMonth();
 
 async function renderPlanning() {
   set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
-  const { data } = await db.from('ferdinand_bookings').select('id,voiture,client,debut,fin,prix,source,statut').order('debut');
-  // Garder tous les bookings avec debut (fin optionnelle)
-  // Tous les bookings passés + futurs, avec fallback fin = debut si pas de fin
+  // Filtrer par plage de dates autour du mois affiché pour éviter la limite 1000 lignes
+  const yearStart = (planYear - 1) + '-01-01';
+  const yearEnd   = (planYear + 1) + '-12-31';
+  const { data } = await db.from('ferdinand_bookings')
+    .select('id,voiture,client,debut,fin,prix,source,statut')
+    .or(`debut.gte.${yearStart},fin.gte.${yearStart}`)
+    .lte('debut', yearEnd)
+    .order('debut')
+    .limit(2000);
   const bookings = (data || []).filter(b => b.debut).map(b => ({
     ...b, fin: b.fin || b.debut
   }));
