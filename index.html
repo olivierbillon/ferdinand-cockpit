@@ -119,7 +119,7 @@ body {
 .sb-item svg { flex-shrink: 0; opacity: .55; }
 .sb-item:hover {
   background: var(--sb-hover);
-  color: #fff;
+  color: var(--fg);
 }
 .sb-item:hover svg { opacity: .9; }
 .sb-item.active {
@@ -1182,12 +1182,13 @@ async function renderFlotte() {
     const isAbo = b.type_booking === 'abonnement' || (b.prix_mensuel && b.prix_mensuel > 0);
 
     if (isAbo && b.prix_mensuel > 0) {
-      // Abonnement : comptabiliser les mensualités passées + futures jusqu'à fin
-      const startD = new Date(b.debut);
-      const endD = b.fin ? new Date(b.fin) : new Date(new Date().setMonth(new Date().getMonth()+24));
-      const months = Math.max(1, Math.round((endD - startD) / (1000*60*60*24*30)));
-      fleetCA[nom].caAbo += b.prix_mensuel * months;
-      fleetCA[nom].total += b.prix_mensuel * months;
+      // Règle IFRS : séparer réalisé (mois terminés) et prévisionnel (mois courant+futurs)
+      const { realise, previsionnel } = getAbonnementCA(b);
+      if (!fleetCA[nom].caAboRealise) fleetCA[nom].caAboRealise = 0;
+      if (!fleetCA[nom].caAboPrev) fleetCA[nom].caAboPrev = 0;
+      fleetCA[nom].caAboRealise += realise;
+      fleetCA[nom].caAboPrev += previsionnel;
+      fleetCA[nom].total += realise; // total = locations + réalisé abo seulement
       // MRR si actif maintenant
       const fin = b.fin || '';
       if ((!fin || fin >= ts) && b.debut <= ts) fleetCA[nom].mrr += b.prix_mensuel;
@@ -1218,6 +1219,36 @@ async function renderFlotte() {
 function getCA(nom) {
   // Match exact uniquement — évite Boxster vs Boxster S
   return fleetCA[nom] || null;
+}
+
+// CA abonnement selon règles IFRS
+// Réalisé = mois dont le DERNIER JOUR est antérieur au 1er du mois courant
+// Prévisionnel = mois courant + mois futurs (pas de prorata)
+function getAbonnementCA(b) {
+  if (!b.debut || !b.prix_mensuel) return { realise: 0, previsionnel: 0 };
+  const today = new Date();
+  // 1er jour du mois courant = frontière réalisé/prévisionnel
+  const frontier = new Date(today.getFullYear(), today.getMonth(), 1);
+  const start = new Date(b.debut);
+  const end = b.fin ? new Date(b.fin) : null;
+  // Si l'abonnement n'a pas encore commencé → tout prévisionnel
+  // Si terminé → tout réalisé (jusqu'à la fin)
+  let realise = 0, previsionnel = 0;
+  // Itérer mois par mois
+  let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endLimit = end || new Date(today.getFullYear(), today.getMonth() + 24, 1);
+  let count = 0;
+  while (cur <= endLimit && count < 60) {
+    count++;
+    const lastDayOfMonth = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+    if (lastDayOfMonth < frontier) {
+      realise += b.prix_mensuel; // mois terminé → réalisé
+    } else {
+      previsionnel += b.prix_mensuel; // mois courant ou futur → prévisionnel
+    }
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+  return { realise, previsionnel };
 }
 
 function renderFlotteHTML() {
@@ -1513,14 +1544,24 @@ function renderLocationsHTML() {
     <div class="filters">
       ${['upcoming','tous','2026','2025','2024','2023','2022','2021'].map(f => `<button class="fpill${f===bkFilter?' active':''}" onclick="setBkFilter('${f}')">${f==='upcoming'?'À venir':f==='tous'?'Tous':f}</button>`).join('')}
       <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-box" id="bk-search" placeholder="Client, voiture..." oninput="bkSearch=this.value;bkPage=1;refreshBkList()"></div>
-      <select class="fi" style="width:auto;padding:6px 10px" onchange="fleetVehicleFilter=this.value;bkPage=1;refreshBkList()">
-        ${voitures.map(v => `<option value="${v}" ${fleetVehicleFilter===v?'selected':''}>${v||'Toutes voitures'}</option>`).join('')}
+      <select class="fi" style="width:auto;padding:0 10px;height:32px" onchange="fleetVehicleFilter=this.value;bkPage=1;refreshBkList()" id="bk-voi-select">
+        ${(['', ..._voitureNames.length?_voitureNames:voitures]).map(v => `<option value="${v}" ${fleetVehicleFilter===v?'selected':''}>${v||'Toutes voitures'}</option>`).join('')}
       </select>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Cliquer sur une ligne pour modifier</div>
     <div id="bk-table"></div>
     <div id="bk-pag"></div>
   `);
+  // Charger la liste dynamique des voitures si pas encore fait
+  loadVoitureNames().then(() => {
+    const sel = document.getElementById('bk-voi-select');
+    if (sel && _voitureNames.length) {
+      const cur = fleetVehicleFilter;
+      sel.innerHTML = ['', ..._voitureNames].map(v =>
+        `<option value="${v}" ${cur===v?'selected':''}>${v||'Toutes voitures'}</option>`
+      ).join('');
+    }
+  });
   refreshBkList();
 }
 
@@ -1916,10 +1957,14 @@ function renderAbonnementsHTML() {
   const avenir = aboData.filter(b => b.debut && b.debut.substring(0,10) > ts);
 
   const mrrTotal = actifs.reduce((s,b) => s + (b.prix_mensuel||0), 0);
-  const caTotal = aboData.reduce((s,b) => {
-    const months = Math.max(1, Math.round((new Date(b.fin||ts)-new Date(b.debut))/(1000*60*60*24*30)));
-    return s + (b.prix_mensuel||0) * months;
-  }, 0);
+  // CA IFRS : séparer réalisé et prévisionnel
+  let caRealise = 0, caPrevisionnel = 0;
+  aboData.forEach(b => {
+    const { realise, previsionnel } = getAbonnementCA(b);
+    caRealise += realise;
+    caPrevisionnel += previsionnel;
+  });
+  const caTotal = caRealise + caPrevisionnel;
 
   let list = aboFilter === 'actifs' ? actifs : aboFilter === 'termines' ? termines : aboFilter === 'avenir' ? avenir : aboData;
 
@@ -1932,9 +1977,9 @@ function renderAbonnementsHTML() {
     ${mkStats([
       { l: 'Actifs', v: actifs.length, c: 'var(--green)' },
       { l: 'MRR actuel', v: fmt(mrrTotal) + '€/mois', c: 'var(--purple)' },
-      { l: 'CA total généré', v: fmt(caTotal) + '€', c: 'var(--green)' },
-      { l: 'À venir', v: avenir.length, c: 'var(--blue)' },
-      { l: 'Terminés', v: termines.length, c: 'var(--text3)' },
+      { l: 'CA réalisé', v: fmt(caRealise) + '€', c: 'var(--green)' },
+      { l: 'Prévisionnel', v: fmt(caPrevisionnel) + '€', c: 'var(--purple)' },
+      { l: 'Terminés', v: termines.length, c: 'var(--fg3)' },
     ])}
     <div class="filters">
       ${[['actifs','Actifs'],['avenir','À venir'],['termines','Terminés'],['tous','Tous']].map(([f,l]) =>
