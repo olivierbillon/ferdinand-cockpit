@@ -30,7 +30,6 @@
   --sb-bg:      #ffffff;
   --sb-border:  #eaeaea;
   --sb-text:    #666666;
-  --sb-active:  #000000;
   --sb-hover:   #f5f5f5;
 
   /* Accents */
@@ -49,6 +48,11 @@
 
   --r:          6px;
   --r-lg:       8px;
+
+  /* Aliases pour compatibilité */
+  --text:  var(--fg);
+  --text2: var(--fg2);
+  --text3: var(--fg3);
 }
 
 /* ── BASE ── */
@@ -211,6 +215,7 @@ body {
   font-weight: 600;
   letter-spacing: -.04em;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── CARD ── */
@@ -465,7 +470,7 @@ textarea.fi { height: auto; padding: 8px 10px; }
   border-radius: var(--r-lg);
   margin-bottom: 6px;
   overflow: hidden;
-  transition: border-color .15s;
+  transition: border-color .12s, box-shadow .12s;
 }
 .exp-card:hover { border-color: var(--border2); }
 .exp-head {
@@ -618,6 +623,29 @@ textarea.fi { height: auto; padding: 8px 10px; }
 .bar-bg { flex: 1; background: var(--bg2); border-radius: 3px; height: 4px; }
 .bar-fill { height: 4px; border-radius: 3px; }
 
+/* ── UTILITIES ── */
+.c-green { color: var(--green) !important; }
+.c-blue  { color: var(--blue) !important; }
+.c-red   { color: var(--red) !important; }
+.c-amber { color: var(--amber) !important; }
+.c-purple{ color: var(--purple) !important; }
+.c-muted { color: var(--fg3) !important; }
+.fw6 { font-weight: 600; }
+.fw5 { font-weight: 500; }
+.mono { font-family: monospace; letter-spacing: .04em; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nowrap { white-space: nowrap; }
+
+
+/* ── EMPTY STATE ── */
+.empty-state { display:flex;flex-direction:column;align-items:center;padding:48px 24px;color:var(--fg3);text-align:center; }
+.empty-icon { font-size:36px;margin-bottom:10px; }
+/* ── UTILITAIRES ── */
+.muted { color: var(--fg3); }
+.green { color: var(--green); font-weight: 600; }
+.mono  { font-family: monospace; letter-spacing: .04em; }
+.nowrap{ white-space: nowrap; }
+.trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* ── LOADING ── */
 .loading {
   display: flex;
@@ -817,6 +845,8 @@ function closeModal() { $('modal').classList.remove('open'); saveFn = null; }
 function doSave() { if (saveFn) saveFn(); }
 
 // Generic table builder
+const LOADING = '<div class="loading"><div class="spin"></div> Chargement...</div>';
+
 function mkTable(headers, rows, empty = 'Aucun résultat') {
   if (!rows.length) return `<div style="padding:20px;text-align:center;color:var(--text2)">${empty}</div>`;
   return `<div class="tbl-wrap"><table class="tbl">
@@ -1047,14 +1077,14 @@ db.auth.onAuthStateChange(async (event, session) => {
 // DASHBOARD
 // ═══════════════════════════════════════════════════════
 async function renderDashboard() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   try {
   const [vRes, bkRes, tqRes, etRes, ftRes] = await Promise.all([
-    db.from('vehicles').select('*'),
-    db.from('ferdinand_bookings').select('voiture,client,debut,fin,prix,source').gte('debut', todayStr()).order('debut').limit(6),
-    db.from('bookings_touquet').select('*').gte('arrive', todayStr()).order('arrive').limit(5),
-    db.from('elisa_tasks').select('*').eq('done', false).limit(4),
-    db.from('fleet_tasks').select('*').eq('done', false).order('echeance').limit(10),
+    cachedQuery('dash_v', () => db.from('vehicles').select('*')),
+    cachedQuery('dash_bk', () => db.from('ferdinand_bookings').select('voiture,client,debut,fin,prix,source').gte('debut', todayStr()).order('debut').limit(6)),
+    cachedQuery('dash_ab', () => db.from('bookings_touquet').select('*').gte('arrive', todayStr()).order('arrive').limit(5)),
+    cachedQuery('dash_el', () => db.from('elisa_tasks').select('*').eq('done', false).limit(4)),
+    cachedQuery('dash_ft', () => db.from('fleet_tasks').select('*').eq('done', false).order('echeance').limit(10)),
   ]);
   const fleet = vRes.data || [];
   const fbk = bkRes.data || [];
@@ -1067,7 +1097,7 @@ async function renderDashboard() {
 
   set('app-page', `
     <div class="pg-header">
-      <div><div class="pg-title">Bonjour Olivier</div>
+      <div><div class="pg-title">Dashboard</div>
       <div class="pg-sub">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
     </div>
     ${mkStats([
@@ -1111,6 +1141,12 @@ let fleetData = [], fleetCA = {}, fleetDynStatus = {};
 let openV = {}, openVTab = {}, fleetFilter = 'actifs';
 let fleetView = 'cards'; // 'cards' ou 'table'
 let _voitureNames = []; // cache de la liste des voitures actives
+const _cache = {}; // Cache mémoire simple avec TTL
+function cacheSet(key, data, ttlMs = 300000) { _cache[key] = { data, exp: Date.now() + ttlMs }; }
+function cacheGet(key) { const c = _cache[key]; return c && c.exp > Date.now() ? c.data : null; }
+function cacheDel(...keys) { keys.forEach(k => delete _cache[k]); }
+function cachedQuery(key, fn) { const c=cacheGet(key); if(c) return Promise.resolve(c); return fn().then(r=>{ cacheSet(key,r); return r; }); }
+function invalidateCache(...keys) { keys.forEach(k=>delete _cache[k]); }
 
 // Charge les noms de voitures depuis Supabase (actives seulement)
 async function loadVoitureNames() {
@@ -1141,18 +1177,10 @@ function bkDynStatus(b) {
 }
 
 // Calcule le statut dynamique d'un booking selon les dates
-function bkDynStatus(b) {
-  if (!b || !b.debut) return { label: '—', badge: 'b-gray' };
-  const ts = todayStr();
-  const debut = b.debut.substring(0, 10);
-  const fin = b.fin ? b.fin.substring(0, 10) : debut;
-  if (fin < ts) return { label: 'Fermé', badge: 'b-gray' };
-  if (debut > ts) return { label: 'À venir', badge: 'b-blue' };
-  return { label: 'En cours', badge: 'b-green' };
-}
+
 
 async function renderFlotte() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   // Charger aussi les tâches flotte pour les afficher dans chaque fiche
   if (!ftData.length) {
     const { data: ftRes } = await db.from('fleet_tasks').select('*').eq('done', false).order('echeance');
@@ -1291,7 +1319,7 @@ function renderFlotteHTML() {
 
   set('app-page', `
     <div class="pg-header">
-      <div><div class="pg-title">Flotte Ferdinand</div><div class="pg-sub">${fleetData.filter(v=>v.statut!=='cede').length} véhicules actifs · ${fmt(rev)}€/mois revenus</div></div>
+      <div><div class="pg-title">Ferdinand — Flotte</div><div class="pg-sub">${fleetData.filter(v=>v.statut!=='cede').length} véhicules actifs · ${fmt(rev)}€/mois revenus</div></div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-sm${fleetView==='cards'?' btn-primary':''}" onclick="fleetView='cards';renderFlotteHTML()">⊞ Cartes</button>
         <button class="btn btn-sm${fleetView==='table'?' btn-primary':''}" onclick="fleetView='table';renderFlotteHTML()">⊟ Tableau</button>
@@ -1660,7 +1688,7 @@ let bkData = [], bkPage = 1, bkFilter = 'upcoming', bkSearch = '', fleetVehicleF
 const BK_PER = 50;
 
 async function renderLocations() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   // Charger tous les bookings en plusieurs pages si nécessaire
   let allData = [];
   let from = 0;
@@ -1840,7 +1868,7 @@ let planVoitureFilter = '';
 let allPlanBookings = [];
 
 async function renderPlanning() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   // Filtrer par plage ±1 an — requête simple sans .or() qui pose problème
   const yearStart = (planYear - 1) + '-01-01';
   const yearEnd   = (planYear + 1) + '-12-31';
@@ -2093,7 +2121,7 @@ function openManualLink(stripeId) {
 let aboData = [], aboFilter = 'actifs';
 
 async function renderAbonnements() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   // Charger les abonnements depuis ferdinand_bookings avec type_booking='abonnement'
   let all = [];
   let from = 0;
@@ -2302,7 +2330,7 @@ const ENT_TYPES = ['Révision', 'Pneus', 'Carrosserie', 'Moteur', 'Contrôle tec
 const ENT_COLORS = {'Révision':'b-blue','Pneus':'b-amber','Carrosserie':'b-pink','Moteur':'b-red','Contrôle technique':'b-green','Climatisation':'b-gray','Freins':'b-red','Autre':'b-gray'};
 
 async function renderEntretiens() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   const { data } = await db.from('entretiens').select('*').order('date_entretien', { ascending: false }).limit(500);
   entData = data || [];
   renderEntretiensHTML();
@@ -2318,7 +2346,7 @@ function renderEntretiensHTML() {
 
   set('app-page', `
     <div class="pg-header">
-      <div><div class="pg-title">Entretiens & Maintenance</div>
+      <div><div class="pg-title">Ferdinand — Entretiens</div>
       <div class="pg-sub">${entData.length} entrées · ${planifies.length} planifiés</div></div>
       <button class="btn btn-primary" onclick="openAddEntretien()">+ Entretien</button>
     </div>
@@ -2427,7 +2455,7 @@ async function deleteEntretien(id) {
 let ftData = [], ftFilter = 'open';
 
 async function renderFleetTasks() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   const { data } = await db.from('fleet_tasks').select('*').order('echeance', { ascending: true, nullsFirst: false }).limit(500);
   ftData = data || [];
   renderFleetTasksHTML();
@@ -2446,7 +2474,7 @@ function renderFleetTasksHTML() {
 
   set('app-page', `
     <div class="pg-header">
-      <div><div class="pg-title">Tâches Flotte</div>
+      <div><div class="pg-title">Ferdinand — Tâches</div>
       <div class="pg-sub">${open.length} tâches ouvertes</div></div>
       <button class="btn btn-primary" onclick="openAddFleetTask()">+ Tâche</button>
     </div>
@@ -2490,6 +2518,7 @@ function renderFleetTasksHTML() {
 function setFtFilter(f) { ftFilter = f; renderFleetTasksHTML(); }
 
 async function toggleFtDone(id) {
+  cacheDel('fleet_tasks');
   const t = ftData.find(x => x.id === id); if (!t) return;
   t.done = !t.done;
   await db.from('fleet_tasks').update({ done: t.done }).eq('id', id);
@@ -2544,7 +2573,7 @@ async function openAddFleetTask() {
     if (!t.titre) { alert('Titre requis'); return; }
     const { data } = await db.from('fleet_tasks').insert({ id: 'ft' + Date.now(), ...t }).select();
     if (data) ftData.unshift(data[0]);
-    closeModal(); renderFleetTasksHTML();
+    closeModal(); cacheDel('fleet_tasks'); renderFleetTasksHTML();
   });
 }
 
@@ -2554,14 +2583,14 @@ async function openEditFleetTask(id) {
   openModal('Modifier tâche', ftFormHTML(t), async () => {
     const u = getFtForm();
     await db.from('fleet_tasks').update(u).eq('id', id);
-    Object.assign(t, u); closeModal(); renderFleetTasksHTML();
+    Object.assign(t, u); closeModal(); cacheDel('fleet_tasks'); renderFleetTasksHTML();
   }, `<button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteFt('${id}')">Supprimer</button>`);
 }
 
 async function deleteFt(id) {
   if (!confirm('Supprimer cette tâche ?')) return;
   await db.from('fleet_tasks').delete().eq('id', id);
-  ftData = ftData.filter(x => x.id !== id); closeModal(); renderFleetTasksHTML();
+  ftData = ftData.filter(x => x.id !== id); closeModal(); cacheDel('fleet_tasks'); renderFleetTasksHTML();
 }
 
 
@@ -2569,7 +2598,7 @@ async function deleteFt(id) {
 // FERDINAND — ANALYTIQUES
 // ═══════════════════════════════════════════════════════
 async function renderAnalytics() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   try {
   // Charger flotte si nécessaire + bookings en 2 requêtes parallèles
   const [vRes, r1, r2] = await Promise.all([
@@ -2655,7 +2684,7 @@ async function renderAnalytics() {
   renderAnalyticsHTML(months, monthlyData, voitures, voiColor, { totalCA, bestMonth, last12, avgMonth, bySource });
   } catch(e) {
     console.error('Analytics error:', e);
-    set('app-page', `<div class="pg-header"><div class="pg-title">Analytiques</div></div><div class="alert a-red">Erreur de chargement : ${e.message}<br><button class="btn btn-sm" style="margin-top:8px" onclick="renderAnalytics()">Réessayer</button></div>`);
+    set('app-page', `<div class="pg-header"><div class="pg-title">Ferdinand — Analytiques</div></div><div class="alert a-red">Erreur de chargement : ${e.message}<br><button class="btn btn-sm" style="margin-top:8px" onclick="renderAnalytics()">Réessayer</button></div>`);
   }
 }
 
@@ -2852,7 +2881,7 @@ function renderABiens() {
 }
 
 async function renderAReservations() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   await loadAbData();
   renderAResaHTML();
 }
@@ -2923,7 +2952,7 @@ function refreshAbList() {
 function setAbPage(p) { abPage = p; refreshAbList(); }
 
 async function renderAPlanning() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   if (!abData.length) await loadAbData();
   const bookings = abData.filter(b => b.arrive && b.depart && !b.annule).map(b => ({ ...b, debut: b.arrive, fin: b.depart, voiture: b.bien === 'paris' ? 'Paris' : 'Touquet' }));
   const ml = new Date(abPlanYear, abPlanMonth, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
@@ -3107,7 +3136,7 @@ function isVac(date) { for(const v of VACANCES){const s=new Date(v.start),e=new 
 function isTrans(date) { const d=new Date(date);d.setHours(12);const ref=new Date(REF_PAPA);ref.setHours(12);const diff=Math.floor((d-ref)/864e5);const cycle=((diff%14)+14)%14;return cycle===0||cycle===5; }
 
 async function renderElisa() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   const { data } = await db.from('elisa_tasks').select('*').order('date');
   elisaTasks = data || [];
   renderElisaHTML();
@@ -3273,7 +3302,7 @@ async function delET(id) { await db.from('elisa_tasks').delete().eq('id',id); el
 // ADMIN
 // ═══════════════════════════════════════════════════════
 async function renderAdmin() {
-  set('app-page', '<div class="loading"><div class="spin"></div> Chargement...</div>');
+  set('app-page', LOADING);
   const { data } = await db.from('user_profiles').select('*').order('created_at');
   const users = data || [];
   const ROLES = { admin: 'Administrateur', assistant: 'Assistant', coparent: 'Co-parent', viewer: 'Lecteur' };
