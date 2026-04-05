@@ -1249,7 +1249,39 @@ async function renderFlotte() {
   });
   // Mettre à jour le cache des noms de voitures
   _voitureNames = fleetData.filter(v => v.statut !== 'cede').map(v => v.nom).sort();
+
+  // Vérifier les assurances expirant dans 14 jours et créer des tâches si nécessaire
+  await checkInsuranceAlerts(fleetData);
+
   renderFlotteHTML();
+}
+
+async function checkInsuranceAlerts(vehicles) {
+  const today = new Date();
+  const in14 = new Date(today.getTime() + 14 * 864e5);
+  for (const v of vehicles) {
+    if (!v.assurance_expiry || v.statut === 'cede') continue;
+    const exp = new Date(v.assurance_expiry);
+    const diffDays = Math.ceil((exp - today) / 864e5);
+    if (diffDays > 0 && diffDays <= 14) {
+      // Vérifier si une tâche existe déjà pour cette voiture
+      const titre = `Renouveler assurance — ${v.immat || ''} ${vNom(v)}`.trim();
+      const { data: existing } = await db.from('fleet_tasks')
+        .select('id').eq('titre', titre).eq('done', false).limit(1);
+      if (!existing || existing.length === 0) {
+        await db.from('fleet_tasks').insert({
+          id: 'ft_ass_' + v.id + '_' + Date.now(),
+          titre,
+          voiture: v.nom,
+          priorite: diffDays <= 7 ? 'urgente' : 'normale',
+          echeance: v.assurance_expiry,
+          done: false,
+          notes: `Contrat ${v.assurance_num || '—'} · Échéance ${fmtDate(v.assurance_expiry)}`,
+        });
+        console.log('Tâche assurance créée pour', vNom(v));
+      }
+    }
+  }
 }
 
 // Affichage du nom complet d'un véhicule : Marque + Modèle
@@ -1493,7 +1525,15 @@ function vCard(v) {
         <div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Locations</div><div style="font-size:18px;font-weight:700">${ca.count}</div></div>
         ${ca.mrr > 0 ? `<div style="background:var(--purple-bg);border-radius:5px;padding:4px"><div style="font-size:10px;color:var(--purple);font-weight:600;text-transform:uppercase;margin-bottom:3px">MRR</div><div style="font-size:18px;font-weight:700;color:var(--purple)">${fmt(ca.mrr)}€/m</div></div>` : ''}
       </div>` : ''}
-      ${v.notes ? `<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">${v.notes}</div>` : ''}
+      ${v.notes ? `<div style="margin-top:8px;font-size:12px;color:var(--fg2);font-style:italic">${v.notes}</div>` : ''}
+      ${(()=>{
+        if (!v.assurance_expiry) return '<div class="alert a-warn" style="margin-top:8px;font-size:12px">⚠ Pas d\'attestation d\'assurance renseignée</div>';
+        const expD = new Date(v.assurance_expiry);
+        const diffD = Math.ceil((expD - new Date()) / 864e5);
+        if (diffD < 0) return '<div class="alert a-red" style="margin-top:8px;font-size:12px">🚨 Assurance expirée le ' + fmtDate(v.assurance_expiry) + (v.assurance_num?' · '+v.assurance_num:'') + '</div>';
+        if (diffD <= 14) return '<div class="alert a-warn" style="margin-top:8px;font-size:12px">⚡ Assurance expire dans <strong>' + diffD + ' jour' + (diffD>1?'s':'') + '</strong> (' + fmtDate(v.assurance_expiry) + ')' + (v.assurance_url?` · <a href="${v.assurance_url}" target="_blank" style="color:var(--amber)">📄 Voir</a>`:'') + '</div>';
+        return '<div style="margin-top:8px;font-size:12px;color:var(--fg3)">✓ Assurance valide jusqu\'au ' + fmtDate(v.assurance_expiry) + (v.assurance_url?' · <a href="' + v.assurance_url + '" target="_blank" style="color:var(--blue)">📄 Attestation</a>':'') + '</div>';
+      })()}
       <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-sm" onclick="openEditVehicle('${v.id}')">Modifier</button>
         <button class="btn btn-sm" onclick="fleetVehicleFilter='${v.nom}';showPage('f-locations')">Locations ↗</button>
@@ -1510,7 +1550,16 @@ function vCard(v) {
       ${warn ? `<div class="alert a-warn" style="margin-top:8px">⚠ Entretien prévu ${fmtDate(v.prochain)}</div>` : ''}
       <button class="btn btn-sm" style="margin-top:8px" onclick="openEditVehicle('${v.id}')">Modifier les dates</button>`;
     } else if (tab === 'docs') {
-      panel = `<div>${(v.docs || []).map(d => `<span class="dpill">📄 ${d}</span>`).join('')}<span class="dpill" style="border-style:dashed" onclick="addVDoc('${v.id}')">+ Ajouter</span></div>`;
+      const docItems = (v.docs || []).map((d, i) => {
+        const parts = d.split('|');
+        const name = parts[0];
+        const url = parts[1] || '';
+        return url
+          ? `<a href="${url}" target="_blank" class="dpill">📄 ${name}</a>`
+          : `<span class="dpill">📄 ${name}</span>`;
+      }).join('');
+      panel = `<div style="margin-bottom:8px">${docItems}</div>
+        <button class="btn btn-sm" onclick="addVDoc('${v.id}')">+ Ajouter un document</button>`;
     } else {
       // Tâches flotte liées à cette voiture (chargées depuis fleet_tasks)
       const vTaches = (typeof ftData !== 'undefined' ? ftData : []).filter(t => t.voiture === v.nom && !t.done);
@@ -1549,6 +1598,7 @@ function vCard(v) {
         <div style="font-weight:600;font-size:14px">${vNom(v)}</div>
         <div style="font-size:12px;color:var(--fg2);margin-top:1px">${v.loc || '—'}</div>
         ${ca ? `<div style="font-size:11px;margin-top:2px"><span style="color:var(--green);font-weight:600">${fmt(ca.total)}€ réalisé</span><span style="color:var(--fg3)"> · ${ca.count} location${ca.count!==1?'s':''}</span>${ca.mrr > 0 ? ` · <span style="color:var(--purple);font-weight:600">${fmt(ca.caAboPrev||0)}€ prévi.</span>` : ''}</div>` : ''}
+        ${(()=>{if(!v.assurance_expiry)return'';const d=Math.ceil((new Date(v.assurance_expiry)-new Date())/864e5);if(d<0)return'<span style="font-size:10px;background:#fef2f2;color:#b00000;padding:1px 5px;border-radius:3px;margin-top:2px;display:inline-block">🚨 Assurance expirée</span>';if(d<=14)return`<span style="font-size:10px;background:#fffbeb;color:#7a4200;padding:1px 5px;border-radius:3px;margin-top:2px;display:inline-block">⚡ Assurance expire dans ${d}j</span>`;return'';})()}
       </div>
       ${photoEl}
       <span style="color:var(--fg3);font-size:12px;padding:12px 8px 12px 0;flex-shrink:0">${isOpen ? '▲' : '▼'}</span>
@@ -1572,11 +1622,22 @@ async function removeVTask(id, idx) {
   v.tasks = tasks; renderFlotteHTML();
 }
 async function addVDoc(id) {
-  const n = prompt('Nom du document :'); if (!n) return;
-  const v = fleetData.find(x => x.id === id);
-  const docs = [...(v.docs || []), n];
-  await db.from('vehicles').update({ docs }).eq('id', id);
-  v.docs = docs; renderFlotteHTML();
+  openModal('Ajouter un document', `
+    <div class="fg"><label class="fl">Nom du document</label>
+      <input class="fi" id="doc-name" placeholder="ex: Carte grise, Assurance, Contrôle technique..."></div>
+    <div class="fg"><label class="fl">Lien (Google Drive, URL...)</label>
+      <input class="fi" id="doc-url" placeholder="https://drive.google.com/..."></div>`,
+    async () => {
+      const name = $('doc-name')?.value?.trim();
+      const url = $('doc-url')?.value?.trim();
+      if (!name) return;
+      const entry = url ? name + '|' + url : name;
+      const v = fleetData.find(x => x.id === id);
+      const docs = [...(v.docs || []), entry];
+      await db.from('vehicles').update({ docs }).eq('id', id);
+      v.docs = docs; closeModal(); renderFlotteHTML();
+    }
+  );
 }
 
 function vehicleFormHTML(v) {
@@ -1613,6 +1674,14 @@ function vehicleFormHTML(v) {
   <div class="f2">
     <div class="fg"><label class="fl">Photo (URL image)</label><input class="fi" id="vf-photo" placeholder="https://..." value="${esc(v.photo_url||'')}"></div>
     <div class="fg"><label class="fl">Fiche produit FerdinandParis.com</label><input class="fi" id="vf-site" placeholder="https://ferdinandparis.com/..." value="${esc(v.site_url||'')}"></div>
+  </div>
+  <div style="border-top:1px solid var(--border);margin:10px 0 12px;padding-top:12px">
+    <div style="font-size:12px;font-weight:600;color:var(--fg2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Assurance</div>
+    <div class="f2">
+      <div class="fg"><label class="fl">N° de contrat</label><input class="fi" id="vf-ass-num" placeholder="ex: AT883898" value="${esc(v.assurance_num||'')}"></div>
+      <div class="fg"><label class="fl">Date d'échéance</label><input class="fi" type="date" id="vf-ass-exp" value="${v.assurance_expiry||''}"></div>
+    </div>
+    <div class="fg"><label class="fl">Lien attestation (Google Drive / PDF)</label><input class="fi" id="vf-ass-url" placeholder="https://drive.google.com/..." value="${esc(v.assurance_url||'')}"></div>
   </div>`;
 }
 
@@ -1636,6 +1705,9 @@ function getVehicleForm() {
     notes: $('vf-notes').value,
     photo_url: $('vf-photo')?.value || null,
     site_url: $('vf-site')?.value || null,
+    assurance_num: $('vf-ass-num')?.value || null,
+    assurance_expiry: $('vf-ass-exp')?.value || null,
+    assurance_url: $('vf-ass-url')?.value || null,
     date_cession: statut === 'cede' ? ($('vf-cede-date')?.value || null) : null,
     prix_cession: statut === 'cede' ? (parseFloat($('vf-cede-prix')?.value) || null) : null,
   };
