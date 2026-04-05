@@ -2916,6 +2916,99 @@ function renderAnalyticsHTML(months, monthlyData, voitures, voiColor, stats) {
   `);
 }
 
+
+// ── ICAL PARSER ──────────────────────────────────────────
+function parseIcal(text) {
+  const events = [];
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  let ev = null;
+  lines.forEach(line => {
+    if (line === 'BEGIN:VEVENT') { ev = {}; return; }
+    if (line === 'END:VEVENT') { if (ev) events.push(ev); ev = null; return; }
+    if (!ev) return;
+    const [key, ...rest] = line.split(':');
+    const val = rest.join(':').trim();
+    const k = key.split(';')[0];
+    if (k === 'DTSTART') ev.start = val.substring(0, 8);
+    if (k === 'DTEND')   ev.end   = val.substring(0, 8);
+    if (k === 'SUMMARY') ev.summary = val;
+    if (k === 'UID')     ev.uid = val;
+    if (k === 'STATUS')  ev.status = val;
+  });
+  return events;
+}
+
+function icalDateToISO(d) {
+  if (!d || d.length < 8) return null;
+  return d.substring(0,4) + '-' + d.substring(4,6) + '-' + d.substring(6,8);
+}
+
+async function syncIcal(bienId) {
+  const bien = AB_BIENS.find(b => b.id === bienId);
+  if (!bien || !bien.ical) return alert('Pas de lien iCal pour ce bien.');
+
+  const btn = document.getElementById('ical-btn-' + bienId);
+  if (btn) { btn.textContent = '⏳ Sync...'; btn.disabled = true; }
+
+  try {
+    // Fetch via proxy CORS — le navigateur peut accéder à l'iCal Airbnb
+    const resp = await fetch(bien.ical);
+    if (!resp.ok) throw new Error('Erreur ' + resp.status + ' — le lien iCal est peut-être expiré.');
+    const text = await resp.text();
+    const events = parseIcal(text);
+
+    // Filtrer les réservations réelles (pas les blocages Airbnb)
+    const reservations = events.filter(e =>
+      e.start && e.end &&
+      e.summary &&
+      !e.summary.includes('Not available') &&
+      !e.summary.includes('Airbnb (Not available)') &&
+      e.status !== 'CANCELLED'
+    );
+
+    if (!reservations.length) {
+      if (btn) { btn.textContent = '↺ Sync'; btn.disabled = false; }
+      return alert('Aucune réservation trouvée dans le calendrier.');
+    }
+
+    // Upsert dans bookings_touquet
+    let added = 0, skipped = 0;
+    for (const ev of reservations) {
+      const arrive = icalDateToISO(ev.start);
+      const depart = icalDateToISO(ev.end);
+      if (!arrive || !depart) continue;
+
+      // Vérifier si existe déjà (par uid ou par dates+bien)
+      const { data: existing } = await db.from('bookings_touquet')
+        .select('id')
+        .eq('bien', bienId)
+        .eq('arrive', arrive)
+        .limit(1);
+
+      if (existing && existing.length > 0) { skipped++; continue; }
+
+      await db.from('bookings_touquet').insert({
+        id: 'ical_' + bienId + '_' + (ev.uid || Date.now()).replace(/[^a-zA-Z0-9]/g,'').substring(0,20),
+        bien: bienId,
+        source: 'AirBNB',
+        client: ev.summary || 'Réservation AirBnB',
+        arrive,
+        depart,
+        annule: false,
+        notes: 'Import iCal automatique',
+      });
+      added++;
+    }
+
+    await loadAbData(); // Recharger les données
+    if (btn) { btn.textContent = '↺ Sync'; btn.disabled = false; }
+    alert(`✅ ${added} réservation${added>1?'s':''} importée${added>1?'s':''} · ${skipped} déjà présente${skipped>1?'s':''}`);
+    renderAResaHTML();
+  } catch(e) {
+    if (btn) { btn.textContent = '↺ Sync'; btn.disabled = false; }
+    alert('Erreur : ' + e.message + '\n\nSi le lien est expiré, va dans Airbnb → Calendrier → Exporter et copie le nouveau lien.');
+  }
+}
 // ═══════════════════════════════════════════════════════
 // AIRBNB
 // ═══════════════════════════════════════════════════════
@@ -2923,13 +3016,87 @@ let abData = [], abPage = 1, abFilter = 'upcoming', abSearch = '', abBienFilter 
 let abPlanYear = new Date().getFullYear(), abPlanMonth = new Date().getMonth();
 
 const AB_BIENS = [
-  { id: 'touquet', nom: 'Villa Le Touquet', nomLong: 'Luxury Forest Retreat Designer Villa in Le Touquet', loc: 'Le Touquet-Paris-Plage', color: '#7c3aed' },
-  { id: 'paris', nom: 'Appartement Paris', nomLong: 'Appartement de Luxe & Végétal au Trocadéro', loc: 'Paris 16e', color: '#2563eb' },
+  { id: 'touquet', nom: 'Villa Le Touquet', nomLong: 'Luxury Forest Retreat Designer Villa in Le Touquet', loc: 'Le Touquet-Paris-Plage', color: '#7c3aed',
+    ical: 'https://www.airbnb.fr/calendar/ical/959107333565268541.ics?t=3a19e5b617e44f81a93cabc2684ee83d' },
+  { id: 'paris', nom: 'Appartement Paris', nomLong: 'Appartement de Luxe & Végétal au Trocadéro', loc: 'Paris 16e', color: '#2563eb',
+    ical: 'https://www.airbnb.fr/calendar/ical/1193237416574591001.ics?t=6c6bdcbef6af47d889224d112c1d7684' },
 ];
 
 async function loadAbData() {
   const { data } = await db.from('bookings_touquet').select('*').order('arrive', { ascending: false });
   abData = data || [];
+}
+
+
+// ── IMPORT ICAL AIRBNB ────────────────────────────────────────────
+// Parse un fichier iCal et retourne les réservations
+function parseICal(text, bienId) {
+  const events = [];
+  const blocks = text.split('BEGIN:VEVENT');
+  blocks.slice(1).forEach(block => {
+    const get = key => {
+      const m = block.match(new RegExp(key + '[^:]*:([^\r\n]+)'));
+      return m ? m[1].trim() : null;
+    };
+    const dtstart = get('DTSTART');
+    const dtend   = get('DTEND');
+    const summary = get('SUMMARY') || '';
+    const uid     = get('UID') || '';
+    // Ignorer les blocages de disponibilité (Not available, Blocked, etc.)
+    if (summary.toLowerCase().includes('not available') ||
+        summary.toLowerCase().includes('blocked') ||
+        summary.toLowerCase().includes('airbnb')) return;
+    const fmt = s => s ? s.substring(0,4)+'-'+s.substring(4,6)+'-'+s.substring(6,8) : null;
+    const arrive = fmt(dtstart);
+    const depart = fmt(dtend);
+    if (!arrive || !depart) return;
+    events.push({
+      id: 'ical_' + bienId + '_' + uid.substring(0,20).replace(/[^a-z0-9]/gi,''),
+      bien: bienId,
+      client: summary || 'Réservation AirBnB',
+      source: 'AirBNB',
+      arrive,
+      depart,
+      airbnb: 0, direct: 0,
+      annule: false,
+      notes: 'Importé depuis iCal',
+    });
+  });
+  return events;
+}
+
+async function importICal(bienId) {
+  const bien = AB_BIENS.find(b => b.id === bienId);
+  if (!bien || !bien.ical) { alert('URL iCal non configurée pour ce bien'); return; }
+
+  const btn = document.getElementById('ical-btn-' + bienId);
+  if (btn) { btn.textContent = '⏳ Import...'; btn.disabled = true; }
+
+  try {
+    // Fetch depuis le navigateur (contourne le blocage serveur)
+    const resp = await fetch(bien.ical);
+    if (!resp.ok) throw new Error('Erreur ' + resp.status + ' — le lien iCal est peut-être expiré');
+    const text = await resp.text();
+    const events = parseICal(text, bienId);
+
+    if (!events.length) {
+      alert('Aucune réservation trouvée dans le calendrier iCal.\nSi le calendrier contient des réservations, le lien est peut-être expiré.');
+      return;
+    }
+
+    // Insérer en base (upsert sur l'id pour éviter les doublons)
+    const { error } = await db.from('bookings_touquet').upsert(events, { onConflict: 'id' });
+    if (error) throw new Error(error.message);
+
+    // Recharger les données
+    await loadAbData();
+    renderAResaHTML();
+    alert(`✓ ${events.length} réservation${events.length>1?'s':''} importée${events.length>1?'s':''} depuis AirBnB ${bien.nom}`);
+  } catch(e) {
+    alert('Erreur import iCal : ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = '↻ Sync iCal'; btn.disabled = false; }
+  }
 }
 
 function renderABiens() {
@@ -2940,11 +3107,13 @@ function renderABiens() {
         <div style="flex:1">
           <div style="display:flex;gap:5px;margin-bottom:4px"><span class="badge b-airbnb">AirBnB</span><span class="badge b-direct">Direct</span></div>
           <div style="font-weight:600;font-size:14px">${b.nom}</div>
-          <div style="font-size:12px;color:var(--text2)">${b.loc} · ${b.nomLong}</div>
+          <div style="font-size:12px;color:var(--fg2)">${b.loc} · ${b.nomLong}</div>
+        ${b.ical ? `<div style="font-size:11px;color:var(--fg3);margin-top:2px;font-family:monospace">iCal configuré ✓</div>` : `<div style="font-size:11px;color:var(--amber)">⚠ Pas de lien iCal</div>`}
         </div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="abBienFilter='${b.id}';renderAReservations()">Réservations ↗</button>
           <button class="btn btn-sm" onclick="abBienFilter='${b.id}';renderAPlanning()">Planning ↗</button>
+          ${b.ical ? `<button class="btn btn-sm" id="ical-btn-${b.id}" onclick="syncIcal('${b.id}')" title="Synchroniser depuis Airbnb">↺ Sync iCal</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -2974,7 +3143,15 @@ function renderAResaHTML() {
   set('app-page', `
     <div class="pg-header">
       <div><div class="pg-title">AirBnB — Réservations</div><div class="pg-sub">Paris + Le Touquet</div></div>
-      <button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="syncIcal('touquet')" id="ical-btn-touquet" title="Sync Le Touquet depuis Airbnb">↺ Le Touquet</button>
+        <button class="btn btn-sm" onclick="syncIcal('paris')" id="ical-btn-paris" title="Sync Paris depuis Airbnb">↺ Paris</button>
+        <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="importICal('touquet')" title="Sync Le Touquet">↻ Touquet</button>
+        <button class="btn btn-sm" onclick="importICal('paris')" title="Sync Paris">↻ Paris</button>
+        <button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button>
+      </div>
+      </div>
     </div>
     <div id="ab-stats"></div>
     <div class="filters">
