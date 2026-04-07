@@ -1680,13 +1680,21 @@ function vehicleFormHTML(v) {
     <div class="fg"><label class="fl">Fiche produit FerdinandParis.com</label><input class="fi" id="vf-site" placeholder="https://ferdinandparis.com/..." value="${esc(v.site_url||'')}"></div>
   </div>
   <div style="border-top:1px solid var(--border);margin:10px 0 12px;padding-top:12px">
-    <div style="font-size:12px;font-weight:600;color:var(--fg2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Assurance</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600;color:var(--fg2);text-transform:uppercase;letter-spacing:.04em">Assurance</div>
+      <button type="button" class="btn btn-sm" id="ocr-btn" onclick="ocrAssurance('${v.id||''}')" style="font-size:11px;gap:4px">🔍 Analyser PDF</button>
+    </div>
+    <div class="fg" style="margin-bottom:8px">
+      <label class="fl">Uploader le PDF (ou coller l'URL ci-dessous)</label>
+      <input type="file" id="ocr-file-input" accept=".pdf,application/pdf"
+        style="width:100%;padding:5px;border:1px dashed var(--border2);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--bg1)">
+    </div>
     <div class="f2">
       <div class="fg"><label class="fl">N° de contrat</label><input class="fi" id="vf-ass-num" placeholder="ex: AT883898" value="${esc(v.assurance_num||'')}"></div>
       <div class="fg"><label class="fl">Date d'échéance</label><input class="fi" type="date" id="vf-ass-exp" value="${v.assurance_expiry||''}"></div>
     </div>
     <div class="fg"><label class="fl">Lien attestation (Google Drive / PDF)</label><input class="fi" id="vf-ass-url" placeholder="https://drive.google.com/..." value="${esc(v.assurance_url||'')}"></div>
-  </div>`;
+  </div>\`; `;
 }
 
 function getVehicleForm() {
@@ -2921,6 +2929,155 @@ function renderAnalyticsHTML(months, monthlyData, voitures, voiColor, stats) {
 }
 
 
+
+// ═══════════════════════════════════════════════════════
+// GOOGLE TASKS — SYNC BIDIRECTIONNEL
+// ═══════════════════════════════════════════════════════
+const GTASKS_LISTS = [
+  { id: 'ferdinand', label: 'Ferdinand',      table: 'fleet_tasks',  filter: null },
+  { id: 'elisa',     label: 'Elisa',          table: 'elisa_tasks',  filter: null },
+  { id: 'paris',     label: 'AirBnB Paris',   table: 'fleet_tasks',  filter: 'paris' },
+  { id: 'touquet',   label: 'Le Touquet',     table: 'fleet_tasks',  filter: 'touquet' },
+  { id: 'locatif',   label: 'Locatif',        table: 'fleet_tasks',  filter: 'locatif' },
+];
+
+let gTasksListIds = {};
+try { gTasksListIds = JSON.parse(localStorage.getItem('penelope_gtasks_lists') || '{}'); } catch(e){}
+
+function saveGTasksListIds() {
+  try { localStorage.setItem('penelope_gtasks_lists', JSON.stringify(gTasksListIds)); } catch(e){}
+}
+
+async function gtListTaskLists() {
+  await ensureGcal();
+  const r = await gapi.client.tasks.tasklists.list({ maxResults: 100 });
+  return r.result.items || [];
+}
+async function gtCreateTaskList(title) {
+  await ensureGcal();
+  const r = await gapi.client.tasks.tasklists.insert({ resource: { title } });
+  return r.result;
+}
+async function gtListTasks(tasklistId) {
+  await ensureGcal();
+  const r = await gapi.client.tasks.tasks.list({ tasklist: tasklistId, showCompleted: true, maxResults: 100 });
+  return r.result.items || [];
+}
+async function gtInsertTask(tasklistId, task) {
+  await ensureGcal();
+  const r = await gapi.client.tasks.tasks.insert({ tasklist: tasklistId, resource: task });
+  return r.result;
+}
+async function gtUpdateTask(tasklistId, taskId, task) {
+  await ensureGcal();
+  const r = await gapi.client.tasks.tasks.update({ tasklist: tasklistId, task: taskId, resource: task });
+  return r.result;
+}
+
+async function gtEnsureLists() {
+  await ensureGcal();
+  const existing = await gtListTaskLists();
+  const byTitle = {};
+  existing.forEach(function(l){ byTitle[l.title] = l.id; });
+  for (const list of GTASKS_LISTS) {
+    if (byTitle[list.label]) {
+      gTasksListIds[list.id] = byTitle[list.label];
+    } else {
+      const created = await gtCreateTaskList(list.label);
+      gTasksListIds[list.id] = created.id;
+      gtLog('Liste créée : ' + list.label, 'ok');
+    }
+  }
+  saveGTasksListIds();
+  return gTasksListIds;
+}
+
+async function gtSyncList(listDef) {
+  const glistId = gTasksListIds[listDef.id];
+  if (!glistId) { gtLog('Liste ' + listDef.label + ' non trouvée', 'err'); return; }
+  gtLog('Sync ' + listDef.label + '...');
+  let pTasks = [];
+  if (listDef.table === 'fleet_tasks') {
+    let q = db.from('fleet_tasks').select('*').eq('done', false);
+    if (listDef.filter) q = q.eq('voiture', listDef.filter);
+    else q = q.not('voiture', 'in', '("paris","touquet","locatif")');
+    const { data } = await q.limit(100);
+    pTasks = data || [];
+  } else {
+    const { data } = await db.from('elisa_tasks').select('*').eq('done', false).limit(100);
+    pTasks = data || [];
+  }
+  const gTasks = await gtListTasks(glistId);
+  const gById = {};
+  gTasks.forEach(function(gt){
+    const m = (gt.notes||'').match(/penelope_id:([a-zA-Z0-9_-]+)/);
+    if (m) gById[m[1]] = gt;
+  });
+  let pushed = 0, pulled = 0;
+  for (const t of pTasks) {
+    const gt = gById[t.id];
+    const due = (t.echeance || t.date) ? new Date((t.echeance||t.date) + 'T00:00:00').toISOString() : undefined;
+    const task = { title: t.titre || t.description || '(sans titre)', status: 'needsAction', notes: (t.notes||'') + ' penelope_id:' + t.id };
+    if (due) task.due = due;
+    if (!gt) { await gtInsertTask(glistId, task); pushed++; }
+    else if (gt.status === 'completed' && !t.done) {
+      await db.from(listDef.table).update({ done: true }).eq('id', t.id);
+    }
+  }
+  const pIds = new Set(pTasks.map(function(t){ return t.id; }));
+  for (const gt of gTasks) {
+    if (gt.status === 'completed') continue;
+    const m = (gt.notes||'').match(/penelope_id:([a-zA-Z0-9_-]+)/);
+    if (m && pIds.has(m[1])) continue;
+    if (m) continue;
+    const newTask = { id: 'gt_' + Date.now(), titre: gt.title, description: gt.title, done: false, notes: gt.notes||'', priorite: 'normale' };
+    if (listDef.table === 'fleet_tasks') await db.from('fleet_tasks').insert(newTask);
+    else await db.from('elisa_tasks').insert(newTask);
+    pulled++;
+  }
+  gtLog(listDef.label + ' : ' + pushed + ' envoyé(s), ' + pulled + ' reçu(s)', 'ok');
+}
+
+async function gtSyncAll() {
+  if (!Object.keys(gTasksListIds).length) {
+    gtLog('Initialisation des listes...');
+    await gtEnsureLists();
+  }
+  for (const list of GTASKS_LISTS) {
+    try { await gtSyncList(list); } catch(e) { gtLog('Erreur ' + list.label + ' : ' + e.message, 'err'); }
+  }
+  gtLog('Synchronisation terminée', 'ok');
+}
+
+function renderGtasksStatus() {
+  const el = document.getElementById('gtasks-lists-status');
+  if (!el) return;
+  el.innerHTML = GTASKS_LISTS.map(function(l) {
+    const ok = gTasksListIds[l.id];
+    return '<div style="padding:6px 10px;background:' + (ok?'var(--green-bg)':'var(--bg1)') + ';border:1px solid var(--border);border-radius:var(--r);font-size:12px">'
+      + '<div style="font-weight:600">' + l.label + '</div>'
+      + '<div style="font-size:11px;color:' + (ok?'var(--green)':'var(--fg3)') + '">' + (ok?'Connectée':'Non créée') + '</div></div>';
+  }).join('');
+}
+
+async function gtInitAndSync() {
+  try {
+    await ensureGcal();
+    await gtEnsureLists();
+    renderGtasksStatus();
+    await gtSyncAll();
+  } catch(e) { gtLog('Erreur : ' + e.message, 'err'); }
+}
+
+function gtLog(msg, type) {
+  const el = document.getElementById('gcal-log-content');
+  if (!el) { console.log('[GTasks]', msg); return; }
+  const color = type === 'ok' ? 'var(--green)' : type === 'err' ? 'var(--red)' : 'var(--fg2)';
+  const t = new Date();
+  const ts = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+  el.innerHTML += '<div style="color:' + color + ';margin-bottom:2px">' + ts + ' - ' + msg + '</div>';
+}
+
 // ── ICAL PARSER ──────────────────────────────────────────
 function parseIcal(text) {
   const events = [];
@@ -3018,8 +3175,9 @@ async function syncIcal(bienId) {
 // GOOGLE CALENDAR INTEGRATION
 // ═══════════════════════════════════════════════════════
 const GCAL_CLIENT_ID = '1039427725935-1qse1ila4l7it3he18pnme408htuu4ne.apps.googleusercontent.com';
-const GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar';
+const GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks';
 const GCAL_DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+const GTASKS_DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest';
 
 let gcalAccessToken = null;
 let gcalInited = false;
@@ -3031,7 +3189,7 @@ function gcalInit() {
     gapi.load('client', async () => {
       try {
         await gapi.client.init({
-          discoveryDocs: [GCAL_DISCOVERY],
+          discoveryDocs: [GCAL_DISCOVERY, GTASKS_DISCOVERY],
         });
         gcalInited = true;
         resolve();
@@ -3161,322 +3319,67 @@ async function gcalConnect() {
 }
 
 function renderGcalConnected(cals) {
-  const calOpts = cals.map(c => `<option value="${c.id}" ${c.primary?'selected':''}>${c.summary}${c.primary?' (principal)':''}</option>`).join('');
-  set('gcal-status', '<div class="alert a-green">✓ Connecté à Google Calendar</div>');
-  set('gcal-content', `
-    <div class="card" style="margin-bottom:10px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px">Agenda cible</div>
-      <div class="fg"><label class="fl">Choisir l'agenda Google</label>
-        <select class="fi" id="gcal-sel" onchange="gcalSelectedCal=this.value">${calOpts}</select>
-      </div>
-    </div>
+  gcalCalendars = cals;
+  const calOpts = cals.map(c => '<option value="' + c.id + '"' + (c.primary?' selected':'') + '>' + c.summary + (c.primary?' (principal)':'') + '</option>').join('');
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <!-- Sync Ferdinand → Google -->
-      <div class="card">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px">🚗 Ferdinand → Google</div>
-        <div style="font-size:12px;color:var(--fg2);margin-bottom:12px">Exporte les bookings à venir dans ton agenda Google.</div>
-        <div class="fg"><label class="fl">Période</label>
-          <select class="fi" id="gcal-period">
-            <option value="30">30 prochains jours</option>
-            <option value="90" selected>3 prochains mois</option>
-            <option value="180">6 prochains mois</option>
-            <option value="365">1 an</option>
-          </select>
-        </div>
-        <button class="btn btn-primary" style="width:100%" onclick="gcalSyncFerdinand()">Exporter les bookings</button>
-      </div>
+  // Build HTML without nested template literals
+  const html = [
+    '<div class="card" style="margin-bottom:10px">',
+    '<div style="font-size:13px;font-weight:600;margin-bottom:12px">Agenda cible</div>',
+    "<div class='fg'><label class='fl'>Choisir l'agenda Google</label>",
+    '<select class="fi" id="gcal-sel" onchange="gcalSelectedCal=this.value">' + calOpts + '</select></div></div>',
 
-      <!-- Sync Elisa → Google -->
-      <div class="card">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px">👧 Elisa → Google</div>
-        <div style="font-size:12px;color:var(--fg2);margin-bottom:12px">Exporte le planning garde alternée dans Google.</div>
-        <div class="fg"><label class="fl">Durée à exporter</label>
-          <select class="fi" id="gcal-elisa-period">
-            <option value="30">1 mois</option>
-            <option value="90" selected>3 mois</option>
-            <option value="180">6 mois</option>
-          </select>
-        </div>
-        <button class="btn btn-primary" style="width:100%" onclick="gcalSyncElisa()">Exporter Elisa</button>
-      </div>
-    </div>
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">',
+    // Ferdinand bookings
+    '<div class="card">',
+    '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Bookings Ferdinand</div>',
+    '<div style="font-size:12px;color:var(--fg2);margin-bottom:12px">Exporte les bookings dans ton agenda Google.</div>',
+    '<div class="fg"><label class="fl">Période</label>',
+    '<select class="fi" id="gcal-period">',
+    '<option value="30">30 prochains jours</option>',
+    '<option value="90" selected>3 prochains mois</option>',
+    '<option value="180">6 prochains mois</option>',
+    '<option value="365">1 an</option>',
+    '</select></div>',
+    '<button class="btn btn-primary" style="width:100%" onclick="gcalSyncFerdinand()">Exporter les bookings</button>',
+    '</div>',
+    // Elisa
+    '<div class="card">',
+    '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Planning Elisa</div>',
+    '<div style="font-size:12px;color:var(--fg2);margin-bottom:12px">Exporte les semaines garde dans Google.</div>',
+    '<div class="fg"><label class="fl">Durée</label>',
+    '<select class="fi" id="gcal-elisa-period">',
+    '<option value="30">1 mois</option>',
+    '<option value="90" selected>3 mois</option>',
+    '<option value="180">6 mois</option>',
+    '</select></div>',
+    '<button class="btn btn-primary" style="width:100%" onclick="gcalSyncElisa()">Exporter Elisa</button>',
+    '</div>',
+    '</div>',
 
-    <div id="gcal-log" class="card" style="font-size:12px;color:var(--fg2);min-height:60px">
-      <div style="font-weight:600;margin-bottom:6px">Journal de synchronisation</div>
-      <div id="gcal-log-content" style="color:var(--fg3)">En attente...</div>
-    </div>
-  `);
-}
+    // Google Tasks section
+    '<div class="card" style="margin-bottom:10px">',
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px">Google Tasks</div>',
+    '<div id="gtasks-lists-status" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px"></div>',
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">',
+    '<button class="btn btn-primary" onclick="gtInitAndSync()">Synchroniser toutes les listes</button>',
+    '<button class="btn" onclick="gtEnsureLists().then(renderGtasksStatus)">Créer les listes</button>',
+    '</div></div>',
 
-function gcalLog(msg, type) {
-  const el = $('gcal-log-content');
-  if (!el) return;
-  const color = type === 'ok' ? 'var(--green)' : type === 'err' ? 'var(--red)' : 'var(--fg2)';
-  el.innerHTML += `<div style="color:${color};margin-bottom:2px">${new Date().toLocaleTimeString('fr-FR')} — ${msg}</div>`;
-}
+    // Log
+    '<div class="card" style="font-size:12px;color:var(--fg2);min-height:60px">',
+    '<div style="font-weight:600;margin-bottom:6px">Journal</div>',
+    '<div id="gcal-log-content" style="color:var(--fg3)">En attente...</div>',
+    '</div>',
+  ].join('');
 
-async function gcalSyncFerdinand() {
-  if (gcalSyncRunning) return;
-  gcalSyncRunning = true;
-  const calId = gcalSelectedCal;
-  const days = parseInt($('gcal-period').value) || 90;
-  const from = todayStr();
-  const to = new Date(Date.now() + days * 864e5).toISOString().split('T')[0];
-
-  gcalLog(`Synchronisation des bookings (${from} → ${to})...`);
-
-  try {
-    // Récupérer les bookings Ferdinand dans la période
-    const { data: bookings } = await db.from('ferdinand_bookings')
-      .select('*')
-      .gte('debut', from)
-      .lte('debut', to)
-      .not('type_booking', 'eq', 'abonnement')
-      .order('debut');
-
-    if (!bookings || !bookings.length) {
-      gcalLog('Aucun booking trouvé dans cette période.', 'ok');
-      gcalSyncRunning = false;
-      return;
-    }
-
-    // Récupérer les events Penelope existants dans GCal pour éviter doublons
-    const existingEvents = await gcalListEvents(calId,
-      new Date(from).toISOString(),
-      new Date(to + 'T23:59:59').toISOString()
-    );
-    const existingIds = new Set(
-      existingEvents
-        .map(e => e.extendedProperties?.private?.penelope_booking_id)
-        .filter(Boolean)
-    );
-
-    let added = 0, skipped = 0;
-    for (const bk of bookings) {
-      if (existingIds.has(bk.id)) { skipped++; continue; }
-      try {
-        await gcalCreateEvent(calId, bkToGcalEvent(bk));
-        added++;
-        gcalLog(`✓ ${bk.voiture} — ${bk.client} (${bk.debut})`,'ok');
-      } catch(e) {
-        gcalLog(`✗ ${bk.client} : ${e.message}`,'err');
-      }
-    }
-    gcalLog(`Terminé : ${added} ajouté${added>1?'s':''}, ${skipped} déjà présent${skipped>1?'s':''}`, 'ok');
-  } catch(e) {
-    gcalLog('Erreur : ' + e.message, 'err');
-  }
-  gcalSyncRunning = false;
-}
-
-async function gcalSyncElisa() {
-  if (gcalSyncRunning) return;
-  gcalSyncRunning = true;
-  const calId = gcalSelectedCal;
-  const days = parseInt($('gcal-elisa-period').value) || 90;
-  gcalLog(`Export Elisa (${days} jours)...`);
-
-  try {
-    const REF = new Date(2025,3,2);
-    let added = 0;
-    for (let i = 0; i < days; i += 7) {
-      const date = new Date(Date.now() + i * 864e5);
-      const d = new Date(date); d.setHours(12);
-      const diff = Math.floor((d - REF) / (7 * 864e5));
-      const isPapa = ((diff % 2) + 2) % 2 === 0;
-      const dateStr = date.toISOString().split('T')[0];
-      const endStr = new Date(date.getTime() + 7 * 864e5).toISOString().split('T')[0];
-      const event = {
-        summary: isPapa ? '👧 Elisa — Semaine Papa' : '👧 Elisa — Semaine Maman',
-        start: { date: dateStr },
-        end: { date: endStr },
-        colorId: isPapa ? '2' : '6',
-        extendedProperties: { private: { penelope_elisa: 'true' } },
-      };
-      await gcalCreateEvent(calId, event);
-      added++;
-    }
-    gcalLog(`${added} semaines Elisa exportées`, 'ok');
-  } catch(e) {
-    gcalLog('Erreur : ' + e.message, 'err');
-  }
-  gcalSyncRunning = false;
+  set('gcal-status', '<div class="alert a-green">Connecté à Google Calendar</div>');
+  set('gcal-content', html);
+  renderGtasksStatus();
 }
 
 
-async function gcalExportOne(bkId) {
-  const bk = bkData.find(x => x.id === bkId);
-  if (!bk) return;
-  try {
-    await ensureGcal();
-    const calId = gcalSelectedCal;
-    await gcalCreateEvent(calId, bkToGcalEvent(bk));
-    alert('✅ Booking ajouté à Google Calendar');
-  } catch(e) {
-    // Si pas encore connecté, aller sur la page GCal
-    showPage('f-gcal');
-  }
-}
-// ═══════════════════════════════════════════════════════
-// AIRBNB
-// ═══════════════════════════════════════════════════════
-let abData = [], abPage = 1, abFilter = 'upcoming', abSearch = '', abBienFilter = '';
-let abPlanYear = new Date().getFullYear(), abPlanMonth = new Date().getMonth();
 
-const AB_BIENS = [
-  { id: 'touquet', nom: 'Villa Le Touquet', nomLong: 'Luxury Forest Retreat Designer Villa in Le Touquet', loc: 'Le Touquet-Paris-Plage', color: '#7c3aed',
-    ical: 'https://www.airbnb.fr/calendar/ical/959107333565268541.ics?t=3a19e5b617e44f81a93cabc2684ee83d' },
-  { id: 'paris', nom: 'Appartement Paris', nomLong: 'Appartement de Luxe & Végétal au Trocadéro', loc: 'Paris 16e', color: '#2563eb',
-    ical: 'https://www.airbnb.fr/calendar/ical/1193237416574591001.ics?t=6c6bdcbef6af47d889224d112c1d7684' },
-];
-
-async function loadAbData() {
-  const { data } = await db.from('bookings_touquet').select('*').order('arrive', { ascending: false });
-  abData = data || [];
-}
-
-
-// ── IMPORT ICAL AIRBNB ────────────────────────────────────────────
-// Parse un fichier iCal et retourne les réservations
-function parseICal(text, bienId) {
-  const events = [];
-  const blocks = text.split('BEGIN:VEVENT');
-  blocks.slice(1).forEach(block => {
-    const get = key => {
-      const m = block.match(new RegExp(key + '[^:]*:([^\r\n]+)'));
-      return m ? m[1].trim() : null;
-    };
-    const dtstart = get('DTSTART');
-    const dtend   = get('DTEND');
-    const summary = get('SUMMARY') || '';
-    const uid     = get('UID') || '';
-    // Ignorer les blocages de disponibilité (Not available, Blocked, etc.)
-    if (summary.toLowerCase().includes('not available') ||
-        summary.toLowerCase().includes('blocked') ||
-        summary.toLowerCase().includes('airbnb')) return;
-    const fmt = s => s ? s.substring(0,4)+'-'+s.substring(4,6)+'-'+s.substring(6,8) : null;
-    const arrive = fmt(dtstart);
-    const depart = fmt(dtend);
-    if (!arrive || !depart) return;
-    events.push({
-      id: 'ical_' + bienId + '_' + uid.substring(0,20).replace(/[^a-z0-9]/gi,''),
-      bien: bienId,
-      client: summary || 'Réservation AirBnB',
-      source: 'AirBNB',
-      arrive,
-      depart,
-      airbnb: 0, direct: 0,
-      annule: false,
-      notes: 'Importé depuis iCal',
-    });
-  });
-  return events;
-}
-
-async function importICal(bienId) {
-  const bien = AB_BIENS.find(b => b.id === bienId);
-  if (!bien || !bien.ical) { alert('URL iCal non configurée pour ce bien'); return; }
-
-  const btn = document.getElementById('ical-btn-' + bienId);
-  if (btn) { btn.textContent = '⏳ Import...'; btn.disabled = true; }
-
-  try {
-    // Fetch depuis le navigateur (contourne le blocage serveur)
-    const resp = await fetch(bien.ical);
-    if (!resp.ok) throw new Error('Erreur ' + resp.status + ' — le lien iCal est peut-être expiré');
-    const text = await resp.text();
-    const events = parseICal(text, bienId);
-
-    if (!events.length) {
-      alert('Aucune réservation trouvée dans le calendrier iCal.\nSi le calendrier contient des réservations, le lien est peut-être expiré.');
-      return;
-    }
-
-    // Insérer en base (upsert sur l'id pour éviter les doublons)
-    const { error } = await db.from('bookings_touquet').upsert(events, { onConflict: 'id' });
-    if (error) throw new Error(error.message);
-
-    // Recharger les données
-    await loadAbData();
-    renderAResaHTML();
-    alert(`✓ ${events.length} réservation${events.length>1?'s':''} importée${events.length>1?'s':''} depuis AirBnB ${bien.nom}`);
-  } catch(e) {
-    alert('Erreur import iCal : ' + e.message);
-  } finally {
-    if (btn) { btn.textContent = '↻ Sync iCal'; btn.disabled = false; }
-  }
-}
-
-function renderABiens() {
-  let html = `<div class="pg-header"><div><div class="pg-title">AirBnB — Biens</div><div class="pg-sub">2 biens · location court terme</div></div><button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button></div>`;
-  AB_BIENS.forEach(b => {
-    html += `<div class="exp-card">
-      <div class="exp-head" style="cursor:default">
-        <div style="flex:1">
-          <div style="display:flex;gap:5px;margin-bottom:4px"><span class="badge b-airbnb">AirBnB</span><span class="badge b-direct">Direct</span></div>
-          <div style="font-weight:600;font-size:14px">${b.nom}</div>
-          <div style="font-size:12px;color:var(--fg2)">${b.loc} · ${b.nomLong}</div>
-        ${b.ical ? `<div style="font-size:11px;color:var(--fg3);margin-top:2px;font-family:monospace">iCal configuré ✓</div>` : `<div style="font-size:11px;color:var(--amber)">⚠ Pas de lien iCal</div>`}
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="abBienFilter='${b.id}';renderAReservations()">Réservations ↗</button>
-          <button class="btn btn-sm" onclick="abBienFilter='${b.id}';renderAPlanning()">Planning ↗</button>
-          ${b.ical ? `<button class="btn btn-sm" id="ical-btn-${b.id}" onclick="syncIcal('${b.id}')" title="Synchroniser depuis Airbnb">↺ Sync iCal</button>` : ''}
-        </div>
-      </div>
-    </div>`;
-  });
-  set('app-page', html);
-}
-
-async function renderAReservations() {
-  set('app-page', LOADING);
-  await loadAbData();
-  renderAResaHTML();
-}
-
-function getAbList() {
-  let list = [...abData];
-  const ts = todayStr();
-  if (abFilter === 'upcoming') list = list.filter(b => b.arrive && b.arrive >= ts && !b.annule);
-  else if (abFilter !== 'tous') list = list.filter(b => b.arrive && b.arrive.startsWith(abFilter));
-  if (abSearch) { const q = abSearch.toLowerCase(); list = list.filter(b => (b.client||'').toLowerCase().includes(q)); }
-  if (abBienFilter) list = list.filter(b => b.bien === abBienFilter);
-  return list.sort((a, b) => b.arrive.localeCompare(a.arrive));
-}
-const getAbRev = b => (b.airbnb||0) + (b.direct||0) + (b.montant||0);
-
-function renderAResaHTML() {
-  const all = abData.filter(b => !b.annule);
-  set('app-page', `
-    <div class="pg-header">
-      <div><div class="pg-title">AirBnB — Réservations</div><div class="pg-sub">Paris + Le Touquet</div></div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" onclick="syncIcal('touquet')" id="ical-btn-touquet" title="Sync Le Touquet depuis Airbnb">↺ Le Touquet</button>
-        <button class="btn btn-sm" onclick="syncIcal('paris')" id="ical-btn-paris" title="Sync Paris depuis Airbnb">↺ Paris</button>
-        <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" onclick="importICal('touquet')" title="Sync Le Touquet">↻ Touquet</button>
-        <button class="btn btn-sm" onclick="importICal('paris')" title="Sync Paris">↻ Paris</button>
-        <button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button>
-      </div>
-      </div>
-    </div>
-    <div id="ab-stats"></div>
-    <div class="filters">
-      ${['upcoming','tous','2026','2025','2024','2023'].map(f => `<button class="fpill${f===abFilter?' active':''}" onclick="setAbFilter('${f}')">${f==='upcoming'?'À venir':f==='tous'?'Tous':f}</button>`).join('')}
-      <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-box" placeholder="Client..." oninput="abSearch=this.value;abPage=1;refreshAbList()"></div>
-      <select class="fi" style="width:auto;padding:6px 10px" onchange="abBienFilter=this.value;abPage=1;refreshAbList()">
-        <option value="">Tous les biens</option>
-        <option value="touquet" ${abBienFilter==='touquet'?'selected':''}>Le Touquet</option>
-        <option value="paris" ${abBienFilter==='paris'?'selected':''}>Paris</option>
-      </select>
-    </div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Cliquer pour modifier</div>
-    <div id="ab-table"></div><div id="ab-pag"></div>
-  `);
-  refreshAbList();
-}
 
 function setAbFilter(f) { abFilter = f; abPage = 1; refreshAbList(); }
 function refreshAbList() {
@@ -3508,6 +3411,252 @@ function refreshAbList() {
   set('ab-pag', mkPag(list.length, BK_PER, abPage, 'setAbPage'));
 }
 function setAbPage(p) { abPage = p; refreshAbList(); }
+
+
+// ═══════════════════════════════════════════════════════
+// OCR ASSURANCE — Claude API
+// ═══════════════════════════════════════════════════════
+
+async function ocrAnalyzeInsurance(pdfUrl) {
+  // Utilise Claude API pour extraire les infos de l'attestation
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 500,
+        messages: [{
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: { type: "url", url: pdfUrl, media_type: "application/pdf" }
+            },
+            {
+              type: "text",
+              text: "Analyse cette attestation d'assurance auto. Réponds UNIQUEMENT en JSON valide, sans texte avant ou après:\n{\n  \"contrat\": \"numéro de contrat\",\n  \"expiry\": \"YYYY-MM-DD\",\n  \"immat\": \"immatriculation\",\n  \"assureur\": \"nom assureur\"\n}\nSi une info est absente, mets null."
+            }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) throw new Error("API error " + response.status);
+    const data = await response.json();
+    const text = (data.content || []).map(function(c){ return c.text || ''; }).join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  } catch(e) {
+    console.error("OCR error:", e);
+    return null;
+  }
+}
+
+// Analyser depuis un fichier uploadé localement
+async function ocrAnalyzeFile(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64 = e.target.result.split(',')[1];
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 500,
+            messages: [{
+              role: "user",
+              content: [
+                {
+                  type: "document",
+                  source: { type: "base64", media_type: "application/pdf", data: base64 }
+                },
+                {
+                  type: "text",
+                  text: "Analyse cette attestation d'assurance auto. Réponds UNIQUEMENT en JSON valide:\n{\n  \"contrat\": \"numéro\",\n  \"expiry\": \"YYYY-MM-DD\",\n  \"immat\": \"immatriculation\",\n  \"assureur\": \"nom assureur\"\n}\nSi une info est absente, mets null."
+                }
+              ]
+            }]
+          })
+        });
+        if (!response.ok) throw new Error("API " + response.status);
+        const data = await response.json();
+        const text = (data.content||[]).map(function(c){ return c.text||''; }).join('');
+        resolve(JSON.parse(text.replace(/```json|```/g,'').trim()));
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Bouton "Analyser l'attestation" dans le formulaire voiture
+async function ocrAssurance(vehicleId) {
+  const urlField = document.getElementById('vf-ass-url');
+  const fileInput = document.getElementById('ocr-file-input');
+  
+  let result = null;
+  
+  // Option 1 : fichier uploadé
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    const btn = document.getElementById('ocr-btn');
+    if (btn) { btn.textContent = '⏳ Analyse...'; btn.disabled = true; }
+    try {
+      result = await ocrAnalyzeFile(fileInput.files[0]);
+    } catch(e) {
+      alert('Erreur OCR : ' + e.message);
+      if (btn) { btn.textContent = '🔍 Analyser'; btn.disabled = false; }
+      return;
+    }
+    if (btn) { btn.textContent = '🔍 Analyser'; btn.disabled = false; }
+  }
+  // Option 2 : URL Google Drive
+  else if (urlField && urlField.value) {
+    const btn = document.getElementById('ocr-btn');
+    if (btn) { btn.textContent = '⏳ Analyse...'; btn.disabled = true; }
+    // Convertir lien Google Drive en lien direct
+    let url = urlField.value;
+    const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (driveMatch) {
+      url = 'https://drive.google.com/uc?export=download&id=' + driveMatch[1];
+    }
+    try {
+      result = await ocrAnalyzeInsurance(url);
+    } catch(e) {
+      alert('Erreur OCR : ' + e.message);
+      if (btn) { btn.textContent = '🔍 Analyser'; btn.disabled = false; }
+      return;
+    }
+    if (btn) { btn.textContent = '🔍 Analyser'; btn.disabled = false; }
+  } else {
+    alert('Uploadez un PDF ou renseignez un lien Google Drive pour analyser.');
+    return;
+  }
+  
+  if (!result) {
+    alert('Impossible d\'extraire les informations. Vérifiez que le PDF est une attestation d\'assurance.');
+    return;
+  }
+  
+  // Remplir les champs automatiquement
+  if (result.contrat && document.getElementById('vf-ass-num')) {
+    document.getElementById('vf-ass-num').value = result.contrat;
+  }
+  if (result.expiry && document.getElementById('vf-ass-exp')) {
+    document.getElementById('vf-ass-exp').value = result.expiry;
+  }
+  
+  // Confirmation
+  const parts = [];
+  if (result.assureur) parts.push('Assureur : ' + result.assureur);
+  if (result.contrat)  parts.push('Contrat : ' + result.contrat);
+  if (result.expiry)   parts.push('Échéance : ' + fmtDate(result.expiry));
+  if (result.immat)    parts.push('Immat : ' + result.immat);
+  
+  const msg = 'Informations extraites : ' + parts.join(' | ');
+
+  alert(msg);
+  
+  // Sauvegarder directement en base si on a un vehicleId
+  if (vehicleId && result.expiry) {
+    const v = fleetData.find(function(x){ return x.id === vehicleId; });
+    if (v) {
+      const update = {};
+      if (result.contrat) update.assurance_num = result.contrat;
+      if (result.expiry)  update.assurance_expiry = result.expiry;
+      await db.from('vehicles').update(update).eq('id', vehicleId);
+      Object.assign(v, update);
+      // Vérifier si alerte à créer
+      await checkInsuranceAlerts([v]);
+    }
+  }
+}
+
+// ── AIRBNB DATA + BIENS ─────────────────────────────────
+let abData = [], abPage = 1, abFilter = 'upcoming', abSearch = '', abBienFilter = '';
+let abPlanYear = new Date().getFullYear(), abPlanMonth = new Date().getMonth();
+
+const AB_BIENS = [
+  { id: 'touquet', nom: 'Villa Le Touquet', nomLong: 'Le Touquet-Paris-Plage', loc: 'Le Touquet', color: '#7c3aed',
+    ical: 'https://www.airbnb.fr/calendar/ical/959107333565268541.ics?t=3a19e5b617e44f81a93cabc2684ee83d' },
+  { id: 'paris', nom: 'Appartement Paris', nomLong: 'Trocadéro, Paris 16e', loc: 'Paris 16e', color: '#2563eb',
+    ical: 'https://www.airbnb.fr/calendar/ical/1193237416574591001.ics?t=6c6bdcbef6af47d889224d112c1d7684' },
+];
+
+async function loadAbData() {
+  const { data } = await db.from('bookings_touquet').select('*').order('arrive', { ascending: false });
+  abData = data || [];
+}
+
+function getAbList() {
+  let list = [...abData];
+  const ts = todayStr();
+  if (abFilter === 'upcoming') list = list.filter(function(b){ return b.arrive && b.arrive >= ts && !b.annule; });
+  else if (abFilter !== 'tous') list = list.filter(function(b){ return b.arrive && b.arrive.startsWith(abFilter); });
+  if (abSearch) { const q = abSearch.toLowerCase(); list = list.filter(function(b){ return (b.client||'').toLowerCase().includes(q); }); }
+  if (abBienFilter) list = list.filter(function(b){ return b.bien === abBienFilter; });
+  return list.sort(function(a,b){ return b.arrive.localeCompare(a.arrive); });
+}
+
+const getAbRev = function(b) { return (b.airbnb||0) + (b.direct||0) + (b.montant||0); };
+
+function renderABiens() {
+  let html = '<div class="pg-header"><div><div class="pg-title">AirBnB — Biens</div>'
+    + '<div class="pg-sub">2 biens</div></div>'
+    + '<button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button></div>';
+  AB_BIENS.forEach(function(b) {
+    html += '<div class="exp-card"><div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start">'
+      + '<div><div style="font-weight:600;font-size:14px">' + b.nom + '</div>'
+      + '<div style="font-size:12px;color:var(--fg2);margin-top:2px">' + b.loc + '</div>'
+      + (b.ical ? '<div style="font-size:11px;color:var(--fg3);margin-top:4px">iCal ✓</div>' : '<div style="font-size:11px;color:var(--amber)">⚠ Pas de lien iCal</div>')
+      + '</div><div style="display:flex;gap:6px;flex-wrap:wrap">'
+      + '<button class="btn btn-sm" onclick="abBienFilter=\'' + b.id + '\';renderAReservations()">Réservations ↗</button>'
+      + '<button class="btn btn-sm" onclick="abBienFilter=\'' + b.id + '\';renderAPlanning()">Planning ↗</button>';
+    if (b.ical) {
+      html += '<button class="btn btn-sm" id="ical-btn-' + b.id + '" onclick="syncIcal(\'' + b.id + '\')">↺ Sync</button>';
+    }
+    html += '</div></div></div>';
+  });
+  set('app-page', html);
+}
+
+async function renderAReservations() {
+  set('app-page', LOADING);
+  await loadAbData();
+  renderAResaHTML();
+}
+
+function renderAResaHTML() {
+  const filterBtns = [['upcoming','À venir'],['tous','Tous'],['2026','2026'],['2025','2025'],['2024','2024']]
+    .map(function(x) {
+      return '<button class="fpill' + (x[0]===abFilter?' active':'') + '" onclick="setAbFilter(\'' + x[0] + '\')">' + x[1] + '</button>';
+    }).join('');
+
+  set('app-page',
+    '<div class="pg-header"><div><div class="pg-title">AirBnB — Réservations</div>'
+    + '<div class="pg-sub">Paris · Le Touquet</div></div>'
+    + '<div style="display:flex;gap:6px">'
+    + '<button class="btn btn-sm" id="ical-btn-touquet" onclick="syncIcal(\'touquet\')">↺ Touquet</button>'
+    + '<button class="btn btn-sm" id="ical-btn-paris" onclick="syncIcal(\'paris\')">↺ Paris</button>'
+    + '<button class="btn btn-primary" onclick="openAddABK()">+ Réservation</button>'
+    + '</div></div>'
+    + '<div id="ab-stats"></div>'
+    + '<div class="filters">' + filterBtns
+    + '<div class="search-wrap"><span class="search-icon">🔍</span>'
+    + '<input class="search-box" placeholder="Client..." oninput="abSearch=this.value;abPage=1;refreshAbList()"></div>'
+    + '<select class="fi" style="width:auto;padding:0 10px;height:32px" onchange="abBienFilter=this.value;abPage=1;refreshAbList()">'
+    + '<option value="">Tous les biens</option>'
+    + '<option value="touquet"' + (abBienFilter==='touquet'?' selected':'') + '>Le Touquet</option>'
+    + '<option value="paris"' + (abBienFilter==='paris'?' selected':'') + '>Paris</option>'
+    + '</select></div>'
+    + '<div id="ab-table"></div><div id="ab-pag"></div>'
+  );
+  refreshAbList();
+}
+
+
 
 async function renderAPlanning() {
   set('app-page', LOADING);
