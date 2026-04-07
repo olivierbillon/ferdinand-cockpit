@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pénélope</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -941,6 +943,7 @@ const PAGES = {
     'f-taches': renderFleetTasks,
   'f-analytics': renderAnalytics,
     'f-finance': renderFinance,
+    'f-gcal': renderGcal,
   'a-biens': renderABiens,
   'a-reservations': renderAReservations,
   'a-planning': renderAPlanning,
@@ -963,6 +966,7 @@ function buildNav() {
     { id: 'f-taches', label: 'Tâches flotte', sub: true, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
     { id: 'f-analytics', label: 'Analytiques', sub: true, icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
     { id: 'f-finance', label: 'Finance Stripe', sub: true, icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+    { id: 'f-gcal', label: 'Google Calendar', sub: true, icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
     { section: 'AirBnB' },
     { id: 'a-biens', label: 'Biens', sub: true, icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' },
     { id: 'a-reservations', label: 'Réservations', sub: true, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2' },
@@ -1857,7 +1861,7 @@ function refreshBkList() {
       <td style="font-size:12px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.commentaire||''}</td>
     </tr>`;
   });
-  set('bk-table', mkTable(['Voiture','Client','Début','Fin','Prix','Source','Statut','Contrat','Notes'], rows));
+  set('bk-table', mkTable(['Voiture','Client','Début','Fin','Prix','Source','Statut','Contrat','Notes','GCal'], rows));
   set('bk-pag', mkPag(list.length, BK_PER, bkPage, 'setBkPage'));
 }
 function setBkPage(p) { bkPage = p; refreshBkList(); }
@@ -3007,6 +3011,311 @@ async function syncIcal(bienId) {
   } catch(e) {
     if (btn) { btn.textContent = '↺ Sync'; btn.disabled = false; }
     alert('Erreur : ' + e.message + '\n\nSi le lien est expiré, va dans Airbnb → Calendrier → Exporter et copie le nouveau lien.');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// GOOGLE CALENDAR INTEGRATION
+// ═══════════════════════════════════════════════════════
+const GCAL_CLIENT_ID = '1039427725935-1qse1ila4l7it3he18pnme408htuu4ne.apps.googleusercontent.com';
+const GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar';
+const GCAL_DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+
+let gcalAccessToken = null;
+let gcalInited = false;
+
+// Initialiser Google API
+function gcalInit() {
+  return new Promise((resolve, reject) => {
+    if (gcalInited) { resolve(); return; }
+    gapi.load('client', async () => {
+      try {
+        await gapi.client.init({
+          discoveryDocs: [GCAL_DISCOVERY],
+        });
+        gcalInited = true;
+        resolve();
+      } catch(e) { reject(e); }
+    });
+  });
+}
+
+// Connexion Google Calendar (OAuth2)
+function gcalLogin() {
+  return new Promise((resolve, reject) => {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GCAL_CLIENT_ID,
+      scope: GCAL_SCOPES,
+      callback: (resp) => {
+        if (resp.error) { reject(resp.error); return; }
+        gcalAccessToken = resp.access_token;
+        gapi.client.setToken({ access_token: resp.access_token });
+        resolve(resp.access_token);
+      },
+    });
+    client.requestAccessToken();
+  });
+}
+
+async function ensureGcal() {
+  await gcalInit();
+  if (!gcalAccessToken) await gcalLogin();
+}
+
+// Lister les agendas disponibles
+async function gcalListCalendars() {
+  await ensureGcal();
+  const res = await gapi.client.calendar.calendarList.list({});
+  return res.result.items || [];
+}
+
+// Créer un événement dans Google Calendar
+async function gcalCreateEvent(calendarId, event) {
+  await ensureGcal();
+  const res = await gapi.client.calendar.events.insert({
+    calendarId,
+    resource: event,
+  });
+  return res.result;
+}
+
+// Supprimer un événement
+async function gcalDeleteEvent(calendarId, eventId) {
+  await ensureGcal();
+  await gapi.client.calendar.events.delete({ calendarId, eventId });
+}
+
+// Lister les événements d'un agenda
+async function gcalListEvents(calendarId, timeMin, timeMax) {
+  await ensureGcal();
+  const res = await gapi.client.calendar.events.list({
+    calendarId,
+    timeMin: timeMin || new Date().toISOString(),
+    timeMax: timeMax || new Date(Date.now() + 365*864e5).toISOString(),
+    singleEvents: true,
+    orderBy: 'startTime',
+    maxResults: 250,
+  });
+  return res.result.items || [];
+}
+
+// Convertir un booking Ferdinand en événement GCal
+function bkToGcalEvent(b) {
+  const color = {
+    'Direct': '2', 'Roadstr': '3', 'MRM': '8', 'AirBNB': '11'
+  }[b.source] || '1';
+  return {
+    summary: `🚗 ${b.voiture} — ${b.client}`,
+    description: [
+      `Client : ${b.client}`,
+      b.email ? `Email : ${b.email}` : '',
+      b.tel ? `Tél : ${b.tel}` : '',
+      b.prix ? `Prix : ${b.prix}€` : '',
+      b.source ? `Source : ${b.source}` : '',
+      b.lien_contrat ? `Contrat : ${b.lien_contrat}` : '',
+      b.commentaire || '',
+    ].filter(Boolean).join('\n'),
+    start: { date: b.debut },
+    end: { date: b.fin || b.debut },
+    colorId: color,
+    extendedProperties: {
+      private: { penelope_booking_id: b.id }
+    },
+  };
+}
+
+// ── PAGE GOOGLE CALENDAR ──────────────────────────────
+let gcalCalendars = [];
+let gcalSelectedCal = 'primary';
+let gcalSyncRunning = false;
+
+async function renderGcal() {
+  set('app-page', LOADING);
+  set('app-page', `
+    <div class="pg-header">
+      <div><div class="pg-title">Google Calendar</div>
+      <div class="pg-sub">Synchronisation bidirectionnelle</div></div>
+    </div>
+    <div id="gcal-status" class="alert a-blue">Connexion à Google Calendar requise pour synchroniser.</div>
+    <div id="gcal-content">
+      <div class="card" style="text-align:center;padding:32px">
+        <div style="font-size:32px;margin-bottom:12px">📅</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px">Connecter Google Calendar</div>
+        <div style="font-size:13px;color:var(--fg2);margin-bottom:20px">Synchronise tes bookings Ferdinand et le planning Elisa avec ton agenda Google.</div>
+        <button class="btn btn-primary" onclick="gcalConnect()" style="margin:0 auto">Se connecter avec Google</button>
+      </div>
+    </div>
+  `);
+}
+
+async function gcalConnect() {
+  set('gcal-status', '<div class="alert a-blue">Connexion en cours...</div>');
+  try {
+    await ensureGcal();
+    const cals = await gcalListCalendars();
+    gcalCalendars = cals;
+    renderGcalConnected(cals);
+  } catch(e) {
+    set('gcal-status', `<div class="alert a-red">Erreur : ${e.message || e}<br><small>Vérifiez que le Client ID est bien configuré avec l'origine ${location.origin}</small></div>`);
+  }
+}
+
+function renderGcalConnected(cals) {
+  const calOpts = cals.map(c => `<option value="${c.id}" ${c.primary?'selected':''}>${c.summary}${c.primary?' (principal)':''}</option>`).join('');
+  set('gcal-status', '<div class="alert a-green">✓ Connecté à Google Calendar</div>');
+  set('gcal-content', `
+    <div class="card" style="margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px">Agenda cible</div>
+      <div class="fg"><label class="fl">Choisir l'agenda Google</label>
+        <select class="fi" id="gcal-sel" onchange="gcalSelectedCal=this.value">${calOpts}</select>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <!-- Sync Ferdinand → Google -->
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">🚗 Ferdinand → Google</div>
+        <div style="font-size:12px;color:var(--fg2);margin-bottom:12px">Exporte les bookings à venir dans ton agenda Google.</div>
+        <div class="fg"><label class="fl">Période</label>
+          <select class="fi" id="gcal-period">
+            <option value="30">30 prochains jours</option>
+            <option value="90" selected>3 prochains mois</option>
+            <option value="180">6 prochains mois</option>
+            <option value="365">1 an</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="gcalSyncFerdinand()">Exporter les bookings</button>
+      </div>
+
+      <!-- Sync Elisa → Google -->
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">👧 Elisa → Google</div>
+        <div style="font-size:12px;color:var(--fg2);margin-bottom:12px">Exporte le planning garde alternée dans Google.</div>
+        <div class="fg"><label class="fl">Durée à exporter</label>
+          <select class="fi" id="gcal-elisa-period">
+            <option value="30">1 mois</option>
+            <option value="90" selected>3 mois</option>
+            <option value="180">6 mois</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="gcalSyncElisa()">Exporter Elisa</button>
+      </div>
+    </div>
+
+    <div id="gcal-log" class="card" style="font-size:12px;color:var(--fg2);min-height:60px">
+      <div style="font-weight:600;margin-bottom:6px">Journal de synchronisation</div>
+      <div id="gcal-log-content" style="color:var(--fg3)">En attente...</div>
+    </div>
+  `);
+}
+
+function gcalLog(msg, type) {
+  const el = $('gcal-log-content');
+  if (!el) return;
+  const color = type === 'ok' ? 'var(--green)' : type === 'err' ? 'var(--red)' : 'var(--fg2)';
+  el.innerHTML += `<div style="color:${color};margin-bottom:2px">${new Date().toLocaleTimeString('fr-FR')} — ${msg}</div>`;
+}
+
+async function gcalSyncFerdinand() {
+  if (gcalSyncRunning) return;
+  gcalSyncRunning = true;
+  const calId = gcalSelectedCal;
+  const days = parseInt($('gcal-period').value) || 90;
+  const from = todayStr();
+  const to = new Date(Date.now() + days * 864e5).toISOString().split('T')[0];
+
+  gcalLog(`Synchronisation des bookings (${from} → ${to})...`);
+
+  try {
+    // Récupérer les bookings Ferdinand dans la période
+    const { data: bookings } = await db.from('ferdinand_bookings')
+      .select('*')
+      .gte('debut', from)
+      .lte('debut', to)
+      .not('type_booking', 'eq', 'abonnement')
+      .order('debut');
+
+    if (!bookings || !bookings.length) {
+      gcalLog('Aucun booking trouvé dans cette période.', 'ok');
+      gcalSyncRunning = false;
+      return;
+    }
+
+    // Récupérer les events Penelope existants dans GCal pour éviter doublons
+    const existingEvents = await gcalListEvents(calId,
+      new Date(from).toISOString(),
+      new Date(to + 'T23:59:59').toISOString()
+    );
+    const existingIds = new Set(
+      existingEvents
+        .map(e => e.extendedProperties?.private?.penelope_booking_id)
+        .filter(Boolean)
+    );
+
+    let added = 0, skipped = 0;
+    for (const bk of bookings) {
+      if (existingIds.has(bk.id)) { skipped++; continue; }
+      try {
+        await gcalCreateEvent(calId, bkToGcalEvent(bk));
+        added++;
+        gcalLog(`✓ ${bk.voiture} — ${bk.client} (${bk.debut})`,'ok');
+      } catch(e) {
+        gcalLog(`✗ ${bk.client} : ${e.message}`,'err');
+      }
+    }
+    gcalLog(`Terminé : ${added} ajouté${added>1?'s':''}, ${skipped} déjà présent${skipped>1?'s':''}`, 'ok');
+  } catch(e) {
+    gcalLog('Erreur : ' + e.message, 'err');
+  }
+  gcalSyncRunning = false;
+}
+
+async function gcalSyncElisa() {
+  if (gcalSyncRunning) return;
+  gcalSyncRunning = true;
+  const calId = gcalSelectedCal;
+  const days = parseInt($('gcal-elisa-period').value) || 90;
+  gcalLog(`Export Elisa (${days} jours)...`);
+
+  try {
+    const REF = new Date(2025,3,2);
+    let added = 0;
+    for (let i = 0; i < days; i += 7) {
+      const date = new Date(Date.now() + i * 864e5);
+      const d = new Date(date); d.setHours(12);
+      const diff = Math.floor((d - REF) / (7 * 864e5));
+      const isPapa = ((diff % 2) + 2) % 2 === 0;
+      const dateStr = date.toISOString().split('T')[0];
+      const endStr = new Date(date.getTime() + 7 * 864e5).toISOString().split('T')[0];
+      const event = {
+        summary: isPapa ? '👧 Elisa — Semaine Papa' : '👧 Elisa — Semaine Maman',
+        start: { date: dateStr },
+        end: { date: endStr },
+        colorId: isPapa ? '2' : '6',
+        extendedProperties: { private: { penelope_elisa: 'true' } },
+      };
+      await gcalCreateEvent(calId, event);
+      added++;
+    }
+    gcalLog(`${added} semaines Elisa exportées`, 'ok');
+  } catch(e) {
+    gcalLog('Erreur : ' + e.message, 'err');
+  }
+  gcalSyncRunning = false;
+}
+
+
+async function gcalExportOne(bkId) {
+  const bk = bkData.find(x => x.id === bkId);
+  if (!bk) return;
+  try {
+    await ensureGcal();
+    const calId = gcalSelectedCal;
+    await gcalCreateEvent(calId, bkToGcalEvent(bk));
+    alert('✅ Booking ajouté à Google Calendar');
+  } catch(e) {
+    // Si pas encore connecté, aller sur la page GCal
+    showPage('f-gcal');
   }
 }
 // ═══════════════════════════════════════════════════════
