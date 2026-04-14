@@ -10,726 +10,331 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* ── GOOGLE SANS FONT ── */
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto+Mono:wght@400&display=swap');
 
-/* ── GOOGLE DESIGN TOKENS ── */
-:root {
-  /* Core palette */
-  --google-blue:      #0b57d0;
-  --google-blue-light:#e8f0fe;
-  --google-blue-chip: #c2e7ff;
-  --google-red:       #d93025;
-  --google-green:     #1e8e3e;
-  --google-yellow:    #f9ab00;
-  --google-purple:    #7627bb;
-
-  /* Surface */
-  --bg:         #ffffff;
-  --bg-page:    #f6f8fc;
-  --bg-hover:   #f1f3f4;
-  --bg-active:  #c2e7ff;
-
-  /* Text */
-  --text:       #3c4043;
-  --text2:      #444746;
-  --text3:      #5f6368;
-  --text4:      #80868b;
-
-  /* Borders */
-  --border:     #e0e0e0;
-  --border2:    #c4c7c5;
-
-  /* Sidebar */
-  --sb-w:       256px;
-
-  /* Aliases backward compat */
-  --fg:  var(--text);
-  --fg2: var(--text3);
-  --fg3: var(--text4);
-  --bg1: var(--bg-page);
-  --bg2: var(--bg-hover);
-  --bg3: #ecf3fb;
-  --blue:   var(--google-blue);
-  --blue-bg: var(--google-blue-light);
-  --green:  var(--google-green);
-  --green-bg: #e6f4ea;
-  --red:    var(--google-red);
-  --red-bg: #fce8e6;
-  --amber:  var(--google-yellow);
-  --amber-bg: #fef7e0;
-  --purple: var(--google-purple);
-  --purple-bg: #f3e8fd;
-  --pink:   #d93025;
-  --pink-bg: #fce8e6;
-
-  --r:    4px;
-  --r-lg: 8px;
-
-  /* Text aliases */
-  --text2: #444746;
-  --text3: #5f6368;
-}
-
-/* ── RESET ── */
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
 html,body { height:100%; }
 
-/* ── BASE ── */
+:root {
+  --fg:        #111827;
+  --fg2:       #6b7280;
+  --fg3:       #9ca3af;
+  --fg4:       #d1d5db;
+  --bg:        #ffffff;
+  --bg1:       #fafafa;
+  --bg2:       #f5f5f5;
+  --bg3:       #f0f0f0;
+  --border:    #e5e7eb;
+  --border2:   #d1d5db;
+  --blue:      #2563eb;
+  --blue-bg:   #eff6ff;
+  --green:     #059669;
+  --green-bg:  #f0fdf4;
+  --red:       #dc2626;
+  --red-bg:    #fef2f2;
+  --amber:     #d97706;
+  --amber-bg:  #fffbeb;
+  --purple:    #7c3aed;
+  --purple-bg: #f5f3ff;
+  --pink:      #db2777;
+  --pink-bg:   #fdf2f8;
+  --r:    6px;
+  --r-lg: 8px;
+  /* aliases */
+  --text:  var(--fg);
+  --text2: var(--fg2);
+  --text3: var(--fg3);
+}
+
 body {
-  font-family: 'Google Sans','Roboto',Arial,sans-serif;
-  font-size: 14px;
+  font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13.5px;
   line-height: 1.5;
-  color: var(--text);
-  background: var(--bg-page);
+  color: var(--fg);
+  background: var(--bg1);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── APP SHELL ── */
-.app {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
+/* ── APP ── */
+.app { display:flex; height:100vh; overflow:hidden; }
 
 /* ── SIDEBAR ── */
 .sidebar {
-  width: var(--sb-w);
-  min-width: var(--sb-w);
+  width: 220px; min-width: 220px;
   background: var(--bg);
   border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;
   flex-shrink: 0;
-  position: relative;
-  z-index: 10;
 }
-
 .sb-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 16px 8px;
-  min-height: 56px;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; min-height: 50px;
 }
 .sb-logo-mark {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: var(--google-blue);
-  color: #fff; font-size: 14px; font-weight: 700;
+  width: 24px; height: 24px; border-radius: 5px;
+  background: var(--fg); color: var(--bg);
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
 }
-.sb-logo h1 {
-  font-size: 18px; font-weight: 400; color: var(--text);
-  letter-spacing: -0.01em;
-}
-.sb-logo p {
-  font-size: 11px; color: var(--text3);
-}
+.sb-logo h1 { font-size: 14px; font-weight: 600; color: var(--fg); letter-spacing:-.01em; }
+.sb-logo p  { font-size: 11px; color: var(--fg3); }
 
+/* Section header - cliquable pour replier */
 .sb-section {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  padding: 14px 16px 4px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px 4px;
+  font-size: 10.5px; font-weight: 600;
+  color: var(--fg3);
+  text-transform: uppercase; letter-spacing: .07em;
+  cursor: pointer;
+  user-select: none;
 }
+.sb-section:hover { color: var(--fg2); }
+.sb-section-arrow {
+  font-size: 9px; transition: transform .2s;
+  color: var(--fg3);
+}
+.sb-section.collapsed .sb-section-arrow { transform: rotate(-90deg); }
+.sb-group { overflow: hidden; transition: max-height .25s ease; }
+.sb-group.collapsed { max-height: 0 !important; }
 
 .sb-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 12px 0 16px;
-  height: 36px;
-  margin: 1px 8px;
-  border-radius: 100px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--text2);
-  transition: background .1s;
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px; margin: 1px 4px;
+  border-radius: var(--r);
+  cursor: pointer; font-size: 13px; font-weight: 400;
+  color: var(--fg2);
+  transition: background .1s, color .1s;
   user-select: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  border: 1px solid transparent;
 }
-.sb-item svg {
-  flex-shrink: 0;
-  color: var(--text3);
-}
-.sb-item:hover {
-  background: var(--bg-hover);
-}
+.sb-item svg { flex-shrink:0; opacity:.6; }
+.sb-item:hover { background: var(--bg2); color: var(--fg); }
+.sb-item:hover svg { opacity:.9; }
 .sb-item.active {
-  background: var(--bg-active);
-  color: var(--text);
-  font-weight: 500;
+  background: var(--bg2); color: var(--fg); font-weight: 500;
+  border-color: var(--border);
 }
-.sb-item.active svg { color: var(--text2); }
+.sb-item.active svg { opacity: 1; }
 .sb-sub { padding-left: 0; }
 
 .sb-user {
   margin-top: auto;
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-top: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: flex; align-items: center; gap: 8px;
 }
 .sb-avatar {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: var(--google-blue-light);
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--bg2); border: 1px solid var(--border2);
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 500; color: var(--google-blue);
-  flex-shrink: 0;
+  font-size: 10px; font-weight: 600; flex-shrink: 0;
 }
 
-/* ── MAIN CONTENT ── */
-.main {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: var(--bg-page);
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.pg {
-  padding: 20px 24px;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-}
+/* ── MAIN ── */
+.main { flex:1; overflow-y:auto; background:var(--bg1); display:flex; flex-direction:column; min-width:0; }
+.pg { padding: 22px 28px; max-width: 1100px; width: 100%; margin: 0 auto; }
 
 /* ── PAGE HEADER ── */
 .pg-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  gap: 12px;
-  flex-wrap: wrap;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 18px; gap: 10px; flex-wrap: wrap;
 }
-.pg-title {
-  font-size: 22px;
-  font-weight: 400;
-  color: var(--text);
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-.pg-sub {
-  font-size: 12px;
-  color: var(--text3);
-  margin-top: 2px;
-}
+.pg-title { font-size: 17px; font-weight: 600; color: var(--fg); letter-spacing: -.02em; }
+.pg-sub   { font-size: 12px; color: var(--fg2); margin-top: 2px; }
 
-/* ── STATS ROW ── */
+/* ── STATS ── */
 .stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0; background: var(--border); border: 1px solid var(--border);
+  border-radius: var(--r-lg); overflow: hidden; margin-bottom: 14px;
 }
-.stat {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 12px 16px;
-}
-.stat-l {
-  font-size: 12px;
-  color: var(--text3);
-  margin-bottom: 4px;
-  font-weight: 400;
-}
-.stat-v {
-  font-size: 22px;
-  font-weight: 400;
-  color: var(--text);
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
+.stat { background: var(--bg); padding: 12px 14px; }
+.stat-l { font-size: 11px; color: var(--fg3); margin-bottom: 3px; font-weight: 500; letter-spacing:.01em; }
+.stat-v { font-size: 19px; font-weight: 600; letter-spacing: -.03em; line-height:1.1; font-variant-numeric: tabular-nums; }
 
 /* ── CARD ── */
-.card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 16px;
-  margin-bottom: 8px;
-}
+.card { background:var(--bg); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; margin-bottom:8px; }
 
 /* ── BADGES ── */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 100px;
-  white-space: nowrap;
-}
-.b-green   { background:#e6f4ea; color:#137333; }
-.b-blue    { background:#e8f0fe; color:#1557b0; }
-.b-amber   { background:#fef7e0; color:#b06000; }
-.b-red     { background:#fce8e6; color:#b3261e; }
-.b-purple  { background:#f3e8fd; color:#68117a; }
-.b-gray    { background:#f1f3f4; color:#444746; }
-.b-pink    { background:#fce8e6; color:#b3261e; }
-.b-direct  { background:#e6f4ea; color:#137333; }
-.b-airbnb  { background:#fce8e6; color:#b3261e; }
-.b-roadstr { background:#f3e8fd; color:#68117a; }
-.b-gdc     { background:#e8f0fe; color:#1557b0; }
-.b-mrm     { background:#f1f3f4; color:#444746; }
+.badge { display:inline-flex; align-items:center; font-size:11px; font-weight:500; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+.b-green   { background:#e6f4ea; color:#065f46; }
+.b-blue    { background:#eff6ff; color:#1d4ed8; }
+.b-amber   { background:#fffbeb; color:#78350f; }
+.b-red     { background:#fef2f2; color:#991b1b; }
+.b-purple  { background:#f5f3ff; color:#4c1d95; }
+.b-gray    { background:#f5f5f5; color:#374151; border:1px solid var(--border2); }
+.b-pink    { background:#fdf2f8; color:#831843; }
+.b-direct  { background:#e6f4ea; color:#065f46; }
+.b-airbnb  { background:#fef2f2; color:#991b1b; }
+.b-roadstr { background:#f5f3ff; color:#4c1d95; }
+.b-gdc     { background:#eff6ff; color:#1d4ed8; }
+.b-mrm     { background:#f5f5f5; color:#374151; border:1px solid var(--border2); }
 
 /* ── BUTTONS ── */
 .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 16px;
-  height: 36px;
-  border-radius: 100px;
-  border: 1px solid var(--border2);
-  background: var(--bg);
-  color: var(--google-blue);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-  transition: background .1s, box-shadow .1s;
-  line-height: 1;
+  display:inline-flex; align-items:center; gap:5px;
+  padding:0 12px; height:32px; border-radius:var(--r);
+  border:1px solid var(--border2); background:var(--bg);
+  color:var(--fg); font-size:12.5px; font-weight:500;
+  cursor:pointer; font-family:inherit; white-space:nowrap;
+  transition:background .1s;
 }
-.btn:hover { background: var(--google-blue-light); }
-.btn-primary {
-  background: var(--google-blue);
-  color: #fff;
-  border-color: var(--google-blue);
-}
-.btn-primary:hover { background: #0a52c4; border-color: #0a52c4; }
-.btn-sm  { padding: 0 12px; height: 28px; font-size: 12px; }
-.btn-danger { color: var(--google-red); }
-.btn-danger:hover { background: var(--red-bg); border-color: #f5c6c3; }
+.btn:hover { background:var(--bg2); }
+.btn-primary { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+.btn-primary:hover { background:#333; border-color:#333; }
+.btn-sm { padding:0 10px; height:26px; font-size:11.5px; }
+.btn-danger { color:var(--red); }
+.btn-danger:hover { background:var(--red-bg); border-color:#fca5a5; }
 
 /* ── FILTERS ── */
-.filters {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
+.filters { display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap; align-items:center; }
 .fpill {
-  padding: 0 16px;
-  height: 32px;
-  border-radius: 100px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text2);
-  cursor: pointer;
-  font-family: inherit;
-  transition: background .1s, border-color .1s;
-  display: inline-flex; align-items: center;
+  padding:0 12px; height:28px; border-radius:20px;
+  border:1px solid var(--border); background:var(--bg);
+  font-size:12.5px; font-weight:500; color:var(--fg2);
+  cursor:pointer; font-family:inherit; transition:all .1s;
+  display:inline-flex; align-items:center;
 }
-.fpill:hover { background: var(--bg-hover); }
-.fpill.active {
-  background: var(--google-blue-light);
-  color: var(--google-blue);
-  border-color: #a8c7fa;
-}
-.search-wrap { position: relative; flex: 1; min-width: 160px; }
+.fpill:hover { background:var(--bg2); color:var(--fg); }
+.fpill.active { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+.search-wrap { position:relative; flex:1; min-width:160px; }
 .search-box {
-  width: 100%;
-  padding: 0 12px 0 36px;
-  height: 36px;
-  border: 1px solid var(--border);
-  border-radius: 100px;
-  font-size: 13px;
-  background: var(--bg-hover);
-  color: var(--text);
-  font-family: inherit;
-  transition: background .1s, border-color .1s;
+  width:100%; padding:0 10px 0 28px; height:32px;
+  border:1px solid var(--border); border-radius:var(--r);
+  font-size:12.5px; background:var(--bg); color:var(--fg);
+  font-family:inherit; transition:border-color .1s;
 }
-.search-box:focus {
-  outline: none;
-  background: var(--bg);
-  border-color: var(--google-blue);
-  box-shadow: 0 0 0 2px rgba(11,87,208,.12);
-}
-.search-icon {
-  position: absolute; left: 12px; top: 50%;
-  transform: translateY(-50%);
-  color: var(--text3); font-size: 13px; pointer-events: none;
-}
+.search-box:focus { outline:none; border-color:var(--fg); box-shadow:0 0 0 3px rgba(0,0,0,.06); }
+.search-icon { position:absolute; left:8px; top:50%; transform:translateY(-50%); color:var(--fg3); font-size:12px; pointer-events:none; }
 
 /* ── TABLE ── */
-.tbl-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--bg);
-}
+.tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--r-lg); background:var(--bg); }
 .tbl { width:100%; border-collapse:collapse; min-width:400px; }
-.tbl th {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text3);
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-  white-space: nowrap;
-  letter-spacing: .02em;
-}
-.tbl td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  vertical-align: middle;
-  color: var(--text);
-}
-.tbl tr:last-child td { border-bottom: none; }
-.tbl tr:hover td { background: var(--bg-hover); }
-.tbl tr.clickable { cursor: pointer; }
+.tbl th { text-align:left; font-size:11px; font-weight:500; color:var(--fg3); padding:8px 12px; border-bottom:1px solid var(--border); background:var(--bg1); white-space:nowrap; letter-spacing:.04em; text-transform:uppercase; }
+.tbl td { padding:9px 12px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; color:var(--fg); }
+.tbl tr:last-child td { border-bottom:none; }
+.tbl tr:hover td { background:var(--bg1); }
+.tbl tr.clickable { cursor:pointer; }
 
 /* ── FORM ── */
-.fg { margin-bottom: 12px; }
-.fl {
-  display: block;
-  font-size: 12px;
-  color: var(--text3);
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-.fi {
-  width: 100%;
-  padding: 0 12px;
-  height: 36px;
-  border: 1px solid var(--border2);
-  border-radius: var(--r);
-  font-size: 14px;
-  background: var(--bg);
-  color: var(--text);
-  font-family: inherit;
-  transition: border-color .1s, box-shadow .1s;
-}
-textarea.fi { height: auto; padding: 8px 12px; }
-.fi:focus {
-  outline: none;
-  border-color: var(--google-blue);
-  box-shadow: 0 0 0 2px rgba(11,87,208,.12);
-}
-.f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fg { margin-bottom:10px; }
+.fl { display:block; font-size:12px; color:var(--fg2); margin-bottom:4px; font-weight:500; }
+.fi { width:100%; padding:0 10px; height:34px; border:1px solid var(--border2); border-radius:var(--r); font-size:13px; background:var(--bg); color:var(--fg); font-family:inherit; transition:border-color .1s; }
+textarea.fi { height:auto; padding:7px 10px; }
+.fi:focus { outline:none; border-color:var(--fg); box-shadow:0 0 0 3px rgba(0,0,0,.06); }
+.f2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 
 /* ── MODAL ── */
-.modal-bg {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.4);
-  display: none; align-items: center; justify-content: center;
-  z-index: 100;
-}
-.modal-bg.open { display: flex; }
-.modal {
-  background: var(--bg);
-  border-radius: 20px;
-  padding: 24px;
-  width: 90%;
-  max-width: 480px;
-  max-height: 92vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0,0,0,.15);
-}
-.modal-title {
-  font-size: 18px;
-  font-weight: 400;
-  margin-bottom: 20px;
-  color: var(--text);
-}
-.modal-footer {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:100; backdrop-filter:blur(2px); }
+.modal-bg.open { display:flex; }
+.modal { background:var(--bg); border-radius:var(--r-lg); padding:20px; width:90%; max-width:480px; max-height:92vh; overflow-y:auto; border:1px solid var(--border); box-shadow:0 16px 40px rgba(0,0,0,.15); }
+.modal-title { font-size:14px; font-weight:600; margin-bottom:14px; letter-spacing:-.01em; }
+.modal-footer { display:flex; gap:6px; justify-content:flex-end; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
 
 /* ── TABS ── */
-.tabs {
-  display: flex;
-  border-bottom: 2px solid var(--border);
-  margin-bottom: 16px;
-}
-.tab {
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  color: var(--text3);
-  border: none;
-  background: transparent;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
-  font-family: inherit;
-  transition: color .1s;
-  letter-spacing: .01em;
-}
-.tab:hover { color: var(--text); background: var(--bg-hover); }
-.tab.active { color: var(--google-blue); border-bottom-color: var(--google-blue); }
+.tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:12px; }
+.tab { padding:7px 14px; font-size:12.5px; font-weight:500; cursor:pointer; color:var(--fg3); border:none; background:transparent; border-bottom:2px solid transparent; margin-bottom:-1px; font-family:inherit; transition:color .1s; }
+.tab:hover { color:var(--fg); }
+.tab.active { color:var(--fg); border-bottom-color:var(--fg); }
 
 /* ── EXPANDABLE CARD ── */
-.exp-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  margin-bottom: 8px;
-  overflow: hidden;
-  transition: box-shadow .15s;
-}
-.exp-card:hover { box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-.exp-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 16px;
-  cursor: pointer;
-}
-.exp-head:hover { background: var(--bg-hover); }
-.exp-body { border-top: 1px solid var(--border); }
-.exp-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-page);
-}
-.etab {
-  flex: 1;
-  padding: 10px 4px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  color: var(--text3);
-  border: none;
-  background: transparent;
-  font-family: inherit;
-  border-bottom: 2px solid transparent;
-  transition: color .1s;
-}
-.etab:hover { color: var(--text); }
-.etab.active { color: var(--google-blue); border-bottom-color: var(--google-blue); background: var(--bg); }
-.exp-panel { padding: 12px 16px; }
-.ig { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.il { font-size: 11px; color: var(--text3); margin-bottom: 2px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
-.iv { font-size: 13px; font-weight: 400; color: var(--text); }
+.exp-card { background:var(--bg); border:1px solid var(--border); border-radius:var(--r-lg); margin-bottom:6px; overflow:hidden; transition:border-color .12s, box-shadow .12s; }
+.exp-card:hover { border-color:var(--border2); }
+.exp-head { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; cursor:pointer; }
+.exp-head:hover { background:var(--bg1); }
+.exp-body { border-top:1px solid var(--border); }
+.exp-tabs { display:flex; border-bottom:1px solid var(--border); background:var(--bg1); }
+.etab { flex:1; padding:7px 4px; text-align:center; font-size:12px; font-weight:500; cursor:pointer; color:var(--fg3); border:none; background:transparent; font-family:inherit; border-bottom:2px solid transparent; transition:color .1s; }
+.etab:hover { color:var(--fg); }
+.etab.active { color:var(--fg); border-bottom-color:var(--fg); background:var(--bg); }
+.exp-panel { padding:12px 14px; }
+.ig { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.il { font-size:10.5px; color:var(--fg3); font-weight:500; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
+.iv { font-size:13px; font-weight:500; color:var(--fg); }
 
 /* ── ALERTS ── */
-.alert {
-  padding: 10px 14px;
-  border-radius: var(--r-lg);
-  font-size: 13px;
-  margin-bottom: 8px;
-  border: 1px solid transparent;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  line-height: 1.5;
-}
-.a-warn  { background:#fef7e0; color:#b06000; border-color:#fdd663; }
-.a-red   { background:#fce8e6; color:#7d1a15; border-color:#f5c6c3; }
-.a-green { background:#e6f4ea; color:#0d652d; border-color:#a8d5b5; }
-.a-blue  { background:#e8f0fe; color:#1557b0; border-color:#a8c7fa; }
+.alert { padding:10px 12px; border-radius:var(--r); font-size:12.5px; margin-bottom:8px; border:1px solid transparent; display:flex; align-items:flex-start; gap:7px; line-height:1.5; }
+.a-warn  { background:var(--amber-bg); color:#78350f; border-color:#fde68a; }
+.a-red   { background:var(--red-bg);   color:#7f1d1d; border-color:#fca5a5; }
+.a-green { background:var(--green-bg); color:#064e3b; border-color:#6ee7b7; }
+.a-blue  { background:var(--blue-bg);  color:#1e3a8a; border-color:#93c5fd; }
 
 /* ── CALENDAR ── */
-.cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7,1fr);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  background: var(--border);
-  gap: 1px;
-}
-.cal-hd {
-  text-align: center;
-  font-size: 11px; font-weight: 500;
-  color: var(--text3);
-  padding: 6px 0;
-  background: var(--bg);
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-.cal-day { min-height: 72px; padding: 4px 5px; background: var(--bg); }
-.cal-day.today { background: #e8f0fe; }
-.cal-day.we { background: var(--bg-page); }
-.cal-num { font-size: 12px; font-weight: 400; margin-bottom: 2px; color: var(--text3); }
-.cal-day.today .cal-num { color: var(--google-blue); font-weight: 700; background: var(--google-blue); color: #fff; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; }
-.cal-ev {
-  font-size: 10px;
-  border-radius: 4px;
-  padding: 1px 5px;
-  margin-bottom: 2px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  cursor: pointer;
-  font-weight: 500;
-  color: #fff;
-}
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; }
+.cal-hd { text-align:center; font-size:10.5px; font-weight:600; color:var(--fg3); padding:6px 0; background:var(--bg1); letter-spacing:.04em; text-transform:uppercase; }
+.cal-day { min-height:72px; padding:3px 4px; background:var(--bg); }
+.cal-day.today { background:#fefce8; }
+.cal-day.we { background:var(--bg1); }
+.cal-num { font-size:11px; font-weight:500; margin-bottom:2px; color:var(--fg3); }
+.cal-day.today .cal-num { color:var(--blue); font-weight:700; }
+.cal-ev { font-size:9.5px; border-radius:3px; padding:1px 4px; margin-bottom:2px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; cursor:pointer; font-weight:600; color:#1e293b !important; }
 
 /* ── PAGINATION ── */
-.pag { display:flex; gap:4px; margin-top:12px; flex-wrap:wrap; }
-.pp {
-  padding: 0 10px;
-  height: 32px;
-  border-radius: 100px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text2);
-  font-family: inherit;
-  display: inline-flex; align-items: center;
-  transition: background .1s;
-}
-.pp.active { background: var(--google-blue-light); color: var(--google-blue); border-color: #a8c7fa; }
-.pp:hover:not(.active) { background: var(--bg-hover); }
+.pag { display:flex; gap:3px; margin-top:12px; flex-wrap:wrap; }
+.pp { padding:0 9px; height:28px; border-radius:var(--r); border:1px solid var(--border); background:var(--bg); cursor:pointer; font-size:12px; font-weight:500; color:var(--fg2); font-family:inherit; display:inline-flex; align-items:center; }
+.pp.active { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+.pp:hover:not(.active) { background:var(--bg2); }
 .pp:disabled { opacity:.4; cursor:default; }
 
 /* ── MISC ── */
-.prow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-.prow:last-child { border-bottom: none; }
-.dpill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  padding: 2px 10px;
-  height: 26px;
-  border-radius: 100px;
-  border: 1px solid var(--border);
-  background: var(--bg-page);
-  cursor: pointer;
-  margin: 2px;
-  font-family: inherit;
-  color: var(--text2);
-  transition: background .1s;
-}
-.dpill:hover { background: var(--bg-hover); }
-.bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-.bar-lbl { width:110px; font-size:12px; color:var(--text3); flex-shrink:0; }
-.bar-bg  { flex:1; background:var(--bg-hover); border-radius:4px; height:6px; }
-.bar-fill{ height:6px; border-radius:4px; }
-
-/* ── EMPTY STATE ── */
-.empty-state { display:flex;flex-direction:column;align-items:center;padding:48px 24px;color:var(--text3);text-align:center; }
+.prow { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); }
+.prow:last-child { border-bottom:none; }
+.dpill { display:inline-flex; align-items:center; gap:3px; font-size:12px; padding:2px 8px; height:24px; border-radius:4px; border:1px solid var(--border); background:var(--bg1); cursor:pointer; margin:2px; font-family:inherit; color:var(--fg2); }
+.bar-row { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
+.bar-lbl { width:110px; font-size:12px; color:var(--fg2); flex-shrink:0; }
+.bar-bg  { flex:1; background:var(--bg2); border-radius:3px; height:4px; }
+.bar-fill{ height:4px; border-radius:3px; }
+.empty-state { display:flex; flex-direction:column; align-items:center; padding:48px 24px; color:var(--fg3); text-align:center; }
 .empty-icon  { font-size:36px; margin-bottom:10px; }
-.muted  { color: var(--text3); }
-.green  { color: var(--google-green); font-weight: 500; }
-.mono   { font-family: 'Roboto Mono', monospace; letter-spacing:.04em; }
-.nowrap { white-space: nowrap; }
+.muted  { color:var(--fg3); }
+.green  { color:var(--green); font-weight:600; }
+.mono   { font-family:'Roboto Mono',monospace; letter-spacing:.04em; }
+.nowrap { white-space:nowrap; }
 .trunc  { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* ── LOADING ── */
-.loading {
-  display:flex; align-items:center; justify-content:center;
-  padding:60px; color:var(--text3); font-size:14px;
-}
-.spin {
-  width:18px; height:18px;
-  border: 2px solid var(--border);
-  border-top-color: var(--google-blue);
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-  margin-right: 10px; flex-shrink:0;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+.loading { display:flex; align-items:center; justify-content:center; padding:60px; color:var(--fg3); font-size:13px; }
+.spin { width:14px; height:14px; border:1.5px solid var(--border2); border-top-color:var(--fg); border-radius:50%; animation:spin .6s linear infinite; margin-right:8px; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
 
 /* ── LOGIN ── */
-.login-bg {
-  display:flex; align-items:center; justify-content:center;
-  min-height:100vh; background:var(--bg-page);
-}
-.login-card {
-  background:var(--bg);
-  border:1px solid var(--border);
-  border-radius:20px;
-  padding:40px;
-  text-align:center;
-  width:380px;
-  box-shadow:0 2px 8px rgba(0,0,0,.08);
-}
-.login-logo {
-  font-size:24px; font-weight:400; margin-bottom:4px; color:var(--text);
-}
-.login-sub { font-size:13px; color:var(--text3); margin-bottom:28px; }
-.btn-google {
-  display:flex; align-items:center; justify-content:center; gap:10px;
-  width:100%; height:40px;
-  border-radius:100px;
-  border:1px solid var(--border2);
-  background:var(--bg);
-  font-size:14px; font-weight:500;
-  cursor:pointer; font-family:inherit; color:var(--text);
-  transition: background .1s, box-shadow .1s;
-}
-.btn-google:hover { background:var(--bg-hover); box-shadow:0 1px 3px rgba(0,0,0,.1); }
+.login-bg { display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg1); }
+.login-card { background:var(--bg); border:1px solid var(--border); border-radius:var(--r-lg); padding:32px; text-align:center; width:360px; box-shadow:0 4px 16px rgba(0,0,0,.06); }
+.login-logo { font-size:22px; font-weight:600; letter-spacing:-.03em; margin-bottom:4px; }
+.login-sub { font-size:12.5px; color:var(--fg2); margin-bottom:24px; }
+.btn-google { display:flex; align-items:center; justify-content:center; gap:9px; width:100%; height:36px; border-radius:var(--r); border:1px solid var(--border2); background:var(--bg); font-size:13px; font-weight:500; cursor:pointer; font-family:inherit; color:var(--fg); transition:background .1s; }
+.btn-google:hover { background:var(--bg1); }
 
 /* ── ELISA ── */
-.el-papa      { background: #e8f5e9; }
-.el-maman     { background: #fce4ec; }
-.el-vac-papa  { background: #c8e6c9; }
-.el-vac-maman { background: #f8bbd9; }
+.el-papa      { background:#f0fdf4; }
+.el-maman     { background:#fdf2f8; }
+.el-vac-papa  { background:#bbf7d0; }
+.el-vac-maman { background:#fbcfe8; }
 
 /* ── EDITABLE TABLE ── */
 .etbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--r-lg); background:var(--bg); }
 .etbl { width:100%; border-collapse:collapse; min-width:900px; }
-.etbl th {
-  text-align:left; font-size:12px; font-weight:500; color:var(--text3);
-  padding:10px 10px; border-bottom:1px solid var(--border);
-  background:var(--bg); white-space:nowrap; letter-spacing:.02em;
-}
+.etbl th { text-align:left; font-size:11px; font-weight:500; color:var(--fg3); padding:8px 10px; border-bottom:1px solid var(--border); background:var(--bg1); white-space:nowrap; letter-spacing:.04em; text-transform:uppercase; }
 .etbl td { padding:2px 4px; border-bottom:1px solid var(--border); vertical-align:middle; }
 .etbl tr:last-child td { border-bottom:none; }
-.etbl tr:hover td { background:var(--bg-hover); }
-.etbl-cell {
-  width:100%; padding:6px 8px; border:1px solid transparent;
-  border-radius:var(--r); font-size:13px; background:transparent;
-  color:var(--text); font-family:inherit; transition:border-color .1s;
-}
-.etbl-cell:focus { outline:none; border-color:var(--google-blue); background:var(--bg); }
-.etbl-cell.saved { border-color:var(--google-green); background:#e6f4ea; }
+.etbl tr:hover td { background:var(--bg1); }
+.etbl-cell { width:100%; padding:5px 8px; border:1px solid transparent; border-radius:4px; font-size:12.5px; background:transparent; color:var(--fg); font-family:inherit; transition:border-color .1s; }
+.etbl-cell:focus { outline:none; border-color:var(--fg); background:var(--bg); }
+.etbl-cell.saved { border-color:var(--green); background:var(--green-bg); }
 
 /* ── RESPONSIVE ── */
-@media (max-width:1024px) { .pg { padding:16px 16px; } }
+@media (max-width:1024px) { .pg { padding:18px 18px; } }
 @media (max-width:768px) {
-  .sidebar { position:fixed; left:-256px; top:0; bottom:0; z-index:100; transition:left .2s; }
+  .sidebar { position:fixed; left:-220px; top:0; bottom:0; z-index:100; transition:left .2s; }
   .sidebar.open { left:0; }
-  .pg { padding:14px 14px; }
+  .pg { padding:14px; }
   .f2 { grid-template-columns:1fr; }
   .stats { grid-template-columns:1fr 1fr; }
 }
-.mob-bar {
-  display:none; align-items:center; gap:12px;
-  padding:10px 16px;
-  background:var(--bg);
-  border-bottom:1px solid var(--border);
-  position:sticky; top:0; z-index:50;
-}
+.mob-bar { display:none; align-items:center; gap:12px; padding:10px 14px; background:var(--bg); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:50; }
 @media (max-width:768px) { .mob-bar { display:flex; } }
 </style>
 </head>
@@ -814,11 +419,11 @@ const fmtMonth = s => {
 };
 
 const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
-const todayStr = () => today().toISOString().split('T')[0];
+const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
 const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');
 
 // Source badge class
-const srcBadge = s => ({ 'Direct': 'b-direct', 'Roadstr': 'b-roadstr', 'MRM': 'b-mrm', 'AirBNB': 'b-airbnb', 'Gens de Confiance': 'b-gdc' }[s] || 'b-gray');
+const srcBadge = s => ({ 'Direct': 'b-direct', 'Roadstr': 'b-roadstr', 'MRM': 'b-mrm', 'AirBNB': 'b-airbnb', 'Gens de Confiance': 'b-gdc', 'Prêt': 'b-gray' }[s] || 'b-gray');
 const srcColor = s => ({ 'Direct': '#059669', 'Roadstr': '#7c3aed', 'MRM': '#6b7280', 'AirBNB': '#dc2626', 'Gens de Confiance': '#2563eb' }[s] || '#6b7280');
 
 // Modal
@@ -869,6 +474,69 @@ function mkPag(total, perPage, current, onClickFn) {
 }
 
 // Calendar builder
+
+// ── VUE SEMAINE ──────────────────────────────────────────────────────────────
+function mkWeekView(bookings, voiColor) {
+  const today = new Date();
+  // Lundi de la semaine sélectionnée
+  const dow = today.getDay() === 0 ? 6 : today.getDay() - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - dow + planWeekOffset * 7);
+  monday.setHours(0,0,0,0);
+
+  const days = Array.from({length:7}, function(_,i) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+
+  const toStr = function(d) { return d.toISOString().split('T')[0]; };
+  const dayNames = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const todayStr2 = toStr(today);
+
+  const prevBtn = '<button class="btn btn-sm" onclick="planWeekOffset--;renderPlanningHTML(allPlanBookings)">◀</button>';
+  const nextBtn = '<button class="btn btn-sm" onclick="planWeekOffset++;renderPlanningHTML(allPlanBookings)">▶</button>';
+  const todayBtn = '<button class="btn btn-sm" onclick="planWeekOffset=0;renderPlanningHTML(allPlanBookings)">Auj.</button>';
+
+  const weekLabel = days[0].toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) + ' – ' + days[6].toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+
+  let html = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">'
+    + prevBtn + nextBtn + todayBtn
+    + '<span style="font-size:13px;font-weight:500;color:var(--fg2)">' + weekLabel + '</span></div>';
+
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">';
+
+  // Headers
+  days.forEach(function(d, i) {
+    const isToday = toStr(d) === todayStr2;
+    html += '<div style="background:' + (isToday?'var(--blue-bg)':'var(--bg1)') + ';padding:8px 6px;text-align:center">'
+      + '<div style="font-size:10px;font-weight:600;color:var(--fg3);text-transform:uppercase;margin-bottom:2px">' + dayNames[i] + '</div>'
+      + '<div style="font-size:16px;font-weight:' + (isToday?'700':'400') + ';color:' + (isToday?'var(--blue)':'var(--fg)') + '">' + d.getDate() + '</div>'
+      + '</div>';
+  });
+
+  // Cells
+  days.forEach(function(d) {
+    const dStr = toStr(d);
+    const dayBks = bookings.filter(function(b) {
+      const deb = b.debut ? b.debut.substring(0,10) : null;
+      const fin = b.fin ? b.fin.substring(0,10) : deb;
+      return deb && fin && deb <= dStr && fin >= dStr;
+    });
+    html += '<div style="background:var(--bg);min-height:90px;padding:4px 3px">';
+    dayBks.forEach(function(b) {
+      const col = b.type_booking==='abonnement' ? '#7c3aed' : voiColor(b.voiture);
+      html += '<div data-id="' + b.id + '" onclick="openEditBookingOrAbo(this.dataset.id)" style="background:' + col + ';color:#1e293b;border-radius:3px;padding:2px 5px;margin-bottom:2px;font-size:10px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'
+        + (b.voiture||'') + (b.client ? ' · ' + b.client.split(' ')[0] : '')
+        + '</div>';
+    });
+    html += '</div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
 function mkCalendar(year, month, bookings, colorFn, clickFn) {
   const first = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -971,13 +639,44 @@ function buildNav() {
   ];
   let html = '';
   nav.forEach(item => {
-    if (item.section) { html += `<div class="sb-section">${item.section}</div>`; return; }
+    if (item.section) {
+      // Section header repliable
+      const key = 'sb_col_' + item.section;
+      const isCol = localStorage.getItem(key) === '1';
+      html += `<div class="sb-section${isCol?' collapsed':''}" onclick="toggleSbSection(this,'${item.section.replace(/'/g,'')}')" data-sect="${item.section}">
+        <span>${item.section}</span>
+        <span class="sb-section-arrow">▼</span>
+      </div>
+      <div class="sb-group${isCol?' collapsed':''}" id="sbg-${item.section.replace(/[^a-z0-9]/gi,'')}" style="${isCol?'max-height:0':''}">`;
+      return;
+    }
+    // Fermer le groupe précédent si on revient au niveau racine (item sans sub après un group)
     html += `<div class="sb-item${item.sub?' sb-sub':''}" id="nav-${item.id}" onclick="showPage('${item.id}',this)">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="${item.icon}"/></svg>
       ${item.label}
     </div>`;
   });
+  // Fermer le dernier groupe ouvert
+  if (html.includes('<div class="sb-group')) html += '</div>';
   set('sb-nav', html);
+}
+
+function toggleSbSection(el, sect) {
+  const key = 'sb_col_' + sect;
+  const isNowCollapsed = el.classList.toggle('collapsed');
+  localStorage.setItem(key, isNowCollapsed ? '1' : '0');
+  const groupId = 'sbg-' + sect.replace(/[^a-z0-9]/gi,'');
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  if (isNowCollapsed) {
+    group.style.maxHeight = group.scrollHeight + 'px';
+    group.classList.add('collapsed');
+    requestAnimationFrame(() => { group.style.maxHeight = '0'; });
+  } else {
+    group.classList.remove('collapsed');
+    group.style.maxHeight = group.scrollHeight + 'px';
+    setTimeout(() => { if (!group.classList.contains('collapsed')) group.style.maxHeight = 'none'; }, 260);
+  }
 }
 
 function showPage(page, el) {
@@ -1155,8 +854,8 @@ async function loadVoitureNames() {
   return _voitureNames;
 }
 
-const ST_LBL = { standby: 'Disponible', court: 'En location', long: 'Location longue', repare: 'En réparation', perso: 'Usage perso', leasing: 'Leasing', cede: 'Cédée' };
-const ST_BADGE = { standby: 'b-green', court: 'b-blue', long: 'b-amber', repare: 'b-red', perso: 'b-blue', leasing: 'b-gray', cede: 'b-gray' };
+const ST_LBL = { standby: 'Disponible', court: 'En location', long: 'Location longue', repare: 'En réparation', perso: 'Usage perso', leasing: 'Leasing', vendre: 'À vendre', cede: 'Cédée' };
+const ST_BADGE = { standby: 'b-green', court: 'b-blue', long: 'b-amber', repare: 'b-red', perso: 'b-blue', leasing: 'b-gray', vendre: 'b-amber', cede: 'b-gray' };
 
 // Statut dynamique d'un booking selon les dates
 function bkDynStatus(b) {
@@ -1328,24 +1027,38 @@ function getCA(nom) {
 function getAbonnementCA(b) {
   if (!b.debut || !b.prix_mensuel) return { realise: 0, previsionnel: 0 };
   const today = new Date();
-  // 1er jour du mois courant = frontière réalisé/prévisionnel
-  const frontier = new Date(today.getFullYear(), today.getMonth(), 1);
   const start = new Date(b.debut);
   const end = b.fin ? new Date(b.fin) : null;
-  // Si l'abonnement n'a pas encore commencé → tout prévisionnel
-  // Si terminé → tout réalisé (jusqu'à la fin)
+
+  // Jour de paiement = jour du début (ex: 20 si début le 20 mars)
+  const jourPaiement = start.getDate();
+
+  // Frontière IFRS (paiement en début de période) :
+  // Le mois M est RÉALISÉ si aujourd'hui >= jour de paiement de ce mois M
+  // Ex: début le 20/03 → avril réalisé si aujourd'hui >= 20/04
+  const datePaiementCeMois = new Date(today.getFullYear(), today.getMonth(), jourPaiement);
+  // Si on est passé le jour de paiement ce mois-ci, le mois courant est réalisé
+  const moisCourantRealise = today >= datePaiementCeMois;
+
   let realise = 0, previsionnel = 0;
-  // Itérer mois par mois
   let cur = new Date(start.getFullYear(), start.getMonth(), 1);
   const endLimit = end || new Date(today.getFullYear(), today.getMonth() + 24, 1);
   let count = 0;
+
   while (cur <= endLimit && count < 60) {
     count++;
-    const lastDayOfMonth = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
-    if (lastDayOfMonth < frontier) {
-      realise += b.prix_mensuel; // mois terminé → réalisé
+    const datePaiementCeMoisCur = new Date(cur.getFullYear(), cur.getMonth(), jourPaiement);
+    const estPasse = datePaiementCeMoisCur <= today;
+    const estFutur = !estPasse;
+    // Si abonnement terminé avant la date de paiement de ce mois → ne pas compter
+    if (end && datePaiementCeMoisCur > end) {
+      cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+      continue;
+    }
+    if (estPasse) {
+      realise += b.prix_mensuel;
     } else {
-      previsionnel += b.prix_mensuel; // mois courant ou futur → prévisionnel
+      previsionnel += b.prix_mensuel;
     }
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
@@ -1392,7 +1105,7 @@ function renderFlotteHTML() {
       { l: 'Revenus/mois', v: fmt(rev) + '€', c: 'var(--green)' },
     ])}
     <div class="filters">
-      ${[['actifs','Actives'],['tous','Toutes'],['standby','Disponibles'],['court','En location'],['repare','Réparation'],['cede','Cédées']].map(([f,l]) => `<button class="fpill${f===fleetFilter?' active':''}" onclick="setFleetFilter('${f}')">${l}</button>`).join('')}
+      ${[['actifs','Actives'],['tous','Toutes'],['standby','Disponibles'],['court','En location'],['repare','Réparation'],['vendre','À vendre'],['cede','Cédées']].map(([f,l]) => `<button class="fpill${f===fleetFilter?' active':''}" onclick="setFleetFilter('${f}')">${l}</button>`).join('')}
     </div>
     ${fleetView === 'table' ? renderFlotteTable(list) : `<div id="fleet-list">${list.map(v => vCard(v)).join('')}</div>`}
   `);
@@ -2022,7 +1735,8 @@ function bookingFormHTML(b, voitures) {
   </div>
   <div class="f2">
     <div class="fg"><label class="fl">Prix (€)</label><input class="fi" type="number" id="bf-p" value="${b.prix||''}"></div>
-    <div class="fg"><label class="fl">Source</label><select class="fi" id="bf-s">${['Direct','Roadstr','MRM'].map(s => `<option ${(b.source||'')==s?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="fg"><label class="fl">Source</label><select class="fi" id="bf-s" onchange="const pr=document.getElementById('bf-pret-row');const pp=document.getElementById('bf-p');if(this.value==='Prêt'){if(pr)pr.style.display='block';if(pp)pp.value=0;}else{if(pr)pr.style.display='none';}">${['Direct','Roadstr','MRM','Prêt'].map(s => `<option ${(b.source||'')==s?'selected':''}>${s}</option>`).join('')}</select></div>
+  <div id="bf-pret-row" style="display:${(b.source==='Prêt')?'block':'none'}"><div class="alert a-blue" style="font-size:12px;margin-top:4px">Prêt de véhicule — prix automatiquement à 0€</div></div>
   </div>
   <div class="f2">
     <div class="fg"><label class="fl">Statut (calculé automatiquement)</label>
@@ -2078,7 +1792,8 @@ async function deleteBooking(id) {
 // ═══════════════════════════════════════════════════════
 // FERDINAND — PLANNING
 // ═══════════════════════════════════════════════════════
-let planYear = new Date().getFullYear(), planMonth = new Date().getMonth();
+let planYear = new Date().getFullYear(), planMonth = new Date().getMonth(), planWeekOffset = 0;
+let planView = 'month'; // 'month' | 'week'
 let planVoitureFilter = '';
 let allPlanBookings = [];
 
@@ -2118,7 +1833,7 @@ function renderPlanningHTML(bookings) {
   });
   const bkMoisF = planVoitureFilter ? bkMois.filter(b => b.voiture === planVoitureFilter) : bkMois;
   // Palette dynamique — une couleur par voiture
-  const PALETTE = ['#2563eb','#dc2626','#059669','#d97706','#db2777','#0891b2','#65a30d','#c2410c','#0f766e','#6d28d9','#be185d','#92400e'];
+  const PALETTE = ['#93c5fd','#fca5a5','#6ee7b7','#fcd34d','#f9a8d4','#67e8f9','#a3e635','#fdba74','#5eead4','#c4b5fd','#f0abfc','#fbbf24'];
   const _vNames = [...new Set(fleetData.filter(v=>v.statut!=='cede').map(v=>v.nom))].sort();
   const voiColor = nom => { const i = _vNames.indexOf(nom); return i >= 0 ? PALETTE[i % PALETTE.length] : '#6b7280'; };
   const bkColor = b => b.type_booking === 'abonnement' ? '#7c3aed' : voiColor(b.voiture);
@@ -2128,6 +1843,10 @@ function renderPlanningHTML(bookings) {
       <div><div class="pg-title">Ferdinand — Planning</div>
       <div class="pg-sub">${bkMoisF.length} location${bkMoisF.length!==1?'s':''} · ${planVoitureFilter?'filtré':'ce mois'}</div></div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+          <button class="btn btn-sm" onclick="planView='month';renderPlanningHTML(allPlanBookings)" style="border:none;border-radius:0;${planView==='month'?'background:var(--fg);color:var(--bg)':''}" id="btn-plan-month">Mois</button>
+          <button class="btn btn-sm" onclick="planView='week';renderPlanningHTML(allPlanBookings)" style="border:none;border-radius:0;border-left:1px solid var(--border);${planView==='week'?'background:var(--fg);color:var(--bg)':''}" id="btn-plan-week">Semaine</button>
+        </div>
         <select class="fi" style="width:auto;padding:0 10px;height:32px;font-size:12.5px" onchange="planVoitureFilter=this.value;renderPlanningHTML(allPlanBookings)">
           <option value="">Toutes les voitures</option>
           ${fleetData.filter(v=>v.statut!=='cede').map(v=>`<option value="${v.nom}" ${planVoitureFilter===v.nom?'selected':''}>${vNom(v)}</option>`).join('')}
@@ -2158,7 +1877,7 @@ function renderPlanningHTML(bookings) {
       <button class="btn btn-sm" onclick="planYear=new Date().getFullYear();planMonth=new Date().getMonth();renderPlanning()">Aujourd'hui</button>
     </div>
     <div class="card" style="padding:10px">
-      ${mkCalendar(planYear, planMonth, bkMoisF, b => b.type_booking==='abonnement'?'#7c3aed':voiColor(b.voiture), 'openEditBookingOrAbo')}
+      ${planView === 'week' ? mkWeekView(bkMoisF, voiColor) : mkCalendar(planYear, planMonth, bkMoisF, b => b.type_booking==='abonnement'?'#c4b5fd':voiColor(b.voiture), 'openEditBookingOrAbo')}
     </div>
     ${bkMois.length ? `<div style="margin-top:14px">
       ${bkMoisF.sort((a,b)=>a.debut.localeCompare(b.debut)).map(b => {
@@ -2335,6 +2054,165 @@ function openManualLink(stripeId) {
 // ═══════════════════════════════════════════════════════
 let aboData = [], aboFilter = 'actifs';
 
+
+// ── CONFIRMATION PAIEMENT ABONNEMENT ─────────────────────
+async function confirmerPaiementAbo(aboId) {
+  const b = aboData.find(function(x){ return x.id === aboId; });
+  if (!b) return;
+  const pm = getProchainePaiement(b);
+  const montantAttendu = b.prix_mensuel || 0;
+
+  // Chercher les paiements Stripe récents non appariés
+  let stripeOptions = '';
+  if (typeof stripeData !== 'undefined' && stripeData.length) {
+    stripeOptions = stripeData.slice(0, 20).map(function(p) {
+      const amt = fmt((p.amount_captured||0)/100);
+      const d = fmtShort(p.created ? new Date(p.created*1000).toISOString().split('T')[0] : '');
+      return '<option value="' + p.id + '">' + d + ' · ' + amt + '€ · ' + (p.description||p.id).substring(0,30) + '</option>';
+    }).join('');
+  }
+
+  openModal('Confirmer paiement — ' + vNom(fleetData.find(function(v){ return v.nom===b.voiture; })||{nom:b.voiture}),
+    '<div class="alert a-blue" style="margin-bottom:10px">'
+    + '<strong>' + (b.client||'—') + '</strong> · ' + (b.voiture||'—') + ' · '
+    + fmt(montantAttendu) + '€/mois'
+    + (pm ? ' · Échéance : ' + fmtDate(pm.date) : '')
+    + '</div>'
+    + '<div class="f2"><div class="fg"><label class="fl">Montant reçu (€)</label>'
+    + '<input class="fi" type="number" id="pmt-montant" value="' + montantAttendu + '"></div>'
+    + '<div class="fg"><label class="fl">Date réception</label>'
+    + '<input class="fi" type="date" id="pmt-date" value="' + todayStr() + '"></div></div>'
+    + '<div class="fg"><label class="fl">Mode de paiement</label>'
+    + '<select class="fi" id="pmt-mode">'
+    + '<option>Virement</option><option>Espèces</option><option>Chèque</option><option>CB</option><option>Mixte CB + Espèces</option></select></div>'
+    + '<div class="fg"><label class="fl">Commentaire / référence</label>'
+    + '<input class="fi" id="pmt-comment" placeholder="ex: Virement reçu le... / Réf BNP..."></div>'
+    + (stripeOptions ? '<div class="fg"><label class="fl">Pointer un paiement Stripe (optionnel)</label>'
+    + '<select class="fi" id="pmt-stripe"><option value="">— Aucun —</option>' + stripeOptions + '</select></div>' : ''),
+    async function() {
+      const montant = parseFloat(document.getElementById('pmt-montant').value) || 0;
+      const date = document.getElementById('pmt-date').value;
+      const mode = document.getElementById('pmt-mode').value;
+      const comment = document.getElementById('pmt-comment').value;
+      const stripeId = document.getElementById('pmt-stripe')?.value || '';
+      // Enregistrer le paiement
+      await db.from('paiements_abo').insert({
+        id: 'pmt_' + Date.now(),
+        abo_id: aboId,
+        voiture: b.voiture,
+        client: b.client,
+        montant,
+        date_paiement: date,
+        mode_paiement: mode,
+        commentaire: comment,
+        stripe_id: stripeId || null,
+        montant_attendu: montantAttendu,
+      });
+      // Marquer la tâche comme done si elle existe
+      if (typeof ftData !== 'undefined') {
+        const tacheTitle = 'Paiement abo ' + (b.voiture||'') + ' ' + (b.client||'');
+        const tache = ftData.find(function(t){ return t.titre && t.titre.includes(tacheTitle) && !t.done; });
+        if (tache) {
+          await db.from('fleet_tasks').update({ done: true, notes: (tache.notes||'') + ' | Reçu: ' + fmt(montant) + '€ ' + mode + (comment?' · '+comment:'') }).eq('id', tache.id);
+          tache.done = true;
+        }
+      }
+      closeModal();
+      alert('Paiement enregistré : ' + fmt(montant) + '€ (' + mode + ')');
+    }
+  );
+}
+
+// Créer la tâche mensuelle de suivi de paiement
+async function creerTachePaiementMensuel(b) {
+  const pm = getProchainePaiement(b);
+  if (!pm) return;
+  const titre = 'Paiement abo ' + (b.voiture||'') + ' ' + (b.client||'') + ' — ' + pm.date.substring(0,7);
+  // Vérifier si la tâche existe déjà
+  const { data: existing } = await db.from('fleet_tasks')
+    .select('id').like('titre', '%' + titre.substring(0,40) + '%').eq('done', false).limit(1);
+  if (existing && existing.length) return;
+  await db.from('fleet_tasks').insert({
+    id: 'ft_pmt_' + b.id + '_' + Date.now(),
+    titre,
+    voiture: b.voiture,
+    priorite: 'normale',
+    echeance: pm.date,
+    done: false,
+    notes: 'Confirmer paiement mensualité ' + fmt(pm.montant) + '€ — ' + (b.client||''),
+  });
+  if (typeof ftData !== 'undefined') {
+    ftData.unshift({ id: 'ft_pmt_' + b.id + '_' + Date.now(), titre, voiture: b.voiture, done: false });
+  }
+}
+
+
+// ── TÂCHES POINTAGE PAIEMENT MENSUEL ─────────────────────────────────────────
+// Crée une tâche par abonnement actif pour le mois courant si elle n'existe pas encore
+async function creerTachesPointageMensuel(silencieux) {
+  const ts = todayStr();
+  const today = new Date();
+  const moisLabel = today.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const moisCode = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0');
+
+  // Charger les abonnements actifs
+  const actifs = (typeof aboData !== 'undefined' ? aboData : []).filter(function(b) {
+    const deb = b.debut ? b.debut.substring(0,10) : null;
+    const fin = b.fin ? b.fin.substring(0,10) : null;
+    return deb && deb <= ts && (!fin || fin >= ts) && b.prix_mensuel > 0;
+  });
+
+  if (!actifs.length) {
+    if (!silencieux) alert('Aucun abonnement actif trouvé.');
+    return 0;
+  }
+
+  let creees = 0;
+  for (const b of actifs) {
+    const titreKey = moisCode + '-' + (b.voiture||'') + '-' + (b.client||'');
+    const titre = 'Pointer paiement ' + moisLabel + ' — ' + (b.voiture||'') + ' / ' + (b.client||'');
+
+    // Vérifier si la tâche existe déjà ce mois
+    const { data: existing } = await db.from('fleet_tasks')
+      .select('id')
+      .like('titre', '%Pointer paiement ' + moisCode.replace('-', '/') + '%' + (b.voiture||'').substring(0,10) + '%')
+      .eq('done', false)
+      .limit(1);
+
+    if (existing && existing.length > 0) continue; // Déjà créée
+
+    // Calculer la date de paiement attendue ce mois
+    const start = new Date(b.debut);
+    const jourPmt = start.getDate();
+    const dateEcheance = new Date(today.getFullYear(), today.getMonth(), jourPmt);
+    if (dateEcheance < today) dateEcheance.setMonth(dateEcheance.getMonth() + 1); // mois prochain si passé
+    const echeanceStr = dateEcheance.toISOString().split('T')[0];
+
+    await db.from('fleet_tasks').insert({
+      id: 'ft_pmt_' + b.id + '_' + moisCode,
+      titre,
+      voiture: b.voiture,
+      priorite: 'normale',
+      echeance: echeanceStr,
+      done: false,
+      notes: 'Montant attendu : ' + fmt(b.prix_mensuel) + '€ · Jour de paiement : ' + jourPmt + ' du mois · Client : ' + (b.client||'—'),
+    });
+
+    // Mettre à jour ftData en mémoire
+    if (typeof ftData !== 'undefined') {
+      ftData.unshift({
+        id: 'ft_pmt_' + b.id + '_' + moisCode,
+        titre, voiture: b.voiture, done: false, echeance: echeanceStr,
+        notes: 'Montant attendu : ' + fmt(b.prix_mensuel) + '€',
+      });
+    }
+    creees++;
+  }
+
+  if (!silencieux) alert(creees + ' tâche' + (creees>1?'s':'') + ' créée' + (creees>1?'s':'') + ' pour ' + moisLabel + (creees===0?' (toutes déjà existantes)':''));
+  return creees;
+}
+
 async function renderAbonnements() {
   set('app-page', LOADING);
   // Charger les abonnements depuis ferdinand_bookings avec type_booking='abonnement'
@@ -2353,6 +2231,22 @@ async function renderAbonnements() {
   }
   aboData = all;
   renderAbonnementsHTML();
+  // Auto-créer les tâches de pointage manquantes (silencieux)
+  creerTachesPointageMensuel(true);
+}
+
+// Prochaine mensualité d'un abonnement (pour affichage)
+function getProchainePaiement(b) {
+  if (!b.debut || !b.prix_mensuel) return null;
+  const today = new Date();
+  const start = new Date(b.debut);
+  // Trouver le jour du mois du début
+  const dayOfMonth = start.getDate();
+  // Prochaine occurrence
+  let next = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
+  if (next <= today) next = new Date(today.getFullYear(), today.getMonth() + 1, dayOfMonth);
+  if (b.fin && next > new Date(b.fin)) return null;
+  return { date: next.toISOString().split('T')[0], montant: b.prix_mensuel };
 }
 
 function getAboStatut(b) {
@@ -2400,7 +2294,10 @@ function renderAbonnementsHTML() {
     <div class="pg-header">
       <div><div class="pg-title">Ferdinand — Abonnements</div>
       <div class="pg-sub">Locations longue durée · ${aboData.length} contrats</div></div>
-      <button class="btn btn-primary" onclick="openAddAbonnement()">+ Abonnement</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn" onclick="creerTachesPointageMensuel(false)" title="Créer les tâches de pointage pour ce mois">📋 Tâches paiement</button>
+        <button class="btn btn-primary" onclick="openAddAbonnement()">+ Abonnement</button>
+      </div>
     </div>
     ${mkStats([
       { l: 'Actifs', v: actifs.length, c: 'var(--green)' },
@@ -2513,8 +2410,10 @@ async function openAddAbonnement() {
   openModal('Nouvel abonnement', aboFormHTML({}, voitures), async () => {
     const b = { id: 'abo' + Date.now(), ...getAboForm() };
     if (!b.client) { alert('Client requis'); return; }
-    const { data } = await db.from('ferdinand_bookings').insert(b).select();
-    if (data) aboData.unshift(data[0]);
+    const { data, error } = await db.from('ferdinand_bookings').insert(b).select();
+    if (error) { alert('Erreur : ' + error.message); return; }
+    if (data && data[0]) aboData.unshift(data[0]);
+    aboFilter = 'tous'; // Basculer sur Tous pour voir le nouvel abonnement
     closeModal(); renderAbonnementsHTML();
   });
 }
@@ -2829,7 +2728,7 @@ async function renderAnalytics() {
   const allBk = [...(r1.data||[]), ...(r2.data||[])];
 
   // Palette couleurs voitures (même ordre que planning)
-  const PALETTE = ['#2563eb','#dc2626','#059669','#d97706','#db2777','#0891b2','#65a30d','#c2410c','#0f766e','#6d28d9','#be185d','#92400e'];
+  const PALETTE = ['#93c5fd','#fca5a5','#6ee7b7','#fcd34d','#f9a8d4','#67e8f9','#a3e635','#fdba74','#5eead4','#c4b5fd','#f0abfc','#fbbf24'];
   const voitures = [...new Set(allBk.map(b => b.voiture).filter(Boolean))].sort();
   const voiColor = v => { const i = voitures.indexOf(v); return i >= 0 ? PALETTE[i % PALETTE.length] : '#6b7280'; };
 
